@@ -11,6 +11,8 @@ application packages.
 
 from __future__ import annotations
 
+from typing import Any
+
 from holpy.kernel.proof import ItemID, Proof
 from holpy.kernel.proofterm import ProofTerm
 from holpy.kernel.term import Term
@@ -43,7 +45,7 @@ class Macro:
         self.level: int | None = None
         self.sig: object = None
 
-    def eval(self, args: Term, prevs: list[Thm]) -> Thm:
+    def eval(self, args: Any, prevs: list[Thm]) -> Thm:
         """Evaluate the macro and return the resulting theorem.
 
         Parameters
@@ -61,7 +63,7 @@ class Macro:
         pts = [ProofTerm.sorry(prev) for prev in prevs]
         return self.get_proof_term(args, pts).th
 
-    def get_proof_term(self, args: Term, prevs: list[ProofTerm]) -> ProofTerm:
+    def get_proof_term(self, args: Any, prevs: list[ProofTerm]) -> ProofTerm:
         """Return a proof term expanding the macro.
 
         Subclasses must override this. ``prevs`` are proof terms for the
@@ -69,7 +71,7 @@ class Macro:
         """
         raise NotImplementedError("Proof term not implemented for %s" % type(self))
 
-    def expand(self, prefix: ItemID, args: Term, prevs: list[tuple[ItemID, Thm]]) -> Proof:
+    def expand(self, prefix: ItemID, args: Any, prevs: list[tuple[ItemID, Thm]]) -> Proof:
         """Expand the macro into a linear proof under ``prefix``.
 
         Parameters
