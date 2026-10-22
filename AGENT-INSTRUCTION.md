@@ -40,6 +40,15 @@ The house policy is the qwen workspace's `ruff.toml`:
   module per change.
 - Do not mix unrelated modules in one change unless the dependency requires it.
 
+## User-specific requirements
+
+If the user gives requirements that are specific to their environment, account,
+or workflow and do not generalize to other contributors, create a local,
+untracked `LOCAL-AGENT-INSTRUCTION.md` and add it to the local ignore rules.
+Keep the upstream repository free of environment-specific instructions,
+credentials, tool configuration, and commit/authorship conventions; do not
+commit that file or fold its contents into this document.
+
 ## Kernel discipline
 
 `holpy/kernel` is the trusted core. Every edit must be behavior-preserving.
