@@ -1,9 +1,12 @@
 # Author: Bohua Zhan
 
-"""Utility for creating new names."""
+"""Utilities for creating fresh variable and constant names."""
 
-def get_variant_name(nm, prevs):
-    """Create a name starting at nm, to avoid any of the prevs."""
+from __future__ import annotations
+
+
+def get_variant_name(nm: str, prevs: list[str]) -> str:
+    """Return ``nm`` or the first numbered variant not present in ``prevs``."""
     if nm not in prevs:
         return nm
 
@@ -13,10 +16,11 @@ def get_variant_name(nm, prevs):
             return nm + str(i)
         i += 1
 
-def get_variant_names(nms, prevs):
-    """Create a list of new names starting at nms, to avoid any
-    of the prevs.
 
+def get_variant_names(nms: list[str], prevs: list[str]) -> list[str]:
+    """Return fresh variants of ``nms`` that avoid all names in ``prevs``.
+
+    Later names also avoid the variants chosen for earlier names.
     """
     if len(nms) == 0:
         return []
