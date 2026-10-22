@@ -1,11 +1,11 @@
 # Author: Bohua Zhan
 
-"""Theory extensions and their JSON-facing representation.
+"""Theory extensions.
 
 An :class:`Extension` is one atomic addition to a theory: a type constructor,
 a constant, a theorem, a theorem attribute, or an overload registration.
-Extensions are collected by :mod:`holpy.kernel.theory` and are checked there
-before they become part of the current theory.
+Extensions are applied by :class:`holpy.kernel.theory.Theory`; callers choose
+between unchecked application and checked application of supplied proofs.
 """
 
 from __future__ import annotations

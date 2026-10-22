@@ -938,12 +938,12 @@ class Term:
         return rec(self, [])
 
     def convert_svar(self) -> Term:
-        """Return a copy with schematic variables replaced by variables.
+        """Return a copy with ordinary variables replaced by schematic variables.
 
         Raises
         ------
         TermException
-            If self already contains a schematic variable.
+            If self is, or already contains, a schematic variable.
         """
         if self.is_svar():
             raise TermException("convert_svar: term already contains SVar.")

@@ -330,7 +330,7 @@ class Theory:
         no_gaps : bool
             Reject gaps when true.
         compute_only : bool
-            Reuse an existing statement and only compute subproofs.
+            Trust an existing statement; only recurse into subproofs.
         check_level : int
             Trust level for direct macro evaluation.
         """
@@ -454,7 +454,8 @@ class Theory:
         no_gaps : bool
             Reject ``sorry`` items when true.
         compute_only : bool
-            Recompute statements only where needed.
+            Trust items that already have a statement instead of re-deriving
+            them.
         check_level : int
             Trust level for direct macro evaluation.
 
@@ -614,7 +615,8 @@ def check_proof(prf: Proof, rpt: ProofReport | None = None, *,
 
 
 #: Global store of macros. Keys are macro names, values are macro objects.
-#: A macro becomes available to a theory only through a theory extension.
+#: Availability is determined by this registry and the macro's optional
+#: ``limit`` theorem; there is no separate macro extension kind.
 global_macros: dict[str, Any] = {}
 
 
