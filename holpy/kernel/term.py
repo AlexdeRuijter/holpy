@@ -1,11 +1,20 @@
 # Author: Bohua Zhan
 
+"""HOL terms and the term constructors.
+
+Terms are built from schematic variables, ordinary variables, constants,
+applications, abstractions, and de Bruijn bound variables. The module also
+provides the standard logical and arithmetic constructors (``Eq``, ``And``,
+``Forall``, ``plus``, numerals, and so on) and the substitution and
+beta-reduction operations used throughout the kernel.
+"""
+
 from __future__ import annotations
 from collections import UserDict
 from copy import copy
 import math
 from fractions import Fraction
-from typing import List
+from typing import Collection, Iterable, List
 
 from holpy.kernel.type import Type, TFun, BoolType, NatType, IntType, RealType, TyInst, TypeMatchException
 from holpy.util import typecheck
@@ -29,14 +38,23 @@ class TypeCheckException(Exception):
         return self.msg
 
 class Inst(UserDict):
-    """Instantiation of schematic variables."""
+    """Instantiation of schematic variables.
+
+    The mapping itself contains schematic-variable assignments. ``tyinst``
+    holds the induced type instantiation, ``var_inst`` holds ordinary-variable
+    assignments, and ``abs_name_inst`` records suggested names for abstractions.
+    """
+    tyinst: TyInst
+    var_inst: dict[str, Term]
+    abs_name_inst: dict[str, str]
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.tyinst = TyInst()
         self.var_inst = dict()
         self.abs_name_inst = dict()
 
-    def __str__(self):
+    def __str__(self) -> str:
         res = ''
         if self.tyinst:
             res = str(self.tyinst) + ', '
@@ -45,14 +63,14 @@ class Inst(UserDict):
         res += ', '.join('%s -> %s' % (nm, nm2) for nm, nm2 in self.abs_name_inst.items())
         return res
 
-    def __copy__(self):
+    def __copy__(self) -> Inst:
         res = Inst(self)
         res.tyinst = copy(self.tyinst)
         res.var_inst = copy(self.var_inst)
         res.abs_name_inst = copy(self.abs_name_inst)
         return res
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return bool(self.tyinst) or bool(self.keys()) or bool(self.var_inst) or bool(self.abs_name_inst)
 
 
@@ -106,10 +124,25 @@ class Term:
     Abs("x", S, Abs("y", T, Q(Bound(1), Bound(0)))) is %x::S. %y::T. Q x y.
 
     """
+    # Attributes set by the concrete term constructors. They are declared on
+    # the base class so type checkers can follow the representation; only the
+    # corresponding subclass initializes each one.
+    ty: int
+    T: Type
+    name: str
+    fun: Term
+    arg: Term
+    var_name: str
+    var_T: Type
+    body: Term
+    n: int
+    _id: int
+    _hash_val: int
+
     # ty values for distinguishing between Term objects.
     SVAR, VAR, CONST, COMB, ABS, BOUND = range(6)
 
-    def __init__(self, arg):
+    def __init__(self, arg: Term | str):
         if not isinstance(arg, Term):
             if term_parser is not None:
                 t = term_parser(arg)
@@ -122,6 +155,7 @@ class Term:
         self.__dict__.update(t.__dict__)
 
     def is_svar(self) -> bool:
+        """Return whether the term is a schematic variable."""
         return self.ty == Term.SVAR
 
     def is_var(self) -> bool:
@@ -207,13 +241,13 @@ class Term:
 
         return helper(self, [])
 
-    def __str__(self):
+    def __str__(self) -> str:
         if term_printer is None:
             return self.print_basic()
         else:
             return term_printer(self)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         if self.is_svar():
             return "SVar(%s, %s)" % (self.name, self.T)
         elif self.is_var():
@@ -229,7 +263,7 @@ class Term:
         else:
             raise TypeError
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         if not hasattr(self, "_hash_val"):
             if self.is_svar():
                 self._hash_val = hash(("SVAR", self.name, self.T))
@@ -278,7 +312,7 @@ class Term:
                 raise TypeError
         return self._hash_val
 
-    def __eq__(self, other):
+    def __eq__(self, other: Term) -> bool:
         """Equality on terms is defined by alpha-conversion. This ignores
         suggested names in lambda terms.
 
@@ -302,7 +336,7 @@ class Term:
         else:
             raise TypeError
 
-    def __copy__(self):
+    def __copy__(self) -> Term:
         """Returns a copy of self. Types are shared, the rest of
         the information are copied.
 
@@ -322,7 +356,7 @@ class Term:
         else:
             raise TypeError
 
-    def __call__(self, *args):
+    def __call__(self, *args: Term) -> Term:
         """Apply self (as a function) to a list of arguments."""
         res = self
         for arg in args:
@@ -342,7 +376,8 @@ class Term:
         else:
             raise TypeError
 
-    def get_absBindVar(self) -> list:
+    def get_absBindVar(self) -> list[str]:
+        """Return the suggested names of all abstractions in self."""
         res = []
         def f(t:Term):
             if t.is_abs():
@@ -515,8 +550,11 @@ class Term:
             t = self.subst_type(inst.tyinst)
         return rec(t)
 
-    def strip_comb(self):
-        """Given a term f t1 t2 ... tn, returns (f, [t1, t2, ..., tn])."""
+    def strip_comb(self) -> tuple[Term, list[Term]]:
+        """Split an application into its head and argument list.
+
+        Given ``f t1 t2 ... tn``, return ``(f, [t1, t2, ..., tn])``.
+        """
         t = self
         args = []
         while t.is_comb():
@@ -524,8 +562,11 @@ class Term:
             t = t.fun
         return (t, list(reversed(args)))
 
-    def strip_forall(self, *, num=None):
-        """Given a term !x1 x2 ... xn. body, returns ([x1, x2, ..., xn], body)"""
+    def strip_forall(self, *, num: int | None = None) -> tuple[list[Var], Term]:
+        """Split a universal quantifier prefix from its body.
+
+        Given ``!x1 x2 ... xn. body``, return ``([x1, ..., xn], body)``.
+        """
         args = []
         t = self
         while t.is_forall() and (num is None or num > 0):
@@ -537,8 +578,11 @@ class Term:
                 num -= 1
         return args, t
     
-    def strip_exists(self, *, num=None):
-        """Given a term !x1 x2 ... xn. body, returns ([x1, x2, ..., xn], body)"""
+    def strip_exists(self, *, num: int | None = None) -> tuple[list[Var], Term]:
+        """Split an existential quantifier prefix from its body.
+
+        Given ``?x1 x2 ... xn. body``, return ``([x1, ..., xn], body)``.
+        """
         args = []
         t = self
         while t.is_exists() and (num is None or num > 0):
@@ -550,7 +594,8 @@ class Term:
                 num -= 1
         return args, t
 
-    def strip_quant(self):
+    def strip_quant(self) -> tuple[list[Var], Term]:
+        """Strip any outermost universal/existential quantifiers."""
         def helper(tm, quant_vars):
             if tm.is_forall():
                 vars, bd = tm.strip_forall()
@@ -594,8 +639,8 @@ class Term:
         """Whether self is of the form A --> B."""
         return self.is_comb('implies', 2)
 
-    def strip_implies(self):
-        """Given s1 --> ... --> sn --> t, return ([s1, ..., sn], t)."""
+    def strip_implies(self) -> tuple[list[Term], Term]:
+        """Given ``s1 --> ... --> sn --> t``, return ``([s1, ..., sn], t)``."""
         if self.is_implies():
             rest, c = self.arg.strip_implies()
             return ([self.arg1] + rest, c)
@@ -606,8 +651,8 @@ class Term:
         """Whether t is of the form A & B."""
         return self.is_comb('conj', 2)
 
-    def strip_conj(self):
-        """Given s1 & ... & sn, return [s1, ..., sn]."""
+    def strip_conj(self) -> list[Term]:
+        """Given ``s1 & ... & sn``, return ``[s1, ..., sn]``."""
         t = self
         res = []
         while t.is_conj():
@@ -620,8 +665,8 @@ class Term:
         """Whether t is of the form A | B."""
         return self.is_comb('disj', 2)
 
-    def strip_disj(self):
-        """Given s1 | ... | sn, return [s1, ..., sn]."""
+    def strip_disj(self) -> list[Term]:
+        """Given ``s1 | ... | sn``, return ``[s1, ..., sn]``."""
         t = self
         res = []
         while t.is_disj():
@@ -642,18 +687,16 @@ class Term:
         """Whether self is of the form (let x = t in body)."""
         return self.is_comb('Let', 2)
 
-    def dest_let(self):
-        """Given a term of the form (let x = t in body), return (x, t, body). """
+    def dest_let(self) -> tuple[Var, Term, Term]:
+        """Destruct ``(let x = t in body)`` into ``(x, t, body)``."""
         x, body = self.arg.dest_abs()
         return (x, self.arg1, body)
 
-    def strip_let(self):
-        """Given a term of the form
+    def strip_let(self) -> tuple[list[tuple[Var, Term]], Term]:
+        """Destruct a chain of ``let`` bindings.
 
-            let x1 = t1 ... xn = tn in body
-
-        return the list of pairs (x1, t1), ... (xn, tn) together with body.
-
+        Given ``let x1 = t1 ... xn = tn in body``, return the pairs
+        ``[(x1, t1), ..., (xn, tn)]`` together with ``body``.
         """
         res_list = []
         t = self
@@ -681,15 +724,17 @@ class Term:
 
     @property
     def lhs(self) -> Term:
+        """Return the left side of an equality term."""
         assert self.is_equals(), "lhs: not an equality."
         return self.arg1
 
     @property
     def rhs(self) -> Term:
+        """Return the right side of an equality term."""
         assert self.is_equals(), "rhs: not an equality."
         return self.arg
 
-    def incr_boundvars(self, inc):
+    def incr_boundvars(self, inc: int) -> Term:
         """Increase loose bound variables in self by inc."""
         def rec(t, lev):
             if t.is_svar() or t.is_var() or t.is_const():
@@ -792,7 +837,7 @@ class Term:
         else:
             raise TypeError
 
-    def subst_norm(self, inst=None, **kwargs) -> Term:
+    def subst_norm(self, inst: Inst | None = None, **kwargs: Term) -> Term:
         """Substitute using the given instantiation, then normalize with
         respect to beta-conversion.
 
@@ -801,7 +846,7 @@ class Term:
             inst = Inst(**kwargs)
         return self.subst(inst).beta_norm()
 
-    def occurs_var(self, t: Term) -> Term:
+    def occurs_var(self, t: Term) -> bool:
         """Whether the variable t occurs in self."""
         if self.is_svar():
             return False
@@ -893,6 +938,13 @@ class Term:
         return rec(self, [])
 
     def convert_svar(self) -> Term:
+        """Return a copy with schematic variables replaced by variables.
+
+        Raises
+        ------
+        TermException
+            If self already contains a schematic variable.
+        """
         if self.is_svar():
             raise TermException("convert_svar: term already contains SVar.")
         elif self.is_var():
@@ -908,7 +960,7 @@ class Term:
         else:
             raise TypeError
 
-    def dest_abs(self, var_name=None):
+    def dest_abs(self, var_name: str | None = None) -> tuple["Var", Term]:
         """Given self of form %x. body, return pair (x, body).
 
         If var_name is None, the name recorded in the abstraction is used
@@ -928,7 +980,7 @@ class Term:
 
         return v, body
 
-    def is_binary(self):
+    def is_binary(self) -> bool:
         """Whether self is in standard binary form.
         
         Note binary form means no of_nat is applied.
@@ -941,7 +993,7 @@ class Term:
         else:
             return False
 
-    def dest_binary(self):
+    def dest_binary(self) -> int:
         """Convert HOL binary form to Python integer.
         
         Note binary form means no of_nat is applied.
@@ -958,43 +1010,56 @@ class Term:
         else:
             raise TermException('dest_binary: term is not in binary form.')
 
-    def is_nat(self):
+    def is_nat(self) -> bool:
+        """Return whether self has type nat."""
         return self.get_type() == NatType
 
-    def is_int(self):
+    def is_int(self) -> bool:
+        """Return whether self has type int."""
         return self.get_type() == IntType
 
-    def is_real(self):
+    def is_real(self) -> bool:
+        """Return whether self has type real."""
         return self.get_type() == RealType
 
-    def is_zero(self):
+    def is_zero(self) -> bool:
+        """Return whether self is the constant zero."""
         return self.is_const('zero')
 
-    def is_one(self):
+    def is_one(self) -> bool:
+        """Return whether self is the constant one."""
         return self.is_const('one')
 
-    def is_plus(self):
+    def is_plus(self) -> bool:
+        """Return whether self is an addition ``a + b``."""
         return self.is_comb('plus', 2)
 
-    def is_minus(self):
+    def is_minus(self) -> bool:
+        """Return whether self is a subtraction ``a - b``."""
         return self.is_comb('minus', 2)
 
-    def is_uminus(self):
+    def is_uminus(self) -> bool:
+        """Return whether self is a unary negation ``-a``."""
         return self.is_comb('uminus', 1)
 
-    def is_times(self):
+    def is_times(self) -> bool:
+        """Return whether self is a multiplication ``a * b``."""
         return self.is_comb('times', 2)
 
-    def is_divides(self):
+    def is_divides(self) -> bool:
+        """Return whether self is a real division ``a / b``."""
         return self.is_comb('real_divide', 2)
 
-    def is_real_inverse(self):
+    def is_real_inverse(self) -> bool:
+        """Return whether self is the inverse of a real term."""
         return self.is_comb("real_inverse", 1) and self.arg.get_type() == RealType
 
-    def is_nat_power(self):
+    def is_nat_power(self) -> bool:
+        """Return whether self is a power with a nat exponent."""
         return self.is_comb('power', 2) and self.arg.get_type() == NatType
 
-    def is_real_power(self):
+    def is_real_power(self) -> bool:
+        """Return whether self is a power with a real exponent."""
         return self.is_comb('power', 2) and self.arg.get_type() == RealType
 
     def is_nat_number(self):
@@ -1049,7 +1114,7 @@ class Term:
         else:
             return False
 
-    def dest_number(self):
+    def dest_number(self) -> int | Fraction:
         """Convert a term to a Python number."""
         if self.is_zero():
             return 0
@@ -1071,7 +1136,7 @@ class Term:
             raise TermException('dest_number: term %s is not a number.' % self)
         return self.arg.dest_binary()
 
-    def __add__(self, other):
+    def __add__(self, other: Term | int | Fraction) -> Term:
         T = self.get_type()
         if isinstance(other, (int, Fraction)):
             other = Number(T, other)
@@ -1079,56 +1144,56 @@ class Term:
             return NotImplemented
         return plus(T)(self, other)
 
-    def __radd__(self, other):
+    def __radd__(self, other: Term | int | Fraction) -> Term:
         T = self.get_type()
         if isinstance(other, (int, Fraction)):
             other = Number(T, other)
         return plus(T)(other, self)
 
-    def __sub__(self, other):
+    def __sub__(self, other: Term | int | Fraction) -> Term:
         T = self.get_type()
         if isinstance(other, (int, Fraction)):
             other = Number(T, other)
         return minus(T)(self, other)
 
-    def __rsub__(self, other):
+    def __rsub__(self, other: Term | int | Fraction) -> Term:
         T = self.get_type()
         if isinstance(other, (int, Fraction)):
             other = Number(T, other)
         return minus(T)(other, self)
 
-    def __mul__(self, other):
+    def __mul__(self, other: Term | int | Fraction) -> Term:
         T = self.get_type()
         if isinstance(other, (int, Fraction)):
             other = Number(T, other)
         return times(T)(self, other)
 
-    def __rmul__(self, other):
+    def __rmul__(self, other: Term | int | Fraction) -> Term:
         T = self.get_type()
         if isinstance(other, (int, Fraction)):
             other = Number(T, other)
         return times(T)(other, self)
 
-    def __truediv__(self, other):
+    def __truediv__(self, other: Term | int | Fraction) -> Term:
         T = self.get_type()
         if isinstance(other, (int, Fraction)):
             other = Number(T, other)
         return divides(T)(self, other)
 
-    def __rtruediv__(self, other):
+    def __rtruediv__(self, other: Term | int | Fraction) -> Term:
         T = self.get_type()
         if isinstance(other, (int, Fraction)):
             other = Number(T, other)
         return divides(T)(other, self)
 
-    def __neg__(self):
+    def __neg__(self) -> Term:
         T = self.get_type()
         return uminus(T)(self)
 
-    def __pos__(self):
+    def __pos__(self) -> Term:
         return self
 
-    def __pow__(self, other):
+    def __pow__(self, other: Term | int | Fraction) -> Term:
         T = self.get_type()
         if isinstance(other, int) and other >= 0:
             other = Number(NatType, other)
@@ -1141,7 +1206,7 @@ class Term:
         else:
             raise TermException('__pow__: unexpected type for exponent.')
 
-    def __rpow__(self, other):
+    def __rpow__(self, other: Term | int | Fraction) -> Term:
         if not isinstance(other, Term):
             raise TermException('__rpow__: base must be a HOL term.')
         base_T = other.get_type()
@@ -1153,43 +1218,48 @@ class Term:
         else:
             raise TermException('__rpow__: unexpected type for exponent.')
 
-    def is_less_eq(self):
+    def is_less_eq(self) -> bool:
+        """Return whether self is ``a <= b``."""
         return self.is_comb('less_eq', 2)
 
-    def is_less(self):
+    def is_less(self) -> bool:
+        """Return whether self is ``a < b``."""
         return self.is_comb('less', 2)
 
-    def is_greater_eq(self):
+    def is_greater_eq(self) -> bool:
+        """Return whether self is ``a >= b``."""
         return self.is_comb('greater_eq', 2)
 
-    def is_greater(self):
+    def is_greater(self) -> bool:
+        """Return whether self is ``a > b``."""
         return self.is_comb('greater', 2)
 
-    def __le__(self, other):
+    def __le__(self, other: Term | int | Fraction) -> Term:
         T = self.get_type()
         if isinstance(other, (int, Fraction)):
             other = Number(T, other)
         return less_eq(T)(self, other)
 
-    def __lt__(self, other):
+    def __lt__(self, other: Term | int | Fraction) -> Term:
         T = self.get_type()
         if isinstance(other, (int, Fraction)):
             other = Number(T, other)
         return less(T)(self, other)
 
-    def __ge__(self, other):
+    def __ge__(self, other: Term | int | Fraction) -> Term:
         T = self.get_type()
         if isinstance(other, (int, Fraction)):
             other = Number(T, other)
         return greater_eq(T)(self, other)
 
-    def __gt__(self, other):
+    def __gt__(self, other: Term | int | Fraction) -> Term:
         T = self.get_type()
         if isinstance(other, (int, Fraction)):
             other = Number(T, other)
         return greater(T)(self, other)
 
-    def get_svars(self):
+    def get_svars(self) -> list["SVar"]:
+        """Return the schematic variables occurring in self."""
         res = []
         found = set()
         def rec(t):
@@ -1205,7 +1275,8 @@ class Term:
         rec(self)
         return res
 
-    def get_vars(self) -> List[Var]:
+    def get_vars(self) -> List["Var"]:
+        """Return the ordinary variables occurring in self."""
         res = []
         found = set()
         def rec(t):
@@ -1221,7 +1292,8 @@ class Term:
         rec(self)
         return res
 
-    def get_consts(self):
+    def get_consts(self) -> list["Const"]:
+        """Return the constants occurring in self."""
         res = []
         found = set()
         def rec(t):
@@ -1235,9 +1307,10 @@ class Term:
             elif t.is_abs():
                 rec(t.body)
         rec(self)
-        return res        
+        return res
 
-    def has_var(self):
+    def has_var(self) -> bool:
+        """Return whether self contains an ordinary variable."""
         if self.is_var():
             return True
         elif self.is_comb():
@@ -1247,8 +1320,8 @@ class Term:
         else:
             return False
 
-    def has_vars(self, vs):
-        """Return whether self contains any of the variables in vs."""
+    def has_vars(self, vs: Collection[Term]) -> bool:
+        """Return whether self contains any variable in ``vs``."""
         if self.is_var():
             return self in vs
         elif self.is_comb():
@@ -1258,7 +1331,8 @@ class Term:
         else:
             return False
 
-    def get_stvars(self):
+    def get_stvars(self) -> list["Term"]:
+        """Return the schematic type variables occurring in self."""
         res = []
         def rec(t):
             if t.is_var() or t.is_const():
@@ -1460,7 +1534,8 @@ def Lambda(*args):
         body = Abs(x.name, x.T, body.abstract_over(x))
     return body
 
-def forall(T):
+def forall(T: Type) -> Const:
+    """Return the universal quantifier constant for type ``T``."""
     return Const("all", TFun(TFun(T, BoolType), BoolType))
  
 def Forall(*args):
@@ -1482,7 +1557,8 @@ def Forall(*args):
         body = forall(x.T)(Lambda(x, body))
     return body
 
-def exists(T):
+def exists(T: Type) -> Const:
+    """Return the existential quantifier constant for type ``T``."""
     return Const("exists", TFun(TFun(T, BoolType), BoolType))
 
 def Exists(*args):
@@ -1509,46 +1585,60 @@ def Let(x: Term, t: Term, body: Term) -> Term:
     return let_t(t, Lambda(x, body))
 
 
-def plus(T):
+def plus(T: Type) -> Const:
+    """Return the addition constant for type ``T``."""
     return Const('plus', TFun(T, T, T))
 
-def minus(T):
+def minus(T: Type) -> Const:
+    """Return the subtraction constant for type ``T``."""
     return Const('minus', TFun(T, T, T))
 
-def uminus(T):
+def uminus(T: Type) -> Const:
+    """Return the unary-negation constant for type ``T``."""
     return Const('uminus', TFun(T, T))
 
-def times(T):
+def times(T: Type) -> Const:
+    """Return the multiplication constant for type ``T``."""
     return Const('times', TFun(T, T, T))
 
-def divides(T):
+def divides(T: Type) -> Const:
+    """Return the division constant for type ``T``."""
     return Const('real_divide', TFun(T, T, T))
 
-def of_nat(T):
+def of_nat(T: Type) -> Const:
+    """Return the nat-to-``T`` injection constant."""
     return Const('of_nat', TFun(NatType, T))
 
-def of_int(T):
+def of_int(T: Type) -> Const:
+    """Return the int-to-``T`` injection constant."""
     return Const('of_int', TFun(IntType, T))
 
-def nat_power(T):
+def nat_power(T: Type) -> Const:
+    """Return the power constant with a nat exponent."""
     return Const('power', TFun(T, NatType, T))
 
-def int_power(T):
+def int_power(T: Type) -> Const:
+    """Return the power constant with an int exponent."""
     return Const('power', TFun(T, IntType, T))
 
-def real_power(T):
+def real_power(T: Type) -> Const:
+    """Return the power constant with a real exponent."""
     return Const('power', TFun(T, RealType, T))
 
-def less_eq(T):
+def less_eq(T: Type) -> Const:
+    """Return the ``<=`` constant for type ``T``."""
     return Const('less_eq', TFun(T, T, BoolType))
 
-def less(T):
+def less(T: Type) -> Const:
+    """Return the ``<`` constant for type ``T``."""
     return Const('less', TFun(T, T, BoolType))
 
-def greater_eq(T):
+def greater_eq(T: Type) -> Const:
+    """Return the ``>=`` constant for type ``T``."""
     return Const('greater_eq', TFun(T, T, BoolType))
 
-def greater(T):
+def greater(T: Type) -> Const:
+    """Return the ``>`` constant for type ``T``."""
     return Const('greater', TFun(T, T, BoolType))
 
 # Binary bits 0 and 1
@@ -1557,7 +1647,7 @@ nat_one = Const('one', NatType)
 bit0 = Const("bit0", TFun(NatType, NatType))
 bit1 = Const("bit1", TFun(NatType, NatType))
 
-def Binary(n):
+def Binary(n: int) -> Term:
     """Convert Python integer n to HOL binary form.
     
     This function does not apply of_nat.
@@ -1573,7 +1663,7 @@ def Binary(n):
     else:
         return bit1(Binary(n // 2))
 
-def Number(T, x):
+def Number(T: Type, x: int | Fraction) -> Term:
     """Convert Python number x to HOL term with type T."""
     if x == 0:
         return Const('zero', T)
@@ -1592,19 +1682,19 @@ def Number(T, x):
     
     return of_nat(T)(Binary(x))
 
-def Nat(n):
+def Nat(n: int | Fraction) -> Term:
     """Construct natural number with value n."""
     return Number(NatType, n)
 
-def Int(n):
+def Int(n: int | Fraction) -> Term:
     """Construct integer with value n."""
     return Number(IntType, n)
 
-def Real(r):
+def Real(r: int | Fraction) -> Term:
     """Construct real number with value r."""
     return Number(RealType, r)
 
-def Sum(T, ts):
+def Sum(T: Type, ts: Iterable[Term]) -> Term:
     """Compute the sum of a list of terms with type T."""
     ts = list(ts)  # Coerce generators to list
     typecheck.checkinstance('Sum', T, Type, ts, [Term])
@@ -1615,7 +1705,7 @@ def Sum(T, ts):
         res = res + t
     return res
 
-def Prod(T, ts):
+def Prod(T: Type, ts: Iterable[Term]) -> Term:
     """Compute the product of a list of terms with type T."""
     ts = list(ts)  # Coerce generators to list
     typecheck.checkinstance('Prod', T, Type, ts, [Term])
@@ -1626,7 +1716,7 @@ def Prod(T, ts):
         res = res * t
     return res
 
-def BoolVars(s):
+def BoolVars(s: str) -> list[Var]:
     """Create a list of variables of boolean type.
 
     s is a string containing space-separated names of variables.
@@ -1635,7 +1725,7 @@ def BoolVars(s):
     nms = s.split(' ')
     return [Var(nm, BoolType) for nm in nms]
 
-def NatVars(s):
+def NatVars(s: str) -> list[Var]:
     """Create a list of variables of nat type.
 
     s is a string containing space-separated names of variables.
@@ -1644,7 +1734,7 @@ def NatVars(s):
     nms = s.split(' ')
     return [Var(nm, NatType) for nm in nms]
 
-def IntVars(s):
+def IntVars(s: str) -> list[Var]:
     """Create a list of variables of int type.
 
     s is a string containing space-separated names of variables.
@@ -1653,7 +1743,7 @@ def IntVars(s):
     nms = s.split(' ')
     return [Var(nm, IntType) for nm in nms]
 
-def RealVars(s):
+def RealVars(s: str) -> list[Var]:
     """Create a list of variables of int type.
 
     s is a string containing space-separated names of variables.

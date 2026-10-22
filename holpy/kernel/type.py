@@ -1,35 +1,44 @@
 # Author: Bohua Zhan
 
+"""HOL types, type variables, and type instantiation.
+
+Types are either schematic type variables, ordinary type variables, or type
+constants applied to arguments. The two primitive constructors are ``bool``
+and ``fun``; numerals and containers are ordinary constants registered by the
+theory library.
+"""
+
+from __future__ import annotations
+
 from collections import UserDict
 
-from holpy.kernel import term_ord
 from holpy.util import typecheck
 
 
 class TypeException(Exception):
-    """Indicates error in processing types."""
-    def __init__(self, msg):
+    """Indicates an error while processing types."""
+    def __init__(self, msg: str):
         self.msg = msg
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.msg
 
 
 class TypeMatchException(Exception):
-    """Indicates error when matching types."""
-    def __init__(self, msg):
+    """Indicates that two types cannot be matched."""
+    def __init__(self, msg: str):
         self.msg = msg
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.msg
 
 
 class TyInst(UserDict):
     """Instantiation of schematic type variables."""
-    def __str__(self):
+    def __str__(self) -> str:
         return ', '.join("'%s := %s" % (nm, T) for nm, T in self.items())
 
-    def __copy__(self):
+    def __copy__(self) -> TyInst:
         return TyInst(self)
 
 
@@ -87,7 +96,7 @@ class Type:
     # ty values for distinguishing between Type objects.
     STVAR, TVAR, TCONST = range(3)
 
-    def __init__(self, arg):
+    def __init__(self, arg: Type | str):
         if not isinstance(arg, Type):
             if type_parser is not None:
                 T = type_parser(arg)
@@ -99,36 +108,37 @@ class Type:
         # Now copy the content of T onto self
         self.__dict__.update(T.__dict__)
 
-    def is_stvar(self):
+    def is_stvar(self) -> bool:
         """Return whether self is a schematic type variable."""
         return self.ty == Type.STVAR
 
-    def is_tvar(self):
+    def is_tvar(self) -> bool:
         """Return whether self is a type variable."""
         return self.ty == Type.TVAR
 
-    def is_tconst(self):
+    def is_tconst(self) -> bool:
         """Return whether self is given by a type constructor."""
         return self.ty == Type.TCONST
 
-    def is_fun(self):
+    def is_fun(self) -> bool:
         """Whether self is of the form a => b."""
         return self.is_tconst() and self.name == "fun"
     
-    def domain_type(self):
+    def domain_type(self) -> Type:
         """Given a type of form a => b, return a."""
         assert self.is_fun(), "domain_type"
         return self.args[0]
     
-    def range_type(self):
+    def range_type(self) -> Type:
         """Given a type of form a => b, return b."""
         assert self.is_fun(), "range_type"
         return self.args[1]
 
-    def strip_type(self):
-        """Given a type of form a_1 => ... => a_n, b, return the pair
-        [a_1, ... a_n], b.
-        
+    def strip_type(self) -> tuple[list[Type], Type]:
+        """Split a function type into its domains and range.
+
+        Given a type of form ``a_1 => ... => a_n => b``, return
+        ``([a_1, ..., a_n], b)``.
         """
         if self.is_fun():
             domains, range = self.range_type().strip_type()
@@ -136,7 +146,7 @@ class Type:
         else:
             return ([], self)
         
-    def print_basic(self):
+    def print_basic(self) -> str:
         """Basic printing function for types."""
         if self.is_stvar():
             return "?'" + self.name
@@ -163,13 +173,13 @@ class Type:
         else:
             raise TypeError
 
-    def __str__(self):
+    def __str__(self) -> str:
         if type_printer is None:
             return self.print_basic()
         else:
             return type_printer(self)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         if self.is_stvar():
             return "STVar(%s)" % self.name
         if self.is_tvar():
@@ -179,7 +189,7 @@ class Type:
         else:
             raise TypeError
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         if not hasattr(self, "_hash_val"):
             if self.is_stvar():
                 self._hash_val = hash(("STVAR", self.name))
@@ -189,7 +199,7 @@ class Type:
                 self._hash_val = hash(("TCONST", self.name, tuple(hash(arg) for arg in self.args)))
         return self._hash_val
     
-    def __eq__(self, other):
+    def __eq__(self, other: Type) -> bool:
         if other is None:
             return False
         assert isinstance(other, Type), "cannot compare Type with %s" % str(type(other))
@@ -206,7 +216,7 @@ class Type:
         else:
             raise TypeError
 
-    def __le__(self, other):
+    def __le__(self, other: Type) -> bool:
         """Fast version of comparison."""
         if self.ty != other.ty:
             return self.ty <= other.ty
@@ -217,7 +227,7 @@ class Type:
         else:
             raise TypeError
 
-    def __lt__(self, other):
+    def __lt__(self, other: Type) -> bool:
         """Fast version of comparison."""
         if self.ty != other.ty:
             return self.ty < other.ty
@@ -228,7 +238,7 @@ class Type:
         else:
             raise TypeError
 
-    def size(self):
+    def size(self) -> int:
         """Return the size of the type."""
         if self.is_stvar() or self.is_tvar():
             return 1
@@ -237,14 +247,21 @@ class Type:
         else:
             raise TypeError
 
-    def subst(self, tyinst=None, **kwargs):
-        """Simultaneously substitute for the type variables using tyinst.
-        
-        Parameters
-        ==========
-        tyinst : TyInst
-            Type instantiation to be substituted.
+    def subst(self, tyinst: TyInst | None = None, **kwargs: Type) -> Type:
+        """Simultaneously substitute schematic type variables.
 
+        Parameters
+        ----------
+        tyinst : TyInst, optional
+            Type instantiation to apply. If omitted, ``kwargs`` are used to
+            construct one.
+        **kwargs : Type
+            Individual schematic type-variable assignments.
+
+        Returns
+        -------
+        Type
+            The substituted type.
         """
         if tyinst is None:
             tyinst = TyInst(**kwargs)
@@ -260,14 +277,20 @@ class Type:
         else:
             raise TypeError
 
-    def match_incr(self, T, tyinst):
-        """Incremental type matching of self with T.
-        
-        Parameters
-        ==========
-        tyinst : TyInst
-            The current instantiation. This is updated by the function.
+    def match_incr(self, T: Type, tyinst: TyInst):
+        """Incrementally match self against ``T``.
 
+        Parameters
+        ----------
+        T : Type
+            Type to match against.
+        tyinst : TyInst
+            Current instantiation. Updated in place.
+
+        Raises
+        ------
+        TypeMatchException
+            If the types cannot be matched.
         """
         if self.is_stvar():
             if self.name in tyinst:
@@ -287,19 +310,20 @@ class Type:
         else:
             raise TypeError
 
-    def match(self, T):
-        """Type matching of self with T.
-        
-        Return the resulting instantiation, or raise TypeMatchException
-        if matching fails.
+    def match(self, T: Type) -> TyInst:
+        """Match self against ``T`` and return the resulting instantiation.
 
+        Raises
+        ------
+        TypeMatchException
+            If matching fails.
         """
         tyinst = TyInst()
         self.match_incr(T, tyinst)
         return tyinst
 
-    def get_stvars(self):
-        """Return the list of schematic type variables."""
+    def get_stvars(self) -> list[Type]:
+        """Return the schematic type variables occurring in self."""
         res = []
         def collect(T):
             if T.is_stvar():
@@ -313,8 +337,8 @@ class Type:
         collect(self)
         return res
 
-    def get_tvars(self):
-        """Return the list of type variables."""
+    def get_tvars(self) -> list[Type]:
+        """Return the ordinary type variables occurring in self."""
         res = []
         def collect(T):
             if T.is_tvar():
@@ -328,11 +352,8 @@ class Type:
         collect(self)
         return res
 
-    def get_tsubs(self):
-        """Return the list of schematic type variables and type variables
-        appearing in self.
-        
-        """
+    def get_tsubs(self) -> list[Type]:
+        """Return the type variables and schematic variables in self."""
         res = []
         def collect(T):
             if T.is_tconst():
@@ -343,7 +364,14 @@ class Type:
         collect(self)
         return res
 
-    def convert_stvar(self):
+    def convert_stvar(self) -> Type:
+        """Return a copy with schematic variables replaced by type variables.
+
+        Raises
+        ------
+        TypeException
+            If self already contains a schematic type variable.
+        """
         if self.is_stvar():
             raise TypeException("convert_stvar")
         elif self.is_tvar():
@@ -353,31 +381,32 @@ class Type:
         else:
             raise TypeError
 
-    def is_numeral_type(self):
+    def is_numeral_type(self) -> bool:
+        """Return whether self is one of nat, int, or real."""
         return self in (NatType, IntType, RealType)
 
 
 class STVar(Type):
     """Schematic type variable."""
-    def __init__(self, name):
+    def __init__(self, name: str):
         self.ty = Type.STVAR
         self.name = name
 
 class TVar(Type):
     """Type variable."""
-    def __init__(self, name):
+    def __init__(self, name: str):
         self.ty = Type.TVAR
         self.name = name
 
 class TConst(Type):
     """Type constant, applied to a list of arguments."""
-    def __init__(self, name, *args):
+    def __init__(self, name: str, *args: Type):
         self.ty = Type.TCONST
         self.name = name
         self.args = args
 
-def TFun(*args):
-    """Returns the function type arg1 => arg2 => ... => argn."""
+def TFun(*args: Type) -> Type:
+    """Return the function type ``arg1 => arg2 => ... => argn``."""
     typecheck.checkinstance('TFun', args, [Type])
     res = args[-1]
     for arg in reversed(args[:-1]):
