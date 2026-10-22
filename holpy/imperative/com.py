@@ -2,8 +2,8 @@
 
 """Basic data structure for commands."""
 
-from holpy.kernel.term import Term, Var
-from holpy.logic import logic
+from __future__ import annotations
+
 from holpy.imperative import expr
 
 
@@ -115,6 +115,7 @@ class Com():
                 })
 
         def add_line(line):
+            """Process the add line step."""
             lines.append({
                 'ty': 'com',
                 'indent': indent,
@@ -122,6 +123,7 @@ class Com():
             })
 
         def add_inv(line):
+            """Process the add inv step."""
             lines.append({
                 'ty': 'inv',
                 'indent': indent,
@@ -129,10 +131,12 @@ class Com():
             })
 
         def add_str(s):
+            """Process the add str step."""
             assert len(lines) > 0
             lines[-1]['str'] += ';'
 
         def rec(cmd):
+            """Process the rec step."""
             nonlocal indent
 
             if isinstance(cmd, Skip):
@@ -190,11 +194,13 @@ class Com():
 class Skip(Com):
     """Skip program."""
     def __init__(self):
+        """Initialize this object."""
         super().__init__()
 
 class Assign(Com):
     """Assign program."""
     def __init__(self, v, e):
+        """Initialize this object."""
         if isinstance(v, str):
             v = expr.Var(v)
         assert isinstance(v, expr.Expr) and v.is_ident and isinstance(e, expr.Expr), "Assign"
@@ -205,6 +211,7 @@ class Assign(Com):
 class Seq(Com):
     """Sequence program."""
     def __init__(self, c1, c2):
+        """Initialize this object."""
         assert isinstance(c1, Com) and isinstance(c2, Com), "Seq"
         super().__init__()
         self.c1 = c1
@@ -213,6 +220,7 @@ class Seq(Com):
 class Cond(Com):
     """Conditional program."""
     def __init__(self, b, c1, c2):
+        """Initialize this object."""
         assert isinstance(b, expr.Expr) and isinstance(c1, Com) and isinstance(c2, Com), "Cond"
         super().__init__()
         self.b = b
@@ -222,6 +230,7 @@ class Cond(Com):
 class While(Com):
     """While program."""
     def __init__(self, b, inv, c):
+        """Initialize this object."""
         assert isinstance(b, expr.Expr) and isinstance(inv, expr.Expr) and isinstance(c, Com), "While"
         super().__init__()
         self.b = b

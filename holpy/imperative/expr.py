@@ -1,8 +1,12 @@
 # Author: Bohua Zhan
 
+"""Expressions in the imperative programming language."""
+
+from __future__ import annotations
+
 from holpy.kernel.type import TFun, IntType
 from holpy.kernel import term
-from holpy.kernel.term import Var, Eq, Not, true, false, Int
+from holpy.kernel.term import Eq, Not, false, Int
 from holpy.data.list import ListType, nth, length
 from holpy.logic import logic
 from holpy.util import typecheck
@@ -14,6 +18,7 @@ class Expr():
     """Base class for expressions."""
     def __init__(self):
         # Whether the expression is an identifier.
+        """Initialize this object."""
         self.is_ident = None
 
     def convert_hol(self, ctxt):
@@ -27,20 +32,25 @@ class Expr():
 class Var(Expr):
     """Variables."""
     def __init__(self, name):
+        """Initialize this object."""
         typecheck.checkinstance('Var', name, str)
         self.name = name
         self.is_ident = True
 
     def __repr__(self):
+        """Return the debug representation."""
         return "Var(%s)" % self.name
 
     def __str__(self):
+        """Return the printed form."""
         return self.name
 
     def __eq__(self, other):
+        """Return whether two objects are structurally equal."""
         return isinstance(other, Var) and self.name == other.name
 
     def convert_hol(self, ctxt):
+        """Convert this expression to a HOL term."""
         assert self.name in ctxt
         if ctxt[self.name] == "int":
             return term.Var(self.name, IntType)
@@ -50,6 +60,7 @@ class Var(Expr):
             raise NotImplementedError
 
     def subst(self, inst):
+        """Substitute identifiers in this expression."""
         if self.name in inst:
             return inst[self.name]
         else:
@@ -58,6 +69,7 @@ class Var(Expr):
 class ArrayElt(Expr):
     """Element of an array."""
     def __init__(self, ident, idx):
+        """Initialize this object."""
         typecheck.checkinstance('ArrayElt', ident, Expr, idx, Expr)
         if not ident.is_ident:
             raise NotImplementedError
@@ -66,18 +78,23 @@ class ArrayElt(Expr):
         self.is_ident = True
 
     def __repr__(self):
+        """Return the debug representation."""
         return "ArrayElt(%s,%s)" % (repr(self.ident), repr(self.idx))
 
     def __str__(self):
+        """Return the printed form."""
         return "%s[%s]" % (str(self.ident), str(self.idx))
 
     def __eq__(self, other):
+        """Return whether two objects are structurally equal."""
         return isinstance(other, ArrayElt) and self.ident == other.ident and self.idx == other.idx
 
     def convert_hol(self, ctxt):
-        return list.nth(convert_hol(self.ident, ctxt), convert_hol(self.idx, ctxt))
+        """Convert this expression to a HOL term."""
+        return nth(self.ident.convert_hol(ctxt), self.idx.convert_hol(ctxt))
 
     def subst(self, inst):
+        """Substitute identifiers in this expression."""
         return self
 
 class Field(Expr):
@@ -86,6 +103,7 @@ class Field(Expr):
     
     """
     def __init__(self, ident, fieldname):
+        """Initialize this object."""
         typecheck.checkinstance('Field', ident, Expr, fieldname, str)
         if not ident.is_ident:
             raise NotImplementedError
@@ -94,42 +112,52 @@ class Field(Expr):
         self.is_ident = True
 
     def __repr__(self):
+        """Return the debug representation."""
         return "Field(%s,%s)" % (repr(self.ident), self.fieldname)
 
     def __str__(self):
+        """Return the printed form."""
         return "%s.%s" % (str(self.ident), self.fieldname)
 
     def __eq__(self, other):
+        """Return whether two objects are structurally equal."""
         return isinstance(other, Field) and self.ident == other.ident and self.fieldname == other.fieldname
 
     def convert_hol(self, ctxt):
+        """Convert this expression to a HOL term."""
         if self.fieldname == "length":
-            return list.length(convert_hol(self.ident, ctxt))
+            return length(self.ident.convert_hol(ctxt))
         else:
             raise NotImplementedError
 
     def subst(self, inst):
+        """Substitute identifiers in this expression."""
         return self
 
 class Const(Expr):
     """Constant value."""
     def __init__(self, val):
+        """Initialize this object."""
         typecheck.checkinstance('Const', val, (int, bool))
         self.val = val
 
     def __repr__(self):
+        """Return the debug representation."""
         return "Const(%s)" % str(self.val)
 
     def __str__(self):
+        """Return the printed form."""
         if isinstance(self.val, bool):
             return "true" if self.val else "false"
         else:
             return str(self.val)
 
     def __eq__(self, other):
+        """Return whether two objects are structurally equal."""
         return isinstance(other, Const) and type(self.val) == type(other.val) and self.val == other.val
 
     def convert_hol(self, ctxt):
+        """Convert this expression to a HOL term."""
         if type(self.val) == int:
             return Int(self.val)
         elif type(self.val) == bool:
@@ -138,11 +166,13 @@ class Const(Expr):
             raise NotImplementedError
 
     def subst(self, inst):
+        """Substitute identifiers in this expression."""
         return self
 
 class Op(Expr):
     """One of pre-specified operators."""
     def __init__(self, op, *args):
+        """Initialize this object."""
         typecheck.checkinstance('Op', op, str, args, [Expr])
         self.op = op
 
@@ -159,9 +189,11 @@ class Op(Expr):
         self.args = list(args)
 
     def __repr__(self):
+        """Return the debug representation."""
         return "Op(%s,%s)" % (self.op, ",".join(repr(arg) for arg in self.args))
 
     def __str__(self):
+        """Return the printed form."""
         if len(self.args) == 1:
             return "%s%s" % (self.op, str(self.args[0]))
         elif len(self.args) == 2:
@@ -176,9 +208,11 @@ class Op(Expr):
             raise NotImplementedError
 
     def __eq__(self, other):
+        """Return whether two objects are structurally equal."""
         return isinstance(other, Op) and self.op == other.op and self.args == other.args
 
     def convert_hol(self, ctxt):
+        """Convert this expression to a HOL term."""
         if len(self.args) == 1:
             e = self.args[0].convert_hol(ctxt)
             if self.op == "-":
@@ -221,78 +255,97 @@ class Op(Expr):
             raise NotImplementedError
 
     def subst(self, inst):
+        """Substitute identifiers in this expression."""
         return Op(self.op, *(arg.subst(inst) for arg in self.args))
 
 class Fun(Expr):
     """Function application."""
     def __init__(self, fname, *args):
+        """Initialize this object."""
         typecheck.checkinstance('Fun', fname, str, args, [Expr])
         self.fname = fname
         self.args = list(args)
 
     def __repr__(self):
+        """Return the debug representation."""
         return "Fun(%s,%s)" % (self.fname, ",".join(repr(arg) for arg in self.args))
 
     def __str__(self):
+        """Return the printed form."""
         return "%s(%s)" % (self.fname, ",".join(str(arg) for arg in self.args))
 
     def __eq__(self, other):
+        """Return whether two objects are structurally equal."""
         return isinstance(other, Fun) and self.fname == other.fname and self.args == other.args
 
     def convert_hol(self, ctxt):
+        """Convert this expression to a HOL term."""
         assert self.fname in global_fnames
         name, T = global_fnames[self.fname]
         hol_args = [arg.convert_hol(ctxt) for arg in self.args]
         return term.Const(name, T)(*hol_args)
 
     def subst(self, inst):
+        """Substitute identifiers in this expression."""
         return Fun(self.fname, *(arg.subst(inst) for arg in self.args))
 
 class ITE(Expr):
     """If-then-else expressions."""
     def __init__(self, cond, e1, e2):
+        """Initialize this object."""
         typecheck.checkinstance('ITE', cond, Expr, e1, Expr, e2, Expr)
         self.cond = cond
         self.e1 = e1
         self.e2 = e2
 
     def __repr__(self):
+        """Return the debug representation."""
         return "ITE(%s,%s,%s)" % (repr(self.cond), repr(self.e1), repr(self.e2))
 
     def __str__(self):
+        """Return the printed form."""
         return "if %s then %s else %s" % (str(self.cond), str(self.e1), str(self.e2))
 
     def __eq__(self, other):
+        """Return whether two objects are structurally equal."""
         return isinstance(other, ITE) and self.cond == other.cond and \
             self.e1 == other.e1 and self.e2 == other.e2
 
     def convert_hol(self, ctxt):
+        """Convert this expression to a HOL term."""
         P, x, y = [a.convert_hol(ctxt) for a in [self.cond, self.e1, self.e2]]
         return logic.mk_if(P, x, y)
 
     def subst(self, inst):
+        """Substitute identifiers in this expression."""
         return ITE(self.cond.subst(inst), self.e1.subst(inst), self.e2.subst(inst))
 
 class Forall(Expr):
     """Forall expressions."""
     def __init__(self, var, e):
+        """Initialize this object."""
         typecheck.checkinstance('Forall', var, Var, e, Expr)
         self.var = var
         self.e = e
 
     def __repr__(self):
+        """Return the debug representation."""
         return "Forall(%s,%s)" % (repr(self.var), repr(self.e))
 
     def __str__(self):
+        """Return the printed form."""
         return "forall %s. %s" % (str(self.var), str(self.e))
 
     def __eq__(self, other):
+        """Return whether two objects are structurally equal."""
         return isinstance(other, Forall) and self.var == other.var and self.e == other.e
 
     def convert_hol(self, ctxt):
+        """Convert this expression to a HOL term."""
         raise NotImplementedError
 
     def subst(self, inst):
+        """Substitute identifiers in this expression."""
         if self.var.name in inst:
             raise NotImplementedError
 
@@ -300,36 +353,47 @@ class Forall(Expr):
 
 
 def implies(e1, e2):
+    """Process the implies step."""
     return Op("-->", e1, e2)
 
 def conj(e1, e2):
+    """Process the conj step."""
     return Op("&", e1, e2)
 
 def neg(e):
+    """Process the neg step."""
     return Op("~", e)
 
 def plus(e1, e2):
+    """Process the plus step."""
     return Op("+", e1, e2)
 
 def minus(e1, e2):
+    """Process the minus step."""
     return Op("-", e1, e2)
 
 def uminus(e):
+    """Process the uminus step."""
     return Op("-", e)
 
 def times(e1, e2):
+    """Process the times step."""
     return Op("*", e1, e2)
 
 def less(e1, e2):
+    """Process the less step."""
     return Op("<", e1, e2)
 
 def less_eq(e1, e2):
+    """Process the less eq step."""
     return Op("<=", e1, e2)
 
 def eq(e1, e2):
+    """Process the eq step."""
     return Op("==", e1, e2)
 
 def neq(e1, e2):
+    """Process the neq step."""
     return Op("!=", e1, e2)
 
 true = Const(True)

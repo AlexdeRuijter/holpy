@@ -1,5 +1,15 @@
 # Author: Bohua Zhan
 
+"""Hoare logic for the imperative language.
+
+Defines commands, big-step semantics, Hoare triples, verification-condition
+generation, and the associated proof macros/methods.
+"""
+
+from __future__ import annotations
+
+from typing import cast
+
 from holpy.kernel.type import TConst, TFun, BoolType
 from holpy.kernel.term import Term, Var, Const, Lambda, Inst, true
 from holpy.kernel.thm import Thm
@@ -21,30 +31,39 @@ from holpy.prover import z3wrapper
 """Automation for Hoare logic."""
 
 def comT(T):
+    """Return the command type constant."""
     return TConst("com", T)
 
 def Skip(T):
+    """Construct a skip command."""
     return Const("Skip", comT(T))
 
 def Assign(Ta, Tb):
+    """Construct an assignment command."""
     return Const("Assign", TFun(Ta, TFun(TFun(Ta, Tb), Tb), comT(TFun(Ta, Tb))))
 
 def Seq(T):
+    """Construct a sequential composition."""
     return Const("Seq", TFun(comT(T), comT(T), comT(T)))
 
 def Cond(T):
+    """Construct a conditional command."""
     return Const("Cond", TFun(TFun(T, BoolType), comT(T), comT(T), comT(T)))
 
 def While(T):
+    """Construct a while command."""
     return Const("While", TFun(TFun(T, BoolType), TFun(T, BoolType), comT(T), comT(T)))
 
 def Sem(T):
+    """Return the big-step semantics predicate."""
     return Const("Sem", TFun(comT(T), T, T, BoolType))
 
 def Valid(T):
+    """Return the Hoare-triple validity predicate."""
     return Const("Valid", TFun(TFun(T, BoolType), comT(T), TFun(T, BoolType), BoolType))
 
 def Entail(T):
+    """Return the entailment predicate."""
     return Const("Entail", TFun(TFun(T, BoolType), TFun(T, BoolType), BoolType))
 
 # Normalize evaluation of function as well as arithmetic.
@@ -108,11 +127,13 @@ def eval_Sem(c, st):
 class eval_Sem_macro(Macro):
     """Prove a theorem of the form Sem com st st2."""
     def __init__(self):
+        """Initialize this object."""
         self.level = 10
         self.sig = Term
         self.limit = 'Sem_Assign'
 
     def can_eval(self, goal):
+        """Return whether this macro can evaluate the goal."""
         assert isinstance(goal, Term), "eval_Sem_macro"
         f, (com, st, st2) = goal.strip_comb()
         try:
@@ -122,6 +143,7 @@ class eval_Sem_macro(Macro):
         return st2 == pt.prop.arg        
 
     def get_proof_term(self, args, pts):
+        """Return the proof term for this rule application."""
         assert len(pts) == 0, "eval_Sem_macro"
         f, (com, st, st2) = args.strip_comb()
         pt = eval_Sem(com, st)
@@ -133,10 +155,12 @@ class eval_Sem_macro(Macro):
 class eval_Sem_method(Method):
     """Apply eval_Sem macro."""
     def __init__(self):
+        """Initialize this object."""
         self.sig = []
         self.limit = 'Sem_Assign'
 
     def search(self, state, id, prevs, data=None):
+        """Return parameter candidates for this method."""
         if data:
             return [data]
 
@@ -150,9 +174,11 @@ class eval_Sem_method(Method):
             return []
 
     def display_step(self, state, data):
+        """Return the pretty-printed step description."""
         return pprint.N("eval_Sem: ") + pprint.KWGreen("(solves)")
 
     def apply(self, state, id, data, prevs):
+        """Apply this method to the proof state."""
         assert len(prevs) == 0, "eval_Sem_method"
         state.apply_tactic(id, MacroTactic('eval_Sem'))
 
@@ -232,11 +258,13 @@ class vcg_macro(Macro):
     
     """
     def __init__(self):
+        """Initialize this object."""
         self.level = 10
         self.sig = Term
         self.limit = 'while_rule'
 
     def get_proof_term(self, goal, pts):
+        """Return the proof term for this rule application."""
         assert goal.is_comb("Valid", 3), "vcg_macro"
         P, c, Q = goal.args
 
@@ -250,6 +278,7 @@ class vcg_macro(Macro):
 class vcg_tactic(Tactic):
     """Tactic corresponding to VCG macro."""
     def get_proof_term(self, goal, args, prevs):
+        """Return the proof term for this rule application."""
         assert len(goal.hyps) == 0, "vcg_tactic"
         assert goal.prop.is_comb("Valid", 3), "vcg_tactic"
         P, c, Q = goal.prop.args
@@ -258,7 +287,7 @@ class vcg_tactic(Tactic):
         T = Q.get_type().domain_type()
         pt = vcg_norm(T, goal.prop)
 
-        ptAs = [ProofTerm.sorry(Thm(A, goal.hyps)) for A in pt.assums]
+        ptAs = [ProofTerm.sorry(Thm(A, goal.hyps)) for A in cast(list[Term], pt.assums)]
         return ProofTerm("vcg", goal.prop, ptAs)
 
 
@@ -272,7 +301,7 @@ def vcg_solve(goal):
 
     T = Q.get_type().domain_type()
     pt = vcg_norm(T, goal)
-    vc_pt = [ProofTerm("z3", vc, []) for vc in pt.assums]
+    vc_pt = [ProofTerm("z3", vc, []) for vc in cast(list[Term], pt.assums)]
     return ProofTerm("vcg", goal, vc_pt)
 
 
@@ -280,10 +309,12 @@ def vcg_solve(goal):
 class vcg_method(Method):
     """Method corresponding to VCG."""
     def __init__(self):
+        """Initialize this object."""
         self.sig = []
         self.limit = 'while_rule'
 
     def search(self, state, id, prevs, data=None):
+        """Return parameter candidates for this method."""
         if data:
             return [data]
 
@@ -294,7 +325,9 @@ class vcg_method(Method):
             return []
 
     def display_step(self, state, data):
+        """Return the pretty-printed step description."""
         return pprint.N("Apply VCG")
 
     def apply(self, state, id, data, prevs):
+        """Apply this method to the proof state."""
         state.apply_tactic(id, vcg_tactic(), prevs=prevs)
