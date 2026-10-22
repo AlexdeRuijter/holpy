@@ -1,63 +1,71 @@
 # Author: Bohua Zhan
 
+"""Generic automation by head symbol.
+
+Automation is registered as a mapping from head terms to proof procedures.
+Each procedure receives the goal and a list of condition proof terms and
+returns a proof term or raises :class:`~holpy.kernel.proofterm.TacticException`.
+Normalization is registered separately and returns an equality proof term.
+"""
+
+from __future__ import annotations
+
+import logging
+from typing import Any, Callable
+
 from holpy.kernel import term
 from holpy.kernel.term import Term, Var
 from holpy.kernel.macro import Macro
 from holpy.kernel import theory
 from holpy.kernel.theory import register_macro
 from holpy.kernel.proofterm import ProofTerm, TacticException
-from holpy.logic import logic
 from holpy.logic.logic import apply_theorem
 from holpy.logic import matcher
 from holpy.logic.conv import Conv, ConvException, refl, eta_conv, top_conv
 from holpy.util import name
 
+log = logging.getLogger(__name__)
 
-"""Setup for generic automation.
-
-Generic automation is organized as a mapping from head terms
-to proof procedures. Each proof procedure takes as arguments the
-current theory, a term (the goal), and a list of conditions
-(as proof terms), and either returns a proof term or fails.
-
-"""
 # Turn on / off debugging information
 debug_auto = False
 
 # Mapping from head terms to the corresponding automatic procedure.
-global_autos = dict()
+global_autos: dict[Any, list[Callable[..., ProofTerm]]] = dict()
 
 # Mapping from negation of head terms to the corresponding automatic
 # procedure.
-global_autos_neg = dict()
+global_autos_neg: dict[Any, list[Callable[..., ProofTerm]]] = dict()
 
 # Mapping from head term to the normalization / simplification
 # procedure
-global_autos_norm = dict()
+global_autos_norm: dict[Any, list[Callable[..., ProofTerm]]] = dict()
 
 
-def add_global_autos(head, f):
+def add_global_autos(head, f: Callable[..., ProofTerm]):
+    """Register a proof procedure for goals headed by ``head``."""
     if head not in global_autos:
         global_autos[head] = [f]
     else:
         global_autos[head].append(f)
 
-def add_global_autos_neg(head, f):
+def add_global_autos_neg(head, f: Callable[..., ProofTerm]):
+    """Register a proof procedure for negations headed by ``head``."""
     if head not in global_autos_neg:
         global_autos_neg[head] = [f]
     else:
         global_autos_neg[head].append(f)
 
-def add_global_autos_norm(head, f):
+def add_global_autos_norm(head, f: Callable[..., ProofTerm]):
+    """Register a normalization procedure for terms headed by ``head``."""
     if head not in global_autos_norm:
         global_autos_norm[head] = [f]
     else:
         global_autos_norm[head].append(f)
 
 
-solve_record = dict()
+solve_record: dict[Term, ProofTerm] = dict()
 
-def solve(goal, pts=None):
+def solve(goal: Term, pts: list[ProofTerm] | None = None) -> ProofTerm:
     """The main automation function.
     
     If the function succeeds, it should return a proof term whose
@@ -65,7 +73,7 @@ def solve(goal, pts=None):
 
     """
     if debug_auto:
-        print("Solve:", goal, [str(pt.prop) for pt in pts])
+        log.debug("Solve: %s %s", goal, [str(pt.prop) for pt in pts])
 
     if pts is None:
         pts = []
@@ -161,7 +169,7 @@ def solve(goal, pts=None):
         raise TacticException('Cannot solve %s' % goal)
 
 
-def solve_rules(th_names):
+def solve_rules(th_names: list[str]) -> Callable[[Term, list[ProofTerm]], ProofTerm]:
     """Return a solve function that tries to apply each of the theorems
     in th_names.
 
@@ -189,9 +197,9 @@ def solve_rules(th_names):
     return solve_fun
 
 
-norm_record = dict()
+norm_record: dict[Term, ProofTerm] = dict()
 
-def norm(t, pts=None):
+def norm(t: Term, pts: list[ProofTerm] | None = None) -> ProofTerm:
     """The main normalization function.
     
     The function should always succeed. It returns an equality whose left
@@ -199,7 +207,7 @@ def norm(t, pts=None):
 
     """
     if debug_auto:
-        print("Norm:", t, [str(pt.prop) for pt in pts])
+        log.debug("Norm: %s %s", t, [str(pt.prop) for pt in pts])
 
     # Do not normalize variables and abstractions
     if t.is_var() or t.is_abs():
@@ -252,7 +260,7 @@ def norm(t, pts=None):
         norm_record[t] = res_pt
     return res_pt
 
-def norm_rules(th_names):
+def norm_rules(th_names: list[str]) -> Callable[[Term, list[ProofTerm]], ProofTerm]:
     """Return a normalization function that tries to apply each of the
     rewriting rules.
 
@@ -291,32 +299,35 @@ class auto_macro(Macro):
         self.sig = Term
         self.limit = None
 
-    def get_proof_term(self, args, pts):
+    def get_proof_term(self, args: Term, prevs: list[ProofTerm]) -> ProofTerm:
+        """Return the proof term for the automatic macro."""
         if args.is_equals():
             # Equality: use normalization
-            eq1 = norm(args.lhs, pts)
-            eq2 = norm(args.rhs, pts)
+            eq1 = norm(args.lhs, prevs)
+            eq2 = norm(args.rhs, prevs)
             if eq1.rhs != eq2.rhs:
-                print("lhs: %s" % eq1.rhs)
-                print("rhs: %s" % eq2.rhs)
+                log.error("lhs: %s", eq1.rhs)
+                log.error("rhs: %s", eq2.rhs)
                 raise TacticException
             return eq1.transitive(eq2.symmetric())
         else:
             # Otherwise, use solve function
-            return solve(args, pts)
+            return solve(args, prevs)
 
 
-def auto_solve(t, pts=None):
+def auto_solve(t: Term, pts: list[ProofTerm] | None = None) -> ProofTerm:
+    """Apply the automatic solver to ``t`` as a proof term."""
     return ProofTerm('auto', args=t, prevs=pts)
 
 class auto_conv(Conv):
-    """Applies auto macro in conversion."""
+    """Conversion that applies the automatic solver."""
     def __init__(self, conds=None):
         if conds is None:
             conds = []
         self.conds = conds
 
-    def get_proof_term(self, t):
+    def get_proof_term(self, t: Term) -> ProofTerm:
+        """Return the automatic conversion proof term for ``t``."""
         eq_t = norm(t, self.conds)
         if t == eq_t.rhs:
             return refl(t)
@@ -325,10 +336,12 @@ class auto_conv(Conv):
 
 
 """Managing cache records."""
-def cache_stats():
+def cache_stats() -> str:
+    """Return cache sizes as a human-readable string."""
     return "Norm: %d\nSolve: %d" % (len(norm_record), len(solve_record))
 
 def clear_cache():
+    """Clear the normalization and solve caches."""
     global norm_record, solve_record
     norm_record = dict()
     solve_record = dict()

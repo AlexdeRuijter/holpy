@@ -1,10 +1,19 @@
 # Author: Bohua Zhan
 
+"""Core logic macros and normalization.
+
+This module defines the standard HOL connectives and the macros that implement
+implication, conjunction, disjunction, resolution, rewriting, and the
+standard introduction/elimination steps used by proof search.
+"""
+
+from __future__ import annotations
+
 from typing import List, Tuple
 
-from holpy.kernel.type import TVar, TFun, TyInst, BoolType
+from holpy.kernel.type import Type, TFun, BoolType
 from holpy.kernel import term
-from holpy.kernel.term import Term, SVar, Var, Const, Abs, Inst, Implies, Lambda, \
+from holpy.kernel.term import Term, SVar, Var, Const, Inst, Implies, Lambda, \
     Not, And, Or, Eq, true, false
 from holpy.kernel.thm import Thm, InvalidDerivationException
 from holpy.kernel import term_ord
@@ -12,7 +21,7 @@ from holpy.kernel import theory
 from holpy.kernel.theory import register_macro
 from holpy.kernel.macro import Macro
 from holpy.logic.conv import Conv, then_conv, all_conv, arg_conv, binop_conv, rewr_conv, \
-    top_conv, top_sweep_conv, beta_conv, beta_norm_conv, has_rewrite
+    top_sweep_conv, beta_norm_conv, has_rewrite
 from holpy.kernel.proofterm import ProofTerm, refl
 from holpy.logic import matcher
 from holpy.util import name
@@ -60,7 +69,8 @@ def mk_some(x, body):
     some_t = Const("Some", TFun(TFun(x.T, BoolType), x.T))
     return some_t(Lambda(x, body))
 
-def if_t(T):
+def if_t(T: Type) -> Const:
+    """Return the conditional constant for result type ``T``."""
     return Const("IF", TFun(BoolType, T, T, T))
 
 def is_if(t):
@@ -132,10 +142,12 @@ def strip_exists(t, names):
         return ([], t)
 
 def mk_xor(x: Term, y: Term) -> Term:
+    """Construct the exclusive-or of two boolean terms."""
     assert x.get_type() == BoolType and y.get_type() == BoolType
     return Const("xor", TFun(BoolType, BoolType, BoolType))(x, y)
 
-def is_xor(t: Term):
+def is_xor(t: Term) -> bool:
+    """Return whether ``t`` is an exclusive-or term."""
     return t.is_comb('xor', 2)
 
 """Normalization rules for logic."""
@@ -143,6 +155,7 @@ def is_xor(t: Term):
 class norm_bool_expr(Conv):
     """Normalize a boolean expression."""
     def get_proof_term(self, t):
+        """Return the proof term for this macro application."""
         if t.is_not():
             if t.arg == true:
                 return rewr_conv("not_true").get_proof_term(t)
@@ -156,6 +169,7 @@ class norm_bool_expr(Conv):
 class norm_conj_assoc_clauses(Conv):
     """Normalize (A_1 & ... & A_n) & (B_1 & ... & B_n)."""
     def get_proof_term(self, t):
+        """Return the proof term for this macro application."""
         if t.arg1.is_conj():
             return then_conv(
                 rewr_conv("conj_assoc", sym=True),
@@ -167,6 +181,7 @@ class norm_conj_assoc_clauses(Conv):
 class norm_conj_assoc(Conv):
     """Normalize conjunction with respect to associativity."""
     def get_proof_term(self, t):
+        """Return the proof term for this macro application."""
         if t.is_conj():
             return then_conv(
                 binop_conv(norm_conj_assoc()),
@@ -185,11 +200,13 @@ class beta_norm_macro(Macro):
         self.limit = None
 
     def eval(self, args, ths):
+        """Evaluate this macro and return the resulting theorem."""
         assert args is None, "beta_norm_macro"
         eq_th = beta_norm_conv().eval(ths[0].prop)
         return Thm(eq_th.prop.arg, ths[0].hyps)
 
     def get_proof_term(self, args, pts):
+        """Return the proof term for this macro application."""
         assert args is None, "beta_norm_macro"
         return pts[0].on_prop(beta_norm_conv())
 
@@ -201,6 +218,7 @@ class intros_macro(Macro):
         self.limit = None
 
     def get_proof_term(self, args, prevs):
+        """Return the proof term for this macro application."""
         assert len(prevs) >= 1, "intros_macro"
         if args is None:
             args = []
@@ -240,6 +258,7 @@ class apply_theorem_macro(Macro):
         self.limit = None
 
     def eval(self, args, prevs):
+        """Evaluate this macro and return the resulting theorem."""
         if self.with_inst:
             name, inst = args
         else:
@@ -280,6 +299,7 @@ class apply_theorem_macro(Macro):
         return th
 
     def get_proof_term(self, args, pts):
+        """Return the proof term for this macro application."""
         if self.with_inst:
             name, inst = args
         else:
@@ -326,6 +346,7 @@ class apply_induct_macro(Macro):
         self.limit = None
 
     def get_proof_term(self, args, pts):
+        """Return the proof term for this macro application."""
         th_name, var, goal = args
         th = theory.get_theorem(th_name)
         f, th_args = th.concl.strip_comb()
@@ -350,6 +371,7 @@ class apply_fact_macro(Macro):
         self.limit = None
 
     def get_proof_term(self, args, pts):
+        """Return the proof term for this macro application."""
         if not self.with_inst:
             assert len(pts) >= 2, "apply fact: too few prevs"
 
@@ -409,6 +431,7 @@ class rewrite_goal_macro(Macro):
         self.limit = None
 
     def eval(self, args, ths):
+        """Evaluate this macro and return the resulting theorem."""
         assert isinstance(args, tuple) and len(args) == 2 and \
                isinstance(args[0], str) and isinstance(args[1], Term), "rewrite_goal: signature"
 
@@ -417,6 +440,7 @@ class rewrite_goal_macro(Macro):
         return Thm(goal, *(th.hyps for th in ths))
 
     def get_proof_term(self, args, pts):
+        """Return the proof term for this macro application."""
         assert isinstance(args, tuple) and len(args) == 2 and \
                isinstance(args[0], str) and isinstance(args[1], Term), "rewrite_goal: signature"
 
@@ -448,6 +472,7 @@ class rewrite_fact_macro(Macro):
         self.limit = None
 
     def get_proof_term(self, args, pts):
+        """Return the proof term for this macro application."""
         assert isinstance(args, str), "rewrite_fact_macro: signature"
 
         th_name = args
@@ -480,6 +505,7 @@ class rewrite_goal_with_prev_macro(Macro):
         self.limit = None
 
     def get_proof_term(self, args, pts):
+        """Return the proof term for this macro application."""
         assert isinstance(args, Term), "rewrite_goal_macro: signature"
 
         goal = args
@@ -519,6 +545,7 @@ class rewrite_fact_with_prev_macro(Macro):
         self.limit = None
 
     def get_proof_term(self, args, pts):
+        """Return the proof term for this macro application."""
         assert len(pts) == 2, "rewrite_fact_with_prev"
 
         eq_pt, pt = pts
@@ -549,6 +576,7 @@ class forall_elim_gen_macro(Macro):
         self.limit = None
 
     def get_proof_term(self, args, pts):
+        """Return the proof term for this macro application."""
         assert len(pts) == 1, "forall_elim_gen"
         assert isinstance(args, Term), "forall_elim_gen"
         s = args  # term to instantiate
@@ -568,12 +596,14 @@ class trivial_macro(Macro):
         self.sig = Term
         self.limit = None
 
-    def can_eval(self, args):
+    def can_eval(self, args: Term) -> bool:
+        """Return whether the trivial macro can close ``args``."""
         new_names = get_forall_names(args)
         vars, As, C = strip_all_implies(args, new_names)
         return C in As
 
     def get_proof_term(self, args, pts):
+        """Return the proof term for this macro application."""
         new_names = get_forall_names(args)
         vars, As, C = strip_all_implies(args, new_names)
         assert C in As, "trivial_macro"
@@ -593,6 +623,7 @@ class resolve_theorem_macro(Macro):
         self.limit = None
 
     def get_proof_term(self, args, pts):
+        """Return the proof term for this macro application."""
         th_name, goal = args
         pt = ProofTerm.theorem(th_name)
         assert pt.prop.is_not(), "resolve_theorem_macro"
@@ -626,7 +657,8 @@ def apply_theorem(th_name: str, *pts: ProofTerm, concl=None, inst=None) -> Proof
             inst = matcher.first_order_match(pt.assums[i], prev.prop, inst)
         return ProofTerm("apply_theorem_for", (th_name, inst), pts)
 
-def conj_thms(*pts):
+def conj_thms(*pts: ProofTerm) -> ProofTerm:
+    """Combine a non-empty list of theorem proofs by conjunction."""
     assert len(pts) > 0, 'conj_thms: input list is empty.'
     if len(pts) == 1:
         return pts[0]
@@ -636,6 +668,7 @@ def conj_thms(*pts):
 
 @register_macro('imp_conj')
 class imp_conj_macro(Macro):
+    """Prove an implication between conjunctions with equal clause sets."""
     def __init__(self):
         self.level = 1
         self.sig = Term
@@ -643,6 +676,7 @@ class imp_conj_macro(Macro):
 
     def eval(self, goal, ths):
         # goal: A --> B
+        """Evaluate this macro and return the resulting theorem."""
         A, B = goal.arg1, goal.arg
         conjA = set(strip_conj(A)) - {true}
         conjB = set(strip_conj(B)) - {true}
@@ -650,6 +684,7 @@ class imp_conj_macro(Macro):
         return Thm(goal)
 
     def get_proof_term(self, goal, pts):
+        """Return the proof term for this macro application."""
         dct = dict()
 
         def traverse_A(pt):
@@ -695,6 +730,7 @@ def imp_conj_iff(goal: Term) -> ProofTerm:
 
 @register_macro('imp_disj')
 class imp_disj_macro(Macro):
+    """Prove an implication between disjunctions with a subset relation."""
     def __init__(self):
         self.level = 1
         self.sig = Term
@@ -702,6 +738,7 @@ class imp_disj_macro(Macro):
 
     def eval(self, goal, pts):
         # goal: A --> B
+        """Evaluate this macro and return the resulting theorem."""
         A, B = goal.arg1, goal.arg
         disjA = set(strip_disj(A))
         disjB = set(strip_disj(B))
@@ -746,7 +783,8 @@ def imp_disj_iff(goal: Term):
     pt2 = ProofTerm('imp_disj', Implies(goal.rhs, goal.lhs))
     return ProofTerm.equal_intr(pt1, pt2)
 
-def strip_disj(t):
+def strip_disj(t: Term) -> list[Term]:
+    """Flatten a right-associated disjunction into a list of clauses."""
     res = []
     def helper(t):
         if t.is_disj():
@@ -758,7 +796,8 @@ def strip_disj(t):
     helper(t)
     return res
 
-def strip_conj(t):
+def strip_conj(t: Term) -> list[Term]:
+    """Flatten a right-associated conjunction into a list of clauses."""
     res = []
     def helper(t):
         if t.is_conj():
@@ -773,17 +812,20 @@ def strip_conj(t):
 class disj_norm(Conv):
     """Normalize an disjunction."""
     def get_proof_term(self, t):
+        """Return the proof term for this macro application."""
         goal = Eq(t, Or(*term_ord.sorted_terms(strip_disj(t))))
         return imp_disj_iff(goal)
 
 class conj_norm(Conv):
     """Normalize an conjunction."""
     def get_proof_term(self, t):
+        """Return the proof term for this macro application."""
         goal = Eq(t, And(*term_ord.sorted_terms(strip_conj(t))))
         return imp_conj_iff(goal)
 
 @register_macro('resolution')
 class resolution_macro(Macro):
+    """Apply propositional resolution to two disjunctions."""
     def __init__(self):
         self.level = 1
         self.sig = None
@@ -836,7 +878,8 @@ class resolution_macro(Macro):
 
         return pt.on_prop(disj_norm())
 
-def resolution(pt1, pt2):
+def resolution(pt1: ProofTerm, pt2: ProofTerm) -> ProofTerm:
+    """Apply propositional resolution to two disjunction proofs."""
     return ProofTerm('resolution', None, [pt1, pt2])
 
 

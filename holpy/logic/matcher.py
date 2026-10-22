@@ -5,10 +5,12 @@
 By default, all variables in the pattern can be instantiated.
 
 """
+from __future__ import annotations
+
 from copy import copy
 
-from holpy.kernel.type import TVar, TFun, TypeMatchException
-from holpy.kernel.term import Term, Var, Const, Comb, Abs, Bound, Inst, Lambda
+from holpy.kernel.type import TFun, TypeMatchException
+from holpy.kernel.term import Term, Var, Abs, Bound, Inst, Lambda
 from holpy.kernel import term
 from holpy.syntax import operator
 from holpy.util import name
@@ -16,19 +18,22 @@ from holpy.util import typecheck
 
 
 class MatchException(Exception):
-    def __init__(self, trace):
+    """Raised when a pattern cannot be matched to a term."""
+
+    def __init__(self, trace: list[tuple[Term, Term]]):
         self.trace = trace
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.get_trace()
 
-    def get_trace(self):
+    def get_trace(self) -> str:
+        """Render the match trace as a diagnostic string."""
         pat, t = self.trace[-1]
         trace = '\n'.join("%s --- %s" % (pat, t) for pat, t in self.trace)
         return "When matching %s with %s\nTrace:\n%s" % (pat, t, trace)
 
 
-def is_pattern(t, matched_vars, bd_vars=None):
+def is_pattern(t: Term, matched_vars: list[str], bd_vars: list[Var] | None = None) -> bool:
     """Test whether t is a matchable pattern, given the current instantiations."""
     if bd_vars is None:
         bd_vars = []
@@ -43,7 +48,7 @@ def is_pattern(t, matched_vars, bd_vars=None):
         else:
             return is_pattern_list(t.args, matched_vars, bd_vars)
 
-def is_pattern_list(ts, matched_vars, bd_vars=None):
+def is_pattern_list(ts: list[Term], matched_vars: list[str], bd_vars: list[Var] | None = None) -> bool:
     """Test whether a list of ts can be matched."""
     if len(ts) == 0:
         return True
@@ -59,7 +64,8 @@ def is_pattern_list(ts, matched_vars, bd_vars=None):
             all_vars = list(set(matched_vars + [v.name for v in term.get_svars(ts[1:])]))
             return is_pattern(ts[0], all_vars, bd_vars)
 
-def find_term(t, sub_t):
+def find_term(t: Term, sub_t: Term) -> bool:
+    """Return whether ``sub_t`` occurs anywhere in ``t``."""
     if t == sub_t:
         return True
     if t.is_comb():
@@ -68,7 +74,7 @@ def find_term(t, sub_t):
         return find_term(t.body, sub_t)
     return False
 
-def first_order_match(pat, t, inst=None):
+def first_order_match(pat: Term, t: Term, inst: Inst | None = None) -> Inst:
     """First-order matching of pat with t.
 
     inst : optional Inst
@@ -252,7 +258,7 @@ def first_order_match(pat, t, inst=None):
     match(pat, t)
     return inst
 
-def can_first_order_match(pat, t, inst=None):
+def can_first_order_match(pat: Term, t: Term, inst: Inst | None = None) -> bool:
     """Return whether pat can be matched to t.
 
     inst : optional Inst
@@ -265,7 +271,7 @@ def can_first_order_match(pat, t, inst=None):
     except MatchException:
         return False
 
-def first_order_match_list(pats, ts, inst=None):
+def first_order_match_list(pats: list[Term], ts: list[Term], inst: Inst | None = None) -> Inst:
     """First-order matching of a list of pattern-term pairs.
     
     inst : optinal Inst
@@ -292,7 +298,7 @@ def first_order_match_list(pats, ts, inst=None):
         inst = first_order_match(pats[0], ts[0], inst)
         return inst
 
-def is_fo_pattern(t: Term):
+def is_fo_pattern(t: Term) -> bool:
     """Test whether t is a first-order pattern, that is no schematic variables
     appear in function position.
     
@@ -307,7 +313,7 @@ def is_fo_pattern(t: Term):
     else:
         return True
 
-def is_fo_pattern_list(ts):
+def is_fo_pattern_list(ts: list[Term]) -> bool:
     """Test whether ts is a list of first-order patterns, that is no schematic variables
     appear in function position.
     

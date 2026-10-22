@@ -1,10 +1,18 @@
 # Author: Bohua Zhan
 
+"""Term conversions.
+
+A conversion rewrites a term and returns a proof term for the resulting
+ equality. Composite conversions apply a converter at the head, in an
+argument, repeatedly, or top-down/bottom-up. The classes here are the
+structural building blocks used by tactics and macros.
+"""
+
+from __future__ import annotations
+
 from typing import Union
-from holpy.kernel.proof import Proof
-from holpy.kernel.type import TyInst
 from holpy.kernel import term
-from holpy.kernel.term import Term, Var, Bound, Inst
+from holpy.kernel.term import Term, Inst
 from holpy.kernel.thm import Thm, InvalidDerivationException
 from holpy.kernel import theory
 from holpy.kernel.proofterm import ProofTerm, refl
@@ -13,7 +21,9 @@ from holpy.util import typecheck
 
 
 class ConvException(Exception):
-    def __init__(self, str=""):
+    """Raised when a conversion is not applicable to a term."""
+
+    def __init__(self, str: str = ""):
         self.str = str
 
 class Conv():
@@ -25,20 +35,24 @@ class Conv():
 
     """
     def eval(self, t: Term) -> Thm:
+        """Evaluate the conversion and return the resulting equality."""
         return self.get_proof_term(t).th
 
     def get_proof_term(self, t: Term) -> ProofTerm:
+        """Return the proof term for converting ``t``."""
         raise NotImplementedError
 
 
 class all_conv(Conv):
     """Returns the trivial equality t = t."""
     def get_proof_term(self, t: Term) -> ProofTerm:
+        """Return the proof term for this conversion."""
         return refl(t)
 
 class no_conv(Conv):
     """Always fails."""
     def get_proof_term(self, t: Term) -> ProofTerm:
+        """Return the proof term for this conversion."""
         raise ConvException("no_conv")
 
 class combination_conv(Conv):
@@ -49,6 +63,7 @@ class combination_conv(Conv):
         self.cv2: Conv = cv2
 
     def get_proof_term(self, t: Term):
+        """Return the proof term for this conversion."""
         if not t.is_comb():
             raise ConvException("combination_conv: not a combination")
         pt1 = self.cv1.get_proof_term(t.fun)
@@ -71,6 +86,7 @@ class then_conv(Conv):
         return "then_conv(%s,%s)" % (str(self.cv1), str(self.cv2))
 
     def get_proof_term(self, t: Term) -> ProofTerm:
+        """Return the proof term for this conversion."""
         pt1 = self.cv1.get_proof_term(t)
         t2 = pt1.prop.rhs
         pt2 = self.cv2.get_proof_term(t2)
@@ -84,6 +100,7 @@ class else_conv(Conv):
         self.cv2 = cv2
 
     def get_proof_term(self, t: Term) -> ProofTerm:
+        """Return the proof term for this conversion."""
         try:
             return self.cv1.get_proof_term(t)
         except ConvException:
@@ -95,13 +112,17 @@ class beta_conv(Conv):
         return "beta_conv"
 
     def get_proof_term(self, t: Term) -> ProofTerm:
+        """Return the proof term for this conversion."""
         try:
             return ProofTerm.beta_conv(t)
         except InvalidDerivationException:
             raise ConvException("beta_conv")
 
 class beta_norm_conv(Conv):
+    """Normalize a term by beta-conversion."""
+
     def get_proof_term(self, t: Term) -> ProofTerm:
+        """Return the proof term for this conversion."""
         def rec(t: Term) -> ProofTerm:
             if t.is_abs():
                 v, body = t.dest_abs()
@@ -126,11 +147,13 @@ class beta_norm_conv(Conv):
         return rec(t)
 
 def beta_norm(t: Term) -> Term:
+    """Return the beta-normal form of ``t``."""
     return beta_norm_conv().eval(t).prop.arg
 
 class eta_conv(Conv):
     """Eta-conversion."""
     def get_proof_term(self, t: Term) -> ProofTerm:
+        """Return the proof term for this conversion."""
         if not t.is_abs():
             raise ConvException("eta_conv")
 
@@ -148,6 +171,7 @@ class abs_conv(Conv):
         self.cv = cv
 
     def get_proof_term(self, t: Term) -> ProofTerm:
+        """Return the proof term for this conversion."""
         if not t.is_abs():
             raise ConvException("abs_conv: not an abstraction")
 
@@ -161,24 +185,31 @@ class abs_conv(Conv):
             raise ConvException("abs_conv")
 
 def try_conv(cv: Conv) -> Conv:
+    """Return ``cv`` if it succeeds, otherwise the identity conversion."""
     return else_conv(cv, all_conv())
 
 def comb_conv(cv: Conv) -> Conv:
+    """Apply ``cv`` to both sides of an application."""
     return combination_conv(cv, cv)
 
 def arg_conv(cv: Conv) -> Conv:
+    """Apply ``cv`` to the argument of an application."""
     return combination_conv(all_conv(), cv)
 
 def fun_conv(cv: Conv) -> Conv:
+    """Apply ``cv`` to the function part of an application."""
     return combination_conv(cv, all_conv())
 
 def arg1_conv(cv: Conv) -> Conv:
+    """Apply ``cv`` to the first argument of an application."""
     return fun_conv(arg_conv(cv))
 
 def binop_conv(cv: Conv) -> Conv:
+    """Apply ``cv`` to both operands of a binary application."""
     return combination_conv(arg_conv(cv), cv)
 
-def every_conv(*args):
+def every_conv(*args: Conv) -> Conv:
+    """Compose the given conversions from left to right."""
     if len(args) == 0:
         return all_conv()
     elif len(args) == 1:
@@ -187,10 +218,13 @@ def every_conv(*args):
         return then_conv(args[0], every_conv(*args[1:]))
 
 class repeat_conv(Conv):
+    """Repeat a conversion until it reaches a fixed point."""
+
     def __init__(self, cv: Conv):
         self.cv = cv
         
     def get_proof_term(self, t: Term) -> ProofTerm:
+        """Return the proof term for this conversion."""
         pt = refl(t)
         while True:
             pt2 = pt.on_rhs(self.cv)
@@ -209,6 +243,7 @@ class argn_conv(Conv):
         self.cv = cv
 
     def get_proof_term(self, t: Term) -> ProofTerm:
+        """Return the proof term for this conversion."""
         cv = arg_conv(self.cv)
         for i in range(len(t.args) - self.n - 1):
             cv = fun_conv(cv)
@@ -223,16 +258,20 @@ class assums_conv(Conv):
         self.cv = cv
 
     def get_proof_term(self, t: Term) -> ProofTerm:
+        """Return the proof term for this conversion."""
         if t.is_implies():
             return then_conv(arg1_conv(self.cv), arg_conv(self)).get_proof_term(t)
         else:
             return refl(t)
 
 class sub_conv(Conv):
+    """Apply a conversion recursively to all immediate subterms."""
+
     def __init__(self, cv: Conv):
         self.cv = cv
 
     def get_proof_term(self, t: Term) -> ProofTerm:
+        """Return the proof term for this conversion."""
         if t.is_comb():
             return comb_conv(self.cv).get_proof_term(t)
         elif t.is_abs():
@@ -247,6 +286,7 @@ class bottom_conv(Conv):
         self.cv = cv
 
     def get_proof_term(self, t: Term) -> ProofTerm:
+        """Return the proof term for this conversion."""
         pt = refl(t)
         if t.is_comb():
             return pt.on_rhs(fun_conv(self), arg_conv(self), try_conv(self.cv))
@@ -275,6 +315,7 @@ class top_conv(Conv):
         return "top_conv(%s)" % str(self.cvs)
 
     def get_proof_term(self, t: Term) -> ProofTerm:
+        """Return the proof term for this conversion."""
         def rec(t: Term) -> ProofTerm:
             pt = refl(t).on_rhs(self.cv)
             if pt.rhs.is_comb():
@@ -303,6 +344,7 @@ class top_sweep_conv(Conv):
         return "top_sweep_conv(%s)" % str(self.cv)
 
     def get_proof_term(self, t: Term) -> ProofTerm:
+        """Return the proof term for this conversion."""
         def rec(t: Term) -> ProofTerm:
             pt = refl(t).on_rhs(try_conv(self.cv))
             if not pt.is_reflexive():
@@ -335,9 +377,9 @@ class rewr_conv(Conv):
         self.conds = conds
 
         # Computed after the first invocation
-        self.eq_pt = None
-        self.As = None
-        self.C = None
+        self.eq_pt: ProofTerm | None = None
+        self.As: list[Term] | None = None
+        self.C: Term | None = None
 
     def __str__(self):
         if isinstance(self.pt, str):
@@ -348,6 +390,7 @@ class rewr_conv(Conv):
     def get_proof_term(self, t: Term) -> ProofTerm:
         # If self.eq_pt is not present, produce it from thy, self.pt
         # and self.sym. Decompose into self.As and self.C.
+        """Return the proof term for this conversion."""
         if self.eq_pt is None:
             if isinstance(self.pt, str):
                 try:
@@ -358,30 +401,38 @@ class rewr_conv(Conv):
                 self.eq_pt = self.pt
 
             self.As, self.C = self.eq_pt.prop.strip_implies()
+            assert self.As is not None and self.C is not None
 
         # The conclusion of eq_pt should be an equality, and the number of
         # assumptions in eq_pt should match number of conditions.
-        assert self.C.is_equals(), "rewr_conv: theorem is not an equality."
-        if len(self.As) != len(self.conds):
+        eq_pt = self.eq_pt
+        assert eq_pt is not None
+        As = self.As
+        assert As is not None
+        As = list(As)
+        C = self.C
+        assert C is not None
+        assert C.is_equals(), "rewr_conv: theorem is not an equality."
+        if len(As) != len(self.conds):
             raise ConvException("rewr_conv: number of conds does not agree")
 
         inst = Inst()
         ts = [cond.prop for cond in self.conds]
         if not self.sym:
-            lhs = self.C.lhs
+            lhs = C.lhs
         else:
-            lhs = self.C.rhs
+            lhs = C.rhs
         try:
-            inst = matcher.first_order_match_list(self.As, ts, inst)
+            inst = matcher.first_order_match_list(As, ts, inst)
             inst = matcher.first_order_match(lhs, t, inst)
         except matcher.MatchException:
             raise ConvException("rewr_conv: cannot match left side")
 
         # Check that every variable in the theorem has an instantiation
-        if set(term.get_svars(self.As + [lhs])) != set(term.get_svars(self.As + [self.C])):
+        if set(term.get_svars(As + [lhs])) != set(term.get_svars(As + [C])):
             raise ConvException("rewr_conv: unmatched vars")
 
-        pt = self.eq_pt
+        pt = eq_pt
         pt = pt.substitution(inst)
         pt = pt.implies_elim(*self.conds)
         if self.sym:
@@ -395,14 +446,17 @@ class rewr_conv(Conv):
         if pt.th.prop.lhs != t:
             pt = pt.on_prop(eta_conv())
 
-        assert pt.th.prop.lhs == t, "rewr_conv: wrong result. Expected %s, got %s" % (str(t), str(pt.th.prop.lhs))
+        assert pt.th.prop.lhs == t, f"rewr_conv: wrong result. Expected {t}, got {pt.th.prop.lhs}"
         return pt
 
 class replace_conv(Conv):
+    """Replace the left side of a given equality proof term."""
+
     def __init__(self, pt: ProofTerm):
         self.pt = pt
 
     def get_proof_term(self, t: Term) -> ProofTerm:
+        """Return the proof term for this conversion."""
         if t == self.pt.prop.lhs:
             return self.pt
         else:

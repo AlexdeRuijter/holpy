@@ -1,13 +1,19 @@
 # Author: Bohua Zhan
+
+"""Theory loading and the user theory directory.
+
+This module reads the bundled JSON theory library, maintains the per-user
+theory cache, and exposes the top-level ``load_theory`` entry point used by
+the parser and the proof-state layer.
+"""
+
+from __future__ import annotations
+
 import os
 import json
 
-from holpy.kernel import term
-from holpy.kernel.term import Var
 from holpy.kernel import theory
-from holpy.kernel.theory import Theory, TheoryException
-from holpy.kernel.thm import Thm
-from holpy.kernel import extension
+from holpy.kernel.theory import TheoryException
 from holpy.server import items
 from holpy._paths import user_dir as _user_dir, user_file as _user_file
 
@@ -58,7 +64,6 @@ def load_metadata(username="master"):
         if f.endswith('.json'):
             filename = f[:-5]
             data = load_json_data(filename, username)
-            timestamp = os.path.getmtime(user_file(filename, username))
             theory_cache[username][filename] = {
                 'imports': data['imports'],
                 'description': data['description']
@@ -141,13 +146,13 @@ def load_theory_cache(filename, username="master"):
     # Load all required macros and methods for this file.
     # Make table for this later.
     if filename == 'logic':
-        from holpy.prover import z3wrapper
+        from holpy.prover import z3wrapper  # noqa: F401 - registers macros
     if filename == 'expr':
-        from holpy.data import expr
+        from holpy.data import expr  # noqa: F401 - registers macros
     if filename == 'real':
-        from holpy.data import real
+        from holpy.data import real  # noqa: F401 - registers macros
     if filename == 'hoare':
-        from holpy.imperative import imp
+        from holpy.imperative import imp  # noqa: F401 - registers methods
 
     # Load all imported theories
     depend_list = get_import_order(cache['imports'], username)

@@ -1,6 +1,16 @@
 # Author: Bohua Zhan
 
+"""Goal-directed tactics over proof terms.
+
+A tactic consumes a goal theorem and returns a proof term with zero or more
+sorries. Tactics compose sequentially, by alternatives, and by repetition;
+the proof-term layer fills the remaining subgoals.
+"""
+
+from __future__ import annotations
+
 from copy import copy
+from typing import Any
 
 from holpy.kernel.type import TyInst
 from holpy.kernel import term
@@ -10,8 +20,7 @@ from holpy.kernel import theory
 from holpy.kernel.proofterm import ProofTerm, TacticException
 from holpy.logic import logic
 from holpy.logic import matcher
-from holpy.logic.conv import then_conv, top_conv, rewr_conv, beta_conv, beta_norm_conv, \
-    top_sweep_conv, has_rewrite
+from holpy.logic.conv import then_conv, rewr_conv, beta_norm_conv, top_sweep_conv, has_rewrite
 from holpy.logic.logic import apply_theorem
 
 
@@ -28,6 +37,7 @@ class Tactic:
 
     """
     def get_proof_term(self, goal, *, args=None, prevs=None) -> ProofTerm:
+        """Return the proof term for applying this tactic to ``goal``."""
         raise NotImplementedError
 
 
@@ -43,6 +53,7 @@ class MacroTactic(Tactic):
         self.macro = macro
 
     def get_proof_term(self, goal, *, args=None, prevs=None):
+        """Return the proof term for applying this tactic to ``goal``."""
         assert isinstance(goal, Thm), "MacroTactic"
         if prevs is None:
             prevs = []
@@ -62,6 +73,7 @@ class rule(Tactic):
 
     """
     def get_proof_term(self, goal, *, args=None, prevs=None):
+        """Return the proof term for applying this tactic to ``goal``."""
         if isinstance(args, tuple):
             th_name, inst = args
         else:
@@ -118,6 +130,7 @@ class resolve(Tactic):
     
     """
     def get_proof_term(self, goal, args, prevs):
+        """Return the proof term for applying this tactic to ``goal``."""
         assert isinstance(args, str) and len(prevs) == 1, "resolve: type"
         th_name = args
         th = theory.get_theorem(th_name)
@@ -133,12 +146,15 @@ class intros(Tactic):
     
     """
     def get_proof_term(self, goal, *, args=None, prevs=None):
+        """Return the proof term for applying this tactic to ``goal``."""
         if args is None:
             var_names = []
         else:
             var_names = args
+        assert var_names is not None
 
         vars, As, C = logic.strip_all_implies(goal.prop, var_names, svar=False)
+        assert vars is not None and As is not None
         
         pt = ProofTerm.sorry(Thm(C, goal.hyps, tuple(As)))
         ptAs = [ProofTerm.assume(A) for A in As]
@@ -148,7 +164,10 @@ class intros(Tactic):
 class var_induct(Tactic):
     """Apply induction rule on a variable."""
     def get_proof_term(self, goal, *, args=None, prevs=None):
+        """Return the proof term for applying this tactic to ``goal``."""
+        assert args is not None, "var_induct"
         th_name, var = args
+        assert isinstance(var, Term), "var_induct"
         P = Lambda(var, goal.prop)
         th = theory.get_theorem(th_name)
         f, th_args = th.concl.strip_comb()
@@ -166,6 +185,7 @@ class rewrite_goal(Tactic):
         self.sym = sym
 
     def get_proof_term(self, goal, *, args=None, prevs=None):
+        """Return the proof term for applying this tactic to ``goal``."""
         th_name = args
         C = goal.prop
 
@@ -190,7 +210,9 @@ class rewrite_goal(Tactic):
             return ProofTerm(macro_name, args=(th_name, C), prevs=[new_goal] + prevs)
 
 class rewrite_goal_with_prev(Tactic):
+    """Rewrite the goal using an existing equality fact."""
     def get_proof_term(self, goal, *, args=None, prevs=None):
+        """Return the proof term for applying this tactic to ``goal``."""
         assert isinstance(prevs, list) and len(prevs) == 1, "rewrite_goal_with_prev"
         pt = prevs[0]
         C = goal.prop
@@ -222,6 +244,7 @@ class rewrite_goal_with_prev(Tactic):
 class apply_prev(Tactic):
     """Applies an existing fact in the backward direction."""
     def get_proof_term(self, goal, *, args=None, prevs=None):
+        """Return the proof term for applying this tactic to ``goal``."""
         assert isinstance(prevs, list) and len(prevs) >= 1, "apply_prev"
         pt, prev_pts = prevs[0], prevs[1:]
 
@@ -260,9 +283,9 @@ class apply_prev(Tactic):
 class cases(Tactic):
     """Case checking on an expression."""
     def get_proof_term(self, goal, *, args=None, prevs=None):
+        """Return the proof term for applying this tactic to ``goal``."""
         assert isinstance(args, Term), "cases"
 
-        As = goal.hyps
         C = goal.prop
         goal1 = ProofTerm.sorry(Thm(Implies(args, C), goal.hyps))
         goal2 = ProofTerm.sorry(Thm(Implies(Not(args), C), goal.hyps))
@@ -271,20 +294,21 @@ class cases(Tactic):
 class inst_exists_goal(Tactic):
     """Instantiate an exists goal."""
     def get_proof_term(self, goal, *, args=None, prevs=None):
+        """Return the proof term for applying this tactic to ``goal``."""
         assert isinstance(args, Term), "inst_exists_goal"
 
         C = goal.prop
         assert C.is_exists(), "inst_exists_goal: goal is not exists statement"
         argT = args.get_type()
-        assert C.arg.var_T == argT, "inst_exists_goal: incorrect type: expect %s, given %s" % (
-            str(C.arg.var_T), str(argT)
-        )
+        assert C.arg.var_T == argT, f"inst_exists_goal: incorrect type: expect {C.arg.var_T}, given {argT}"
 
         return rule().get_proof_term(goal, args=('exI', Inst(P=C.arg, a=args)))
 
 
 class intro_imp_tac(Tactic):
+    """Introduce an implication premise as an assumption."""
     def get_proof_term(self, goal):
+        """Return the proof term for applying this tactic to ``goal``."""
         if not goal.prop.is_implies():
             raise TacticException('intro_imp: goal is not implies.')
 
@@ -293,10 +317,12 @@ class intro_imp_tac(Tactic):
         return new_goal.implies_intr(A)
 
 class intro_forall_tac(Tactic):
+    """Introduce a universally quantified variable."""
     def __init__(self, var_name=None):
         self.var_name = var_name
         
     def get_proof_term(self, goal):
+        """Return the proof term for applying this tactic to ``goal``."""
         if not goal.prop.is_forall():
             raise TacticException('intro_forall: goal is not forall')
 
@@ -305,36 +331,44 @@ class intro_forall_tac(Tactic):
         return new_goal.forall_intr(v)
 
 class assumption(Tactic):
+    """Close the goal using one of its assumptions."""
     def get_proof_term(self, goal):
+        """Return the proof term for applying this tactic to ``goal``."""
         if not goal.prop in goal.hyps:
             raise TacticException('assumption: prop does not appear in hyps')
         
         return ProofTerm.assume(goal.prop)
 
 class then_tac(Tactic):
+    """Apply two tactics in sequence."""
     def __init__(self, tac1, tac2):
         self.tac1 = tac1
         self.tac2 = tac2
         
     def get_proof_term(self, goal):
+        """Return the proof term for applying this tactic to ``goal``."""
         return ProofTerm.sorry(goal).tacs(self.tac1, self.tac2)
 
 class else_tac(Tactic):
+    """Try one tactic and fall back to another on failure."""
     def __init__(self, tac1, tac2):
         self.tac1 = tac1
         self.tac2 = tac2
         
     def get_proof_term(self, goal):
+        """Return the proof term for applying this tactic to ``goal``."""
         try:
             return self.tac1.get_proof_term(goal)
         except TacticException:
             return self.tac2.get_proof_term(goal)
 
 class repeat_tac(Tactic):
+    """Repeat a tactic until it fails."""
     def __init__(self, tac):
         self.tac = tac
         
     def get_proof_term(self, goal):
+        """Return the proof term for applying this tactic to ``goal``."""
         pt = ProofTerm.sorry(goal)
         while True:
             try:
@@ -346,6 +380,7 @@ class repeat_tac(Tactic):
 intros_tac = repeat_tac(else_tac(intro_imp_tac(), intro_forall_tac()))
 
 class rule_tac(Tactic):
+    """Apply a named theorem in the backward direction."""
     def __init__(self, th_name, *, inst=None):
         self.th_name = th_name
         if inst is None:
@@ -353,6 +388,7 @@ class rule_tac(Tactic):
         self.inst = inst
         
     def get_proof_term(self, goal):
+        """Return the proof term for applying this tactic to ``goal``."""
         th = theory.get_theorem(self.th_name)
         try:
             inst = matcher.first_order_match(th.concl, goal.prop, self.inst)
@@ -369,6 +405,7 @@ class rule_tac(Tactic):
 
 
 class elim_tac(Tactic):
+    """Eliminate a named theorem using a matching hypothesis."""
     def __init__(self, th_name, *, cond=None, inst=None):
         self.th_name = th_name
         if inst is None:
@@ -377,6 +414,7 @@ class elim_tac(Tactic):
         self.cond = cond
         
     def get_proof_term(self, goal):
+        """Return the proof term for applying this tactic to ``goal``."""
         th = theory.get_theorem(self.th_name)
 
         assum = th.assums[0]
@@ -410,6 +448,8 @@ class elim_tac(Tactic):
 
 
 class conj_elim_tac(Tactic):
+    """Eliminate a conjunction in the goal's assumptions."""
     def get_proof_term(self, goal):
+        """Return the proof term for applying this tactic to ``goal``."""
         return ProofTerm.sorry(goal).tacs(
             elim_tac('conjE'), intro_imp_tac(), intro_imp_tac())
