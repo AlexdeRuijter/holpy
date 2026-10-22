@@ -32,25 +32,13 @@ The house policy is the qwen workspace's `ruff.toml`:
 - Proof scripts and library JSON are certificates. Do not rewrite them
   for style.
 
-## Style-modernization branch/PR policy
+## Change scope
 
-Full modernization is split per module, one branch and one PR per module:
-
-- `style/kernel`
-- `style/logic`
-- `style/data`
-- `style/syntax`
-- `style/server`
-- `style/prover`
-- `style/util`
-- `style/integral`
-- `style/geometry`
-- `style/paraverifier`
-- `style/imperative`
-- `style/macros`
-
-`kernel` and `logic` receive the most thorough documentation and typing.
-Do not mix modules in one PR unless the user explicitly asks.
+- Keep changes focused and reviewable; use one logical change per commit.
+- Keep packaging, style, and metadata changes in separate commits.
+- Large refactors should be split into reviewable units, for example one
+  module per change.
+- Do not mix unrelated modules in one change unless the dependency requires it.
 
 ## Kernel discipline
 
@@ -60,7 +48,7 @@ For a kernel change:
 1. Read the whole affected symbol and its callers before editing.
 2. Prefer docstrings, annotations, and comments; do not change logic.
 3. Run the kernel tests and the full core suite.
-4. Report every kernel change by file and symbol in the PR description.
+4. Report every kernel change by file and symbol in the change description.
 5. If a behavior change is unavoidable, stop and ask.
 
 ## Verification
@@ -78,21 +66,3 @@ from holpy.logic import basic
 basic.load_theory("logic")
 from holpy.data import real
 ```
-
-## Git and authorship
-
-- Commits must be GPG-signed. Do not use `--no-gpg-sign`.
-- Commit identity stays `Alex de Ruijter <noreply.alderuijter@gmail.com>`.
-- Copyright/contact metadata uses `A.L.deRuijter@tudelft.nl`.
-- Original author is Bohua Zhan `<bzhan@ios.ac.cn>`; keep his credit in
-  `pyproject.toml`, `LICENSE`, `AUTHORS.md`, and `README.md`.
-- Keep one logical change per commit; do not mix packaging, style, and
-  metadata in one commit.
-
-## pi-lens
-
-- Project config is `.pi-lens.json`; formatting and autofix are disabled for
-  this repo on purpose.
-- `ruff.toml` is the single lint policy source; do not add `[tool.ruff]`
-  back to `pyproject.toml`.
-- pi-lens 4.4.4+ is required for the corrected `no-assert-tuple` rule.
