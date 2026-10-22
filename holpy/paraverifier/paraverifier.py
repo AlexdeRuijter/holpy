@@ -1,7 +1,17 @@
 # Author: Bohua Zhan
 
+"""Translation and verification support for parametrized systems.
+
+A ``ParaSystem`` reads a JSON description of variables, states, guarded
+rules, and invariants, emits the corresponding GCL theory, and builds the
+verification subgoals used by the paraverifier.
+"""
+
+from __future__ import annotations
+
 import os
 import json
+from typing import Any
 
 from holpy.kernel.type import TFun, BoolType, NatType
 from holpy.kernel.term import Term, Var, Const, And, Implies, Eq, Nat, Inst
@@ -15,7 +25,6 @@ from holpy.logic.conv import rewr_conv
 from holpy.kernel.proofterm import ProofTerm
 from holpy.prover import z3wrapper
 from holpy.syntax import parser
-from holpy.syntax import printer
 from holpy.server import items
 from holpy.logic import context
 from holpy.paraverifier import gcl
@@ -23,7 +32,8 @@ from holpy.paraverifier import gcl
 
 GUARD, PRE, INV = range(3)
 
-def convert_hint_type(s):
+def convert_hint_type(s: str) -> int:
+    """Map a textual hint kind to ``GUARD``, ``PRE``, or ``INV``."""
     if s == "GUARD":
         return GUARD
     elif s == "PRE":
@@ -43,7 +53,9 @@ class ParaSystem():
     invs: list of invariants.
 
     """
-    def __init__(self, name, vars, states, rules, invs):
+    def __init__(self, name: str, vars: list[Term], states: list[Term],
+                 rules: list[tuple[object, Term, dict[Term, Term]]],
+                 invs: list[tuple[list[Term], Term]]):
         self.name = name
         self.vars = vars
         self.states = states
@@ -78,7 +90,7 @@ class ParaSystem():
 
         return res
 
-    def replace_states(self, t):
+    def replace_states(self, t: Term) -> Term:
         """Replace states by their corresponding numbers."""
         if t in self.states:
             return Nat(self.state_map[t])
@@ -87,7 +99,7 @@ class ParaSystem():
         else:
             return t
 
-    def get_subgoal(self, inv_id, rule_id, case_id, hint):
+    def get_subgoal(self, inv_id: int, rule_id: int, case_id: int, hint: Any):
         """Obtain the subgoal for the given case and hint.
 
         inv_id: index of the invariant to be shown at the end of the
@@ -149,7 +161,7 @@ class ParaSystem():
                 inv_subst = inv.subst(subst)
                 return Implies(inv_subst, guard, inv_after)
 
-    def verify_subgoal(self, inv_id, rule_id, case_id, hint):
+    def verify_subgoal(self, inv_id: int, rule_id: int, case_id: int, hint: Any):
         """Verify the subgoal from the given hints.
 
         In addition to the assumptions given in get_subgoal, we need
@@ -198,14 +210,15 @@ class ParaSystem():
         # print(printer.print_extensions(exts))
 
     def get_proof(self):
+        """Build the induction-proof skeleton for the system."""
         invC = Const("inv", TFun(gcl.stateT, BoolType))
         transC = Const("trans", TFun(gcl.stateT, gcl.stateT, BoolType))
         s1 = Var("s1", gcl.stateT)
         s2 = Var("s2", gcl.stateT)
-        prop = Thm(Implies(invC(s1), transC(s1,s2), invC(s2)))
+        prop = Thm(Implies(invC(s1), transC(s1,s2), invC(s2)))  # noqa: F841
         # print(printer.print_thm(prop))
 
-        trans_pt = ProofTerm.assume(transC(s1,s2))
+        trans_pt = ProofTerm.assume(transC(s1,s2))  # noqa: F841
         # print(printer.print_thm(trans_pt.th))
         P = Implies(invC(s1), invC(s2))
         ind_pt = apply_theorem("trans_cases", inst=Inst(a1=s1, a2=s2, P=P))
@@ -220,16 +233,17 @@ class ParaSystem():
             # print("C: ", C)
             eq1 = ProofTerm.assume(As[0])
             eq2 = ProofTerm.assume(As[1])
-            guard = ProofTerm.assume(As[2])
-            inv_pre = ProofTerm.assume(As[3]).on_arg(rewr_conv(eq1)).on_prop(rewr_conv("inv_def"))
-            C_goal = ProofTerm.assume(C).on_arg(rewr_conv(eq2)).on_prop(rewr_conv("inv_def"))
+            guard = ProofTerm.assume(As[2])  # noqa: F841
+            inv_pre = ProofTerm.assume(As[3]).on_arg(rewr_conv(eq1)).on_prop(rewr_conv("inv_def"))  # noqa: F841
+            C_goal = ProofTerm.assume(C).on_arg(rewr_conv(eq2)).on_prop(rewr_conv("inv_def"))  # noqa: F841
             # for t in inv_pre.prop.strip_conj():
             #     print("inv_pre: ", t)
             # for t in C_goal.prop.strip_conj():
             #     print("C_goal: ", t)
 
 
-def load_system(filename):
+def load_system(filename: str) -> ParaSystem:
+    """Load a parametrized system from ``examples/<filename>.json``."""
     dn = os.path.dirname(os.path.realpath(__file__))
     with open(os.path.join(dn, 'examples/' + filename + '.json'), encoding='utf-8') as a:
         data = json.load(a)
@@ -274,7 +288,8 @@ def load_system(filename):
 
     return ParaSystem(name, vars, states, rules, invs)
 
-def load_hints(filename):
+def load_hints(filename: str) -> list[Any]:
+    """Load verification hints from ``examples/<filename>.txt``."""
     dn = os.path.dirname(os.path.realpath(__file__))
     with open(os.path.join(dn, 'examples/' + filename + '.txt'), encoding='utf-8') as a:
         lines = a.readlines()
