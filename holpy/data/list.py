@@ -1,7 +1,7 @@
 # Author: Bohua Zhan
 
-from holpy.kernel.type import TVar, TConst, TFun, NatType, BoolType
-from holpy.kernel.term import Term, Const
+from holpy.kernel.type import TConst, TFun, NatType, BoolType
+from holpy.kernel.term import Const
 
 """Utility functions for lists."""
 
