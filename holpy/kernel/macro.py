@@ -49,8 +49,9 @@ class Macro:
 
         Parameters
         ----------
-        args : Term
-            Argument term of the proof method.
+        args : Any
+            Argument of the proof method. Usually a Term, but some macros use
+            a rule-specific tuple such as a theorem name and instantiation.
         prevs : list[Thm]
             Previously proved theorems consumed by the macro.
 
@@ -65,8 +66,8 @@ class Macro:
     def get_proof_term(self, args: Any, prevs: list[ProofTerm]) -> ProofTerm:
         """Return a proof term expanding the macro.
 
-        Subclasses must override this. ``prevs`` are proof terms for the
-        previously proved theorems.
+        Subclasses must override this. ``prevs`` is a sequence of proof terms
+        for the previously proved theorems; it may be a list or a tuple.
         """
         raise NotImplementedError("Proof term not implemented for %s" % type(self))
 
@@ -77,8 +78,9 @@ class Macro:
         ----------
         prefix : ItemID
             Identifier prefix for the generated proof lines.
-        args : Term
-            Argument term of the proof method.
+        args : Any
+            Argument of the proof method. Usually a Term, but some macros use
+            a rule-specific tuple such as a theorem name and instantiation.
         prevs : list of (ItemID, Thm)
             Identifiers and statements of the previously proved theorems.
 

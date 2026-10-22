@@ -74,9 +74,9 @@ class ItemID:
     def decr_id(self, id_remove: "ItemID") -> "ItemID":
         """Close the gap left by removing ``id_remove``.
 
-        The logic is the inverse of :meth:`incr_id_after`: identifiers in the
-        affected sibling range are shifted down by one at the component where
-        the removed item lived.
+        This is the inverse of :meth:`incr_id_after` for a one-line insertion
+        (``n = 1``): identifiers in the affected sibling range are shifted down
+        by one at the component where the removed item lived.
         """
         k = len(id_remove.id)
         if len(self.id) >= k and self.id[:k-1] == id_remove.id[:k-1] and self.id[k-1] > id_remove.id[k-1]:

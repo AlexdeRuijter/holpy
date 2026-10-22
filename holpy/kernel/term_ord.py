@@ -3,9 +3,8 @@
 """Deterministic ordering on HOL types and terms.
 
 The order is total on well-formed objects and is used for canonicalizing sets
-of terms (for example when collecting variables or comparing substitutions).
-It is structural rather than semantic: alpha-equivalent terms compare equal
-only through the normal term equality used by the ``Term`` class.
+of types and terms. It is structural and ignores suggested binder names, so
+alpha-equivalent terms compare equal.
 """
 
 from __future__ import annotations
@@ -122,7 +121,7 @@ def fast_compare(t1: Term, t2: Term) -> int:
 
 
 def fast_compare_list(t1: list[Term], t2: list[Term]) -> int:
-    """Compare two lists of terms, first element-wise and then by length."""
+    """Compare two lists of terms by length first, then element-wise."""
     if len(t1) != len(t2):
         return compare_atom(len(t1), len(t2))
     for i in range(len(t1)):

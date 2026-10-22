@@ -19,8 +19,9 @@ class ProofReport:
     Attributes
     ----------
     steps : int
-        Total primitive steps; each primitive derivation and each unexpanded
-        macro invocation counts as one step.
+        Total checked steps: theorem applications, primitive derivations, and
+        evaluated macro invocations each count as one step. Expanded macros are
+        counted through their expansion, not as an extra step.
     thm_steps : int
         Number of invocations of existing theorems.
     prim_steps : int

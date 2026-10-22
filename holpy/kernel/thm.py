@@ -42,9 +42,10 @@ class Thm:
     def __init__(self, prop: Term, *hyps: Term | tuple[Term, ...]):
         """Create a theorem with ``prop`` and the given hypotheses.
 
-        Each element of ``hyps`` is either a term or a tuple of terms. Tuple
-        entries are treated as a batch of hypotheses and are deduplicated
-        against the hypotheses already present.
+        Each element of ``hyps`` is either a term or a tuple of terms. A tuple
+        is added as a batch; duplicate entries within that tuple are preserved.
+        When a later batch is added, entries already present are skipped. It is
+        expected that the entries within a tuple are distinct.
         """
         typecheck.checkinstance('Thm', prop, Term)
         self.prop: Term = prop
@@ -157,12 +158,14 @@ class Thm:
         A : Term
             Antecedent to discharge.
         th : Thm
-            Theorem whose hypotheses include ``A``.
+            Theorem to discharge ``A`` from; ``A`` need not be present in its
+            hypotheses.
 
         Returns
         -------
         Thm
-            ``|- A --> B`` from ``A |- B``.
+            ``A1, ..., An |- A --> B`` from ``A1, ..., An, A |- B``. If ``A``
+            is not in the hypotheses, it is simply added as an implication.
         """
         return Thm(Implies(A, th.prop), tuple(t for t in th.hyps if t != A))
 
@@ -437,7 +440,8 @@ class Thm:
         Returns
         -------
         Thm
-            ``|- !x. t``.
+            The theorem ``A |- !x. t`` from ``A |- t``, where ``x`` does not
+            occur in ``A``. The hypotheses are kept.
         """
         if any(hyp.occurs_var(x) for hyp in th.hyps):
             raise InvalidDerivationException("forall_intr")
@@ -490,7 +494,7 @@ class Thm:
 
     @staticmethod
     def convert_svar(th: Thm) -> Thm:
-        """Return a copy of ``th`` with schematic variables made ordinary.
+        """Return a copy of ``th`` with ordinary variables made schematic.
 
         Parameters
         ----------
