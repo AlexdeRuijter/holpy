@@ -12,8 +12,10 @@ against the caller's base-case proof to recover ``P``, discharges every
 premise in order, and specialises ``∀z. P(z)`` to the caller's
 induction variable.
 
-Usage examples are documented in ``docs/WORKLOG.md``.
+See the holpy tutorials for macro-construction patterns.
 """
+
+from __future__ import annotations
 
 from typing import Any, Optional
 
@@ -51,6 +53,7 @@ class InductMacro(Macro):
     sig: Optional[Any]
 
     def __init__(self, induct_th_name: Optional[str] = None) -> None:
+        """Initialize the macro, optionally setting the induction theorem name."""
         # Level 1 = safe: the macro expands into primitive inferences
         # so the kernel can independently re-check the proof term.
         self.level = 1
