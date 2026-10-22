@@ -1,0 +1,19 @@
+{
+  "include": ["holpy"],
+  "exclude": ["holpy/**/tests", "docs", "scripts"],
+  "typeCheckingMode": "basic",
+  "reportIncompatibleMethodOverride": "warning",
+  "reportAttributeAccessIssue": "warning",
+  "reportOptionalMemberAccess": "warning",
+  "reportOptionalIterable": "warning",
+  "reportOptionalSubscript": "warning",
+  "reportOptionalCall": "warning",
+  "reportOperatorIssue": "warning",
+  "reportArgumentType": "warning",
+  "reportAssignmentType": "warning",
+  "reportReturnType": "warning",
+  "reportIndexIssue": "warning",
+  "reportCallIssue": "warning",
+  "reportUnusedVariable": "none",
+  "reportMissingImports": "warning"
+}

@@ -1,101 +1,81 @@
-## holpy
+# holpy
 
-Implementation of higher-order logic in Python.
+Higher-order logic (HOL) theorem prover and proof assistant in Python.
 
-### Verification of symbolic integration:
+This distribution contains the core library: kernel, logic, data types, parser,
+proof state, automation, and the bundled theory library. The web IDE and the
+veriT/SMT proof-reconstruction module are preserved on the `archive/webapp` and
+`archive/smt` branches and are not part of the published package.
 
-See README file in the [`integral`](integral/) directory.
+## Installation
 
-### Unit tests
-
-Unit tests for the backend are located in files of the form ```*/tests/*_test.py```.
-
-Run all unit tests on Windows:
-
-```python -m unittest discover -p *_test.py```
-
-On Linux:
-
-```python3 -m unittest */tests/*_test.py```
-
-### Installation and usage:
-
-This project requires Python 3.5 or greater and npm:
-
-https://www.python.org/download/releases/3.0/:
-
-https://www.npmjs.com/
-
-Required packages are listed in requirements.txt. To install required packages in the
-global environment, you can use:
-
-```python -m pip install -r requirements.txt```
-
-Depending on your system, may need to replace python by python3 or python3.x.
-
-To avoid conflicts between projects that require different versions of packages,
-we recommend installing Python packages in an isolated environment, e.g.
-when using the `bash` shell, in the repository root directory do:
-
-```
-$ python3 -m venv ENV                 # Run python3.5 or above.
-$ source ENV/bin/activate             # Sets up "python" to be your python3.
-$ python -m pip install -r requirements.txt
-$ python app.py                       # Runs the backend server on localhost:5000
+```bash
+pip install holpy
 ```
 
-In this same shell you can restore your previous environment later with
+Requires Python 3.10 or newer. The package bundles its theory library, so no
+extra data download is needed. `z3-solver` is a core dependency.
 
-```$ deactivate```
+## Quick start
 
-The user interface is built using Vue, in the `./app` folder. To set up and
-run the user interface server, in a different terminal
-change to `./app` and use ```npm install``` followed by ```npm run serve```.
+```python
+from holpy.logic import basic
 
-In your browser the user interface is at page `localhost:8080`.
+basic.load_theory("logic")
+print("logic theory loaded")
+```
 
-To see statistics for the search functionality on a collection of lemmas, use:
+The bundled theories live in `holpy/library`. User-created theories are written
+to the platform data directory (for example `~/.local/share/holpy` on Linux),
+or to `$HOLPY_USER_DIR` when that variable is set. Set `$HOLPY_LIBRARY_DIR` to
+a writable checkout if you need to rewrite the bundled theories.
 
-```python -m server.collect_stat```
+## Development
 
-### Directory structure:
+```bash
+git clone https://github.com/AlexdeRuijter/holpy.git
+cd holpy
+python -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
+pytest
+```
 
-* [`kernel`](kernel/): kernel for higher-order logic.
-  * [`type`](kernel/type.py): datatype for HOL types.
-  * [`term`](kernel/term.py): datatype for HOL terms.
-  * [`thm`](kernel/thm.py): datatype for HOL theorems, including list of basic derivations.
-  * [`proof`](kernel/proof.py): linear representation of a proof, consisting of a list of instructions to the kernel.
-  * [`macro`](kernel/macro.py): macros as user-defined proof methods.
-  * [`theory`](kernel/theory.py): theory state, containing signature for types and constants, and list of axioms and theorems.
-  * [`extension`](kernel/extension.py): types of extensions to a theory.
-  * [`report`](kernel/report.py): statistics and debugging information for checking a theory extension.
+The tests can also be run with the standard library:
 
-* [`logic`](logic/): base logic and standard automation.
-  * [`matcher`](logic/matcher.py): matching of terms.
-  * [`proofterm`](logic/proofterm.py): tree-like representation of a proof. Used for convenient construction of proofs, and can be transformed to the linear representation.
-  * [`conv`](logic/conv.py): conversions.
-  * [`logic`](logic/logic.py): utilities and definition of standard macros for logic.
-  * [`basic`](logic/basic.py): functions for loading theories.
+```bash
+python -m unittest discover -s holpy -t . -p "*_test.py"
+```
 
-* [`data`](data/): common data types.
-  * [`nat`](data/nat.py): natural numbers.
-  * [`function`](data/function.py): functions.
-  * [`list`](data/list.py): lists.
-  * [`set`](data/set.py): sets.
-  * [`real`](data/real.py): real numbers.
+## Layout
 
-* [`syntax`](syntax/): parsing and printing.
-  * [`operator`](syntax/operator.py): data for unary and binary operators.
-  * [`infertype`](syntax/infertype.py): type inference.
-  * [`printer`](syntax/printer.py): printing functions.
-  * [`parser`](syntax/parser.py): parsing functions, built using Lark parser.
+* `holpy/kernel`: kernel for higher-order logic (types, terms, theorems, proofs,
+  macros, theories, extensions).
+* `holpy/logic`: base logic, matching, conversions, tactics, and automation.
+* `holpy/data`: standard data types (nat, int, list, set, real, ...).
+* `holpy/syntax`: parsing, type inference, and printing.
+* `holpy/server`: proof states, tactics, and methods.
+* `holpy/prover`: proof reconstruction, SMT/SAT bridges, simplex, omega.
+* `holpy/integral`: symbolic integration.
+* `holpy/geometry`, `holpy/paraverifier`, `holpy/imperative`: additional
+  application modules.
+* `holpy/library`: bundled JSON theory library.
+* `docs/`: tutorials and long-form documentation.
+* `scripts/`: development-only utilities.
 
-* [`server`](server/): toplevel functions.
-  * [`server`](server/server.py): definition and standard operations for proof states.
-  * [`tactic`](server/tactic.py): definition of tactics.
-  * [`method`](server/method.py): definition of methods.
+## Authors
 
-* [`app`](app/): web application.
-  * [`__init__.py`](app/__init__.py): main server program.
+holpy was created by **Bohua Zhan** (`bzhan@ios.ac.cn`). The kernel, logic,
+data types, syntax, proof state, automation, and the original application
+modules are his work; the bundled theory library originates from his project.
 
-* [`library`](library/): main library of theories.
+This distribution is maintained by **Alex de Ruijter**
+(`noreply.alderuijter@gmail.com`), who prepared the PyPI packaging, the
+`holpy.*` namespace migration, and the build/test infrastructure. See
+[`AUTHORS.md`](AUTHORS.md) for the full attribution and contributor list.
+
+## Documentation
+
+* `docs/tutorial/`: notebooks introducing the backend and logic.
+* `docs/integral_tutorial/`: symbolic-integration tutorial.
+* `holpy/integral/README.md`: integration coverage and references.

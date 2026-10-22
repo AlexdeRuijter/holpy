@@ -1,14 +1,23 @@
-from importlib import import_module as _import_module
-import sys as _sys
+"""holpy: higher-order logic theorem prover and proof assistant."""
+
+from __future__ import annotations
+
+from importlib import import_module
+from importlib.metadata import PackageNotFoundError, version
+
+try:
+    __version__ = version("holpy")
+except PackageNotFoundError:  # running from a source checkout
+    __version__ = "0.1.0"
 
 __all__ = [
-    "app",
     "data",
     "geometry",
     "imperative",
     "integral",
     "kernel",
     "logic",
+    "macros",
     "paraverifier",
     "prover",
     "server",
@@ -17,10 +26,7 @@ __all__ = [
 ]
 
 
-def __getattr__(name):
-    if name not in __all__:
-        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-    module = _import_module(name)
-    globals()[name] = module
-    _sys.modules[f"{__name__}.{name}"] = module
-    return module
+def __getattr__(name: str):
+    if name in __all__:
+        return import_module(f"{__name__}.{name}")
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

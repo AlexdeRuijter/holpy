@@ -1,0 +1,10 @@
+# Defect-only Python policy for holpy.
+#
+# Keep import errors, syntax/runtime errors, pyflakes findings, and invalid
+# escape sequences. Do not churn the proof scripts with style rewrites; the
+# kernel and theory code are machine-checked and reviewed as written.
+
+line-length = 100
+
+[lint]
+select = ["E4", "E9", "F", "W605"]
