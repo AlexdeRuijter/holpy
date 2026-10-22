@@ -15,7 +15,6 @@ from typing import Any
 
 from holpy.kernel.proof import ItemID, Proof
 from holpy.kernel.proofterm import ProofTerm
-from holpy.kernel.term import Term
 from holpy.kernel.thm import Thm
 
 
