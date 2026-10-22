@@ -70,7 +70,7 @@ data types, syntax, proof state, automation, and the original application
 modules are his work; the bundled theory library originates from his project.
 
 This distribution is maintained by **Alex de Ruijter**
-(`noreply.alderuijter@gmail.com`), who prepared the PyPI packaging, the
+(`A.L.deRuijter@tudelft.nl`), who prepared the PyPI packaging, the
 `holpy.*` namespace migration, and the build/test infrastructure. See
 [`AUTHORS.md`](AUTHORS.md) for the full attribution and contributor list.
 

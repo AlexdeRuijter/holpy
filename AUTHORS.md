@@ -11,7 +11,7 @@ geometry, paraverifier, and imperative modules are also his work.
 
 ## Maintainer
 
-**Alex de Ruijter** <noreply.alderuijter@gmail.com>
+**Alex de Ruijter** <A.L.deRuijter@tudelft.nl>
 
 PyPI packaging, `holpy.*` namespace migration, build and test infrastructure,
 and ongoing maintenance. The original author approved this direction
@@ -21,7 +21,6 @@ and ongoing maintenance. The original author approved this direction
 
 The repository history retains the individual contributions below:
 
-- Alex <noreply.alderuijter@gmail.com>
 - MisterPine <git@mr-pine.de>
 - fyh <1913068672@qq.com>
 - 0o0o0o0osky <90616158+0o0o0o0osky@users.noreply.github.com>

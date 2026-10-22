@@ -8,10 +8,10 @@ license = "BSD-3-Clause"
 license-files = ["LICENSE"]
 authors = [
     { name = "Bohua Zhan", email = "bzhan@ios.ac.cn" },
-    { name = "Alex de Ruijter", email = "noreply.alderuijter@gmail.com" },
+    { name = "Alex de Ruijter", email = "A.L.deRuijter@tudelft.nl" },
 ]
 maintainers = [
-    { name = "Alex de Ruijter", email = "noreply.alderuijter@gmail.com" },
+    { name = "Alex de Ruijter", email = "A.L.deRuijter@tudelft.nl" },
 ]
 keywords = [
     "HOL",
