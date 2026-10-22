@@ -365,12 +365,12 @@ class Type:
         return res
 
     def convert_stvar(self) -> Type:
-        """Return a copy with schematic variables replaced by type variables.
+        """Return a copy with ordinary type variables replaced by schematic ones.
 
         Raises
         ------
         TypeException
-            If self already contains a schematic type variable.
+            If self is, or already contains, a schematic type variable.
         """
         if self.is_stvar():
             raise TypeException("convert_stvar")
