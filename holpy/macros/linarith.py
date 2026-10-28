@@ -39,7 +39,7 @@ states without proof, so a transport certificate must list them:
 ``real_mult_comm``, ``real_mul_lid``, ``real_add_ldistrib``,
 ``real_poly_neg1``, ``real_poly_neg2``, ``real_of_nat_add``,
 ``real_of_nat_mul``, ``real_of_nat_lt``, ``real_of_nat_le`` (nat only),
-``real_mul_lid``, ``real_lt_neq``, ``real_not_leq``, ``real_not_lt``,
+``real_lt_neq``, ``real_not_leq``, ``real_not_lt``,
 ``real_not_geq``, ``real_not_gt``, and from ``nat`` (through
 ``nat_const_less``) ``less_lesseqI``.
 """
