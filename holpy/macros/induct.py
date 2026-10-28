@@ -1,143 +1,223 @@
-"""Generic structural-induction proof macro.
+"""One induction macro for every induction or case rule.
 
-Provides :class:`InductMacro`, a reusable base for structural-induction
-macros over user-defined datatypes.  Concrete types specialise it by
-setting the class attribute ``induct_th_name`` to a registered
-induction theorem of the shape::
+The ``induct`` macro applies any theorem of the shape::
 
-    ⊢ P(base) ⟶ (<step premises>) ⟶ ∀z. P(z)
+    A1 ⟶ ... ⟶ Ak ⟶ ∀z1 ... zm. B1 ⟶ ... ⟶ Bl ⟶ ?P t
 
-and registering the subclass.  The base class matches the first premise
-against the caller's base-case proof to recover ``P``, discharges every
-premise in order, and specialises ``∀z. P(z)`` to the caller's
-induction variable.
+where ``?P`` is a schematic predicate and ``t`` is a pattern that matches
+the induction variable.  ``m`` and ``l`` may be zero, so the generated
+datatype rules ``<T>_induct`` (``... ⟶ ?P ?x``), rules ending in
+``∀n. ?P n`` and rules with side conditions (``finite ?s ⟶ ...``) are all
+one case.  Case-analysis rules are induction rules whose case proofs ignore
+the hypotheses, so they are covered too, and so are rules registered for
+types without structural induction, such as sign cases on ``real``.
 
-Usage examples are documented in ``docs/WORKLOG.md``.
+Arguments are ``(rule, var, goal)`` with ``sig = Tuple[str, Term, Term]``;
+they print as ``rule, var, goal`` and parse back with
+:func:`holpy.syntax.parser.parse_args`.  The previous facts are proofs of the
+instantiated premises in rule order: ``A1 ... Ak`` then ``B1 ... Bl``.
+:func:`induct_cases` computes exactly these subgoals, so a tactic and the
+macro can never disagree.
+
+The macro is level 1.  Its expansion uses only ``theorem``,
+``subst_type``, ``substitution``, ``implies_elim``, ``forall_elim`` and the
+expandable ``beta_norm`` macro, so a stored ``induct`` line expands
+mechanically to primitive kernel steps.
 """
 
-from typing import Any, Optional
+from __future__ import annotations
 
+from copy import copy
+from typing import List, Tuple
+
+from holpy.kernel import theory
 from holpy.kernel.macro import Macro
 from holpy.kernel.proofterm import ProofTerm
-from holpy.kernel.term import Inst, Term
+from holpy.kernel.term import Inst, Lambda, SVar, Term
 from holpy.kernel.theory import register_macro
+from holpy.kernel.thm import Thm
+from holpy.kernel.type import Type, TypeMatchException
 from holpy.logic import matcher
 
 
-class InductMacro(Macro):
-    """Generic structural-induction macro.
+class InductException(Exception):
+    """Raised when ``induct`` cannot apply a rule to a goal."""
 
-    Subclasses specialise the macro to a datatype by setting
-    ``induct_th_name`` to the name of a registered induction theorem
-    and, if the theorem does not end in ``∀z. P(z)``, overriding
-    :meth:`_specialize`.  See :class:`ErealInductMacro` for a concrete
-    example.
 
-    Attributes
+def rule_shape(prop: Term) -> Tuple[List[Term], List[Term], List[Term], Term, Term]:
+    """Split an induction rule into its parts.
+
+    Parameters
     ----------
-    induct_th_name : Optional[str]
-        Name of the registered induction theorem to instantiate.
-        Subclasses must set this; it may also be supplied to
-        ``__init__`` for one-off use.
-    level : int
-        Trust level (``1`` = safe: the kernel re-checks the proof
-        term).
-    sig : Optional[Any]
-        Framework-provided signature slot; unused here.
+    prop : Term
+        Statement of the rule.
+
+    Returns
+    -------
+    tuple
+        ``(As, zs, Bs, P, t)``: the outer premises, the conclusion's
+        quantified variables (as fresh schematic variables), the inner
+        premises, the motive and the pattern it is applied to.
+
+    Raises
+    ------
+    InductException
+        If the conclusion is not ``?P t`` under quantifiers and premises.
     """
+    As, C = prop.strip_implies()
+    zs = []
+    used = {v.name for v in prop.get_svars()}
+    while C.is_forall():
+        # Quantified conclusion variables become schematic so that the
+        # pattern ``t`` can be matched against the induction variable.
+        nm = C.arg.var_name
+        while nm in used:
+            nm = nm + "'"
+        used.add(nm)
+        z = SVar(nm, C.arg.var_T)
+        zs.append(z)
+        C = C.arg.subst_bound(z)
+    Bs, C = C.strip_implies()
+    P, ts = C.strip_comb()
+    if not P.is_svar() or len(ts) != 1:
+        raise InductException("induct: conclusion must have the form ?P t, found %s" % C)
+    return As, zs, Bs, P, ts[0]
 
-    induct_th_name: Optional[str] = None
-    level: int
-    sig: Optional[Any]
 
-    def __init__(self, induct_th_name: Optional[str] = None) -> None:
-        # Level 1 = safe: the macro expands into primitive inferences
-        # so the kernel can independently re-check the proof term.
+def _instantiate(rule: str, var: Term, goal: Term) -> Tuple[Inst, List[Term], List[Term], List[Term]]:
+    """Instantiate ``rule`` with motive ``λvar. goal``.
+
+    Returns
+    -------
+    tuple
+        ``(inst, zs_inst, As, Bs)``: the instantiation of the rule's own
+        schematic variables, the terms for the conclusion's quantified
+        variables, and the instantiated, beta-normal outer and inner
+        premises.
+
+    Raises
+    ------
+    InductException
+        If ``var`` is not a variable, or the rule does not fit the goal.
+    """
+    if not var.is_var():
+        raise InductException("induct: induction variable must be a variable, found %s" % var)
+    th = theory.get_theorem(rule)
+    As, zs, Bs, P, t = rule_shape(th.prop)
+
+    inst = Inst()
+    try:
+        P.T.match_incr(Lambda(var, goal).get_type(), inst.tyinst)
+    except TypeMatchException:
+        raise InductException("induct: rule %s does not apply to %s of type %s" % (rule, var, var.T))
+    inst[P.name] = Lambda(var, goal)
+    try:
+        inst = matcher.first_order_match(t, var, inst)
+    except matcher.MatchException:
+        raise InductException("induct: rule %s cannot be applied to variable %s" % (rule, var))
+
+    rule_svars = {v.name for v in th.prop.get_svars()}
+    missing = sorted(rule_svars - set(inst.keys()))
+    if missing:
+        raise InductException("induct: rule %s leaves %s uninstantiated" % (rule, ", ".join(missing)))
+    for stvar in th.prop.get_stvars():
+        if stvar.name not in inst.tyinst:
+            raise InductException("induct: rule %s leaves type variable %s uninstantiated"
+                                  % (rule, stvar.name))
+
+    zs_inst = [inst[z.name] for z in zs]
+    rule_inst = Inst({k: v for k, v in inst.items() if k in rule_svars})
+    rule_inst.tyinst = copy(inst.tyinst)
+    return rule_inst, zs_inst, [A.subst_norm(inst) for A in As], [B.subst_norm(inst) for B in Bs]
+
+
+def induct_cases(rule: str, var: Term, goal: Term) -> List[Term]:
+    """Return the subgoals of ``induct (rule, var, goal)``, in premise order.
+
+    Parameters
+    ----------
+    rule : str
+        Name of the induction or case rule.
+    var : Term
+        The induction variable.
+    goal : Term
+        The statement to prove, containing ``var``.
+
+    Returns
+    -------
+    List[Term]
+        The instantiated premises ``A1 ... Ak, B1 ... Bl``.
+    """
+    _, _, As, Bs = _instantiate(rule, var, goal)
+    return As + Bs
+
+
+def default_rule(T: Type) -> str:
+    """Return the default induction rule for type ``T``.
+
+    This is the unique theorem with the ``var_induct`` attribute whose
+    pattern has type ``T``.  Tactics use it to fill in an explicit rule
+    name; stored proofs always name the rule, so checking them never
+    depends on attribute lookup.
+
+    Raises
+    ------
+    InductException
+        If no rule, or more than one, is registered for ``T``.
+    """
+    found = []
+    for name, attrs in theory.thy.get_data("attributes").items():
+        if "var_induct" not in attrs:
+            continue
+        try:
+            t = rule_shape(theory.get_theorem(name).prop)[4]
+            t.get_type().match_incr(T, Inst().tyinst)
+        except (InductException, TypeMatchException):
+            continue
+        found.append(name)
+    if len(found) != 1:
+        raise InductException("induct: %d default rules for type %s: %s" % (len(found), T, found))
+    return found[0]
+
+
+@register_macro("induct")
+class InductMacro(Macro):
+    """``induct (rule, var, goal)``: prove ``goal`` from the rule's premises."""
+
+    def __init__(self) -> None:
         self.level = 1
-        self.sig = None
-        if induct_th_name is not None:
-            self.induct_th_name = induct_th_name
+        self.sig = Tuple[str, Term, Term]
+        self.limit = None
 
-    def get_proof_term(self, var: Term, *premise_pts: ProofTerm) -> ProofTerm:
-        """Build a proof term by structural induction on ``var``.
+    def eval(self, args, prevs) -> Thm:
+        rule, var, goal = args
+        prems = induct_cases(rule, var, goal)
+        if len(prevs) != len(prems):
+            raise InductException("induct: expected %d premises, got %d" % (len(prems), len(prevs)))
+        for i, (prev, prem) in enumerate(zip(prevs, prems)):
+            if prev.prop != prem:
+                raise InductException("induct: premise %d is\n  %s\nexpected\n  %s" % (i, prev.prop, prem))
+        return Thm(goal, *(prev.hyps for prev in prevs))
 
-        Parameters
-        ----------
-        var : Term
-            The induction variable used to specialise the final
-            ``∀z. P(z)`` conclusion.
-        *premise_pts : ProofTerm
-            Proofs for the induction theorem's premises, in order.
-            The first must prove the base case; its proposition
-            determines the predicate ``P`` used to instantiate the
-            theorem.  Remaining proofs discharge the step cases.
+    def get_proof_term(self, args, pts) -> ProofTerm:
+        rule, var, goal = args
+        inst, zs_inst, As, Bs = _instantiate(rule, var, goal)
+        if len(pts) != len(As) + len(Bs):
+            raise InductException("induct: expected %d premises, got %d" % (len(As) + len(Bs), len(pts)))
 
-        Returns
-        -------
-        ProofTerm
-            Proof of ``P(var)``.
-
-        Raises
-        ------
-        ValueError
-            If ``induct_th_name`` is unset, or if no ``premise_pts``
-            are supplied.
-        KeyError
-            If ``induct_th_name`` does not name a registered theorem.
-        """
-        if self.induct_th_name is None:
-            raise ValueError(
-                "InductMacro.induct_th_name must be set by a subclass "
-                "or passed to __init__ before use"
-            )
-        if not premise_pts:
-            raise ValueError("at least one premise proof (the base case) is required")
-
-        induct_pt = ProofTerm.theorem(self.induct_th_name)
-
-        # Induction theorems have the form P(base) ⟶ ... ⟶ ∀z. P(z).
-        # Matching the first premise against the caller's base-case
-        # proposition recovers P so the whole implication chain can be
-        # instantiated uniformly, regardless of how many step premises
-        # a particular datatype contributes.
-        base_assum, _ = induct_pt.prop.strip_implies()
-        inst = Inst()
-        inst = matcher.first_order_match(base_assum, premise_pts[0].prop, inst)
-        induct_pt = induct_pt.substitution(inst)
-
-        for premise_pt in premise_pts:
-            induct_pt = induct_pt.implies_elim(premise_pt)
-
-        return self._specialize(induct_pt, var)
-
-    def _specialize(self, pt: ProofTerm, var: Term) -> ProofTerm:
-        """Specialise the quantified conclusion to ``var``.
-
-        Hook for subclasses whose induction theorem does not end in
-        ``∀z. P(z)``.  The default implementation performs a
-        ``forall_elim``.
-
-        Parameters
-        ----------
-        pt : ProofTerm
-            Proof term whose conclusion is ``∀z. P(z)``.
-        var : Term
-            Term to instantiate ``z`` with.
-
-        Returns
-        -------
-        ProofTerm
-            Proof of ``P(var)``.
-        """
-        return pt.forall_elim(var)
-
-
-@register_macro("ereal_induct_macro")
-class ErealInductMacro(InductMacro):
-    """Induction macro for the ``ereal`` datatype.
-
-    The induction theorem is expected to have the shape
-    ``⊢ P(ereal_bot) ⟶ (∀r. P(ereal_real r)) ⟶ ∀z. P(z)``.
-    """
-
-    induct_th_name = "ereal_induct"
+        pt = ProofTerm.theorem(rule).subst_type(inst.tyinst).substitution(inst)
+        # beta_norm is itself an expandable macro, so the whole expansion
+        # stays expandable to primitive steps.
+        pt = ProofTerm("beta_norm", None, [pt])
+        # Discharge premises one at a time, counted from the rule rather
+        # than from the instantiated statement, so implications inside the
+        # goal are never mistaken for premises.
+        for p in pts[:len(As)]:
+            pt = pt.implies_elim(p)
+        for z in zs_inst:
+            pt = pt.forall_elim(z)
+        for p in pts[len(As):]:
+            pt = pt.implies_elim(p)
+        if pt.prop != goal:
+            raise InductException("induct: derived %s, expected %s" % (pt.prop, goal))
+        return pt
