@@ -146,6 +146,23 @@ evaluation are not re-checked; say so in the docstring.
 today it falls through for some. Fix that inside `check_term` if needed, as
 part of this task, and test it.
 
+**Final-theorem guard (added 2026-10-28, Alex approved a cheap extra check).**
+At the end of `Theory.check_proof`, after the loop, call `check_term` on the
+proposition and on every hypothesis of `prf.items[-1].th`, converting
+`TheoryException` to `CheckProofException`. Keep this edit as small and as safe as the main fix:
+
+- run it only when `prf.items[-1].th` is not `None` (a `sorry`-only or empty
+  proof must behave exactly as before, including `no_gaps=False`);
+- do not change the return value, the order of existing checks, or the
+  `compute_only` path (a proof skipped by `compute_only` is not re-checked);
+- it is a second line of defence, never a substitute for the per-rule checks
+  above, so it gets its own commit and its own test: a proof whose last
+  line is a `theorem` line citing a theory theorem is accepted, and one
+  that reaches an ill-typed final proposition is rejected;
+- the library check (all theories) must show no theorem changing status, and
+  the check-time delta is reported with and without this commit. If the
+  guard changes any status, drop that commit and report; do not adjust `check_term` to make it pass.
+
 **Do not** change the recognizers. If the checker approach turns out not to be
 enough (a primitive rule that builds a term from something not listed above),
 stop and report.
