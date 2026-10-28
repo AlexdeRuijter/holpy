@@ -5,7 +5,7 @@ coding agents. Start with [00-overview.md](00-overview.md).
 
 | File | Contents |
 |---|---|
-| [00-overview.md](00-overview.md) | Goal, measurements, workstreams, order, **open decisions** |
+| [00-overview.md](00-overview.md) | Goal, measurements, workstreams, order, **decisions and what is still open** |
 | [01-agent-rules.md](01-agent-rules.md) | Rules and report template for every agent |
 | [10-ws0-baseline.md](10-ws0-baseline.md) | WS0: library check tool and baseline |
 | [20-ws1-proof-levels.md](20-ws1-proof-levels.md) | WS1: `expand()` / `condense()`, levels, condensed library |

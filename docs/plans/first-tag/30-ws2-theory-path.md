@@ -67,7 +67,7 @@ new path. Calling it twice with the same directory has no further effect.
   the file it came from (first one wins). The cycle check spans all directories.
 - `user_file(filename, username)` returns the file found on the path, or, if
   the name is not found, the path it returns today (so writers and error
-  messages keep working). This changes behaviour (open decision 8): report every caller.
+  messages keep working). This changes behaviour (decision 8, approved): report every caller and list it in the changelog.
 - Timestamps and `item_index` keep using the resolved file, so a theory with the
   same name in two directories is never confused.
 - Where holpy *writes* a theory (`monitor.check_theory(rewrite=True)`), it

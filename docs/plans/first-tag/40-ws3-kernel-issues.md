@@ -9,8 +9,8 @@ in scope. `AGENT-INSTRUCTION.md` §"Kernel discipline" still applies in full:
 read the whole symbol and its callers first, change as little as possible,
 and report every change by file and symbol. Each fix makes the kernel reject
 something it accepted before. That is the point, but it must not reject any
-bundled theorem: if the library check shows one, **stop and report** (open
-decision 5).
+bundled theorem: if the library check shows one, **quarantine it** (overview, "Quarantine"):
+never weaken the fix, and never hand-repair the proof.
 
 Every task has the same shape:
 
@@ -128,7 +128,7 @@ test `_check_proof_item` uses), and that `ext.th` has no hypotheses. Otherwise r
 the checker never calls `Theory.check_term`. So a proof can use `implies` at
 type `'a ⇒ 'a ⇒ bool` and have it treated as implication.
 
-**Fix (recommended approach, open decision 4).** In `_check_proof_item`,
+**Fix (decided: the `check_term` approach, decision 4).** In `_check_proof_item`,
 before applying a **primitive** rule, call `self.check_term` on every term
 that enters the proof through that rule's arguments:
 

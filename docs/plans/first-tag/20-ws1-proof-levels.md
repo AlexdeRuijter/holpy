@@ -107,8 +107,8 @@ def condense_theory(data: dict, to: Level, *, steps: str = "keep") -> dict: ...
   loaded up to that item). The `*_theory` functions build it per item, the
   same way `monitor.check_theory` does.
 - `steps="keep" | "drop"`: whether theorem items keep their `steps` key.
-  `condense_theory(..., steps="drop")` is the only way to remove them (open
-  decision 3). `expand_theory` never adds steps.
+  `condense_theory(..., steps="drop")` is the only way to remove them. It exists for
+  later; nothing in v0.1.0 calls it (decision 3). `expand_theory` never adds steps.
 - Both `*_theory` functions set a top-level `"proof_level"` key to the
   resulting level's name (`"macro"`, …). It is a hint for humans and tools.
   Every function recomputes levels and never trusts the key.
@@ -194,11 +194,11 @@ def write_theory(path: str | os.PathLike, data: dict) -> None: ...
 
 ### WS1-A: level core (`MACRO` ⇄ `ANNOTATED`), writer, parser
 
-*Starts from PR #2's branch if it is merged, otherwise `main`.*
+*Starts from `main` after PR #2 is merged.*
 
 | Step | Work |
 |---|---|
-| A1 | `parser.parse_proof_rule`: a missing `th` key means "no statement" (as `""` does). `printer.export_proof_item` unchanged. |
+| A1 | `parser.parse_proof_rule`: a missing `th` key means "no statement" (as `""` does today). `printer.export_proof_item` unchanged. Everywhere in `holpy.proofs`, a missing `th` and `"th": ""` are the same thing (downstream builders already write `""`); `condense` writes the key out as missing, never as `""`. |
 | A2 | `holpy/proofs/` with `Level`, `ProofContext`, `expand`/`condense`/`level_of` for `MACRO` and `ANNOTATED`, the `*_theory` functions, the guard and `steps=`. `PRIMITIVE` raises `NotImplementedError` until WS1-B lands. |
 | A3 | Investigation of `set.nat_finite` (§2.4). Deliverable: a short note in the PR naming the lines that need `th` and why, and the rule added for case 3, or "not found" with what was tried. |
 | A4 | `holpy/proofs/jsonio.py` (§2.5); `monitor.py` and `json_output.py` use it. |
@@ -302,9 +302,10 @@ macro in this task: report it.
 *Wave 2. Needs WS0, WS1-A, and every WS3 PR merged.*
 
 1. `python -m holpy.proofs condense --to macro --steps keep holpy/library/*.json --in-place`
-   (`--steps` as Alex decides, open decision 3).
+   (`--steps keep`; decision 3: steps are never dropped in v0.1.0).
 2. Re-check with `scripts/check_library.py`, compare with the WS0 baseline
    re-run under the fixed kernel: **no theorem changes status or statement.**
+   Theorems quarantined by WS3 stay as they are (a gap); condensing never touches `docs/quarantine/`.
 3. Commit the JSON as its own commit: "library: condense to macro level".
    No other change in that commit.
 4. Report: size per file before and after, the guard list, total check time
@@ -332,7 +333,28 @@ python -m build --wheel && ls -l dist/*.whl
 
 Tests: one test per subcommand on a temporary copy of `logic.json`.
 
-## 4. Not in this workstream
+## 4. Reconciliation with the condensing report
+
+Alex uploaded `json-size-and-proof-efficiency-2026-10-27.md` after the first
+version of this plan. It analyses a downstream project (23 theories, 51.8 MB)
+built on this library. Each of its ideas, and where it ends up:
+
+| Report item | Where it lands |
+|---|---|
+| 2a: keep `th` only on the last line; compact writer (16% on its own) | `MACRO` level and the canonical writer (A2, A4). The report found 2× faster checking and 4 of 4 theories re-checking. Our prototype on the bundled library agrees for `logic` and `nat` but not for `set` (§2.4), so the guard and A3 stay. When A3 finds the cause, tell the downstream project, which blanks `th` on its own. |
+| F1: an exporter option to omit `th` | No new option on `ProofTerm.export`. Downstream builders call `condense_theory`/`condense` on what they export. One mechanism, not two. |
+| F2: `apply_induct` cannot round-trip; draft `induct.py` is broken | Done in PR #2 (`induct`, `parse_args` for `Tuple[str, Term, Term]`). WS1-C's contract test keeps it fixed. |
+| F3 `ereal_cases`, F4 `semiring_norm`, F5 structural macros, F6 `nat` linear arithmetic | PR #2 holds `cases`, `semiring_norm`, `exI_list`/`conj_*`/`contr`, `transfer`, `real_linarith` and `nat_linarith`. WS1-C and WS1-B test that they expand. Anything further (the three-constructor `ehat` case, retiring the remaining `z3` calls) is not part of v0.1.0. |
+| 2b: emit `beta_norm` / `apply_theorem_for` instead of congruence trees | A change in the downstream builders, not in holpy. Nothing to do here. |
+| Section 3: agent proof style; builders' copied helpers | Downstream project only. |
+| Trust story: every macro is level 1 and expands on check | The contract test (WS1-C) enforces it for holpy's own macros, and `oracles()` (B3) lists the exceptions in any proof. |
+| What downstream needs from holpy: a theory search path, no import-time loading | WS2. A tag before the downstream project switches: WS5-C. |
+
+Not done in v0.1.0, and noted so it is not lost: a "transport certificate"
+per theory (oracle steps plus cited theorems that are stored without a proof),
+which the downstream plan calls C3. `oracles()` is its first half.
+
+## 5. Not in this workstream
 
 - The web UI, `expand_line`, `insert_item` and anything else from Phase E.
 - New macros (Phase D). PR #2 holds those.

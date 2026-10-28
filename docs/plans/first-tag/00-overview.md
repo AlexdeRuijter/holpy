@@ -30,7 +30,7 @@ The tag is done when all of these hold:
 Out of scope, by Alex's decision: kernel rewrites beyond the four issues,
 moving to more of the standard library, extensibility refactors, and any
 API-breaking change that has not been discussed. Where a task would need one,
-the plan says so and lists it under "Open decisions" instead of planning it.
+the plan says so and lists it under "Still open" instead of planning it.
 
 ## Inputs these plans are built on
 
@@ -38,7 +38,7 @@ the plan says so and lists it under "Open decisions" instead of planning it.
 |---|---|---|
 | Seven style reviews (2026-10-22) | project files, `Feedback 28-Oct/` | WS4 |
 | Macro-proofs plan (2026-10-28), Phase A and the contract | uploaded to the project thread | WS1 |
-| The JSON condensing report (`json-size-and-proof-efficiency-2026-10-27.md`) | **not found** in the project files or the repo | WS1 uses the summary in the macro-proofs plan instead |
+| The JSON condensing report (`json-size-and-proof-efficiency-2026-10-27.md`) | uploaded by Alex later on 2026-10-28; given to agents locally, not committed | WS1 §4 |
 | Issues #3, #4, #5, #6 | GitHub | WS3 |
 | PR #2, the new macros (`induct`, `real_linarith`, `nat_linarith`, `exI_list`, `conj_*`, `contr`, `cases`, `semiring_norm`, `transfer`) | branch `claude/project-thread-8y7yse` | WS1 (contract test), WS4 (macros docs) |
 | Measurements made while planning | this file, below | all |
@@ -53,7 +53,7 @@ the plan says so and lists it under "Open decisions" instead of planning it.
 | As stored (`indent=4`) | 21.1 MB | |
 | Compact JSON, same content | 9.8 MB | no information lost |
 | Compact, `th` only on each proof's last line | 6.3 MB | the `macro` level of WS1 |
-| Same, and `steps` dropped | 4.2 MB | only if Alex decides to drop `steps` (open decision 3) |
+| Same, and `steps` dropped | 4.2 MB | not planned: `steps` are kept (decision 3) |
 
 Of the content, `proof` is 6.8 MB (of which `th` is 3.0 MB) and `steps` is 2.3 MB.
 2 176 theorems have a stored proof, 2 147 have `steps`, and 1 587 have neither
@@ -84,7 +84,7 @@ assuming every `th` is redundant.
 - the rest: `sat_test` opens a cwd-relative path, and one `proofrec_test` has a `NameError`.
 
 **PyPI.** `https://pypi.org/pypi/holpy/json` returns 404 today, so the name
-looks free. See open decision 7.
+looks free, and Bohua Zhan agreed to the publication (decision 7).
 
 ## Workstreams
 
@@ -100,7 +100,7 @@ looks free. See open decision 7.
 ## Order and parallelism
 
 ```
-Wave 0   WS0 baseline ─────────────┐        Alex: decide on PR #2 (open decision 1)
+Wave 0   WS0 baseline ─────────────┐        Alex merges PR #2 (decision 1)
                                     │
 Wave 1   WS1-A level core   ┐       │   WS2 path      WS3-#3  WS3-#4  WS3-#5  WS3-#6
          WS1-B expansion    ├─ need WS0 for acceptance          WS4 ×7 (kernel first)
@@ -121,7 +121,7 @@ Rules for running waves in parallel:
 - **Conflict hotspots.** `holpy/kernel/{term,thm,theory}.py` are touched by
   WS3 (code) and WS4-kernel (docstrings). Merge WS4-kernel first, then rebase
   each WS3 branch. `holpy/syntax/parser.py` is touched by PR #2 and WS1-A:
-  WS1 starts from PR #2's branch if Alex merges it first, otherwise from `main`.
+  WS1 starts from `main` after PR #2 is merged (decision 1).
 - One PR per task. No PR mixes workstreams.
 
 ## How Alex reviews
@@ -132,54 +132,50 @@ the acceptance checks with their actual output. The acceptance checks in each
 workstream file are written so they can be pasted into a shell. A reviewing
 Claude can be asked to "check PR N against its workstream file".
 
-## Open decisions for Alex
+## Decisions
 
-Each workstream proceeds on the recommendation unless Alex says otherwise. The
-ones marked **blocking** stop the named task until decided.
+Alex answered the first ten open questions on 2026-10-28. Agents treat these as settled.
 
-1. **PR #2 (macros).** Merge it before wave 1? *Recommended: yes.* WS1-C's
-   contract test then covers its 11 macros from day one, and WS1-A builds on its
-   `parse_args` change. Its `holpy/macros/__init__.py` uses relative imports,
-   which WS4-macros fixes afterwards.
-2. **Level names.** `macro` / `annotated` / `primitive` (WS1 §2). *Recommended as
-   written.* Renaming later breaks the CLI and the `proof_level` key.
-3. **Keep `steps` in the bundled library?** Dropping them saves another 2.1 MB
-   (6.3 → 4.2 MB), but `steps` cannot be regenerated from a proof, and the
-   future web UI replays them. *Recommended: keep for v0.1.0.* Note that
-   `monitor.check_theory` replays `steps` (tactics) when present, so the
-   library check in WS0 checks stored proofs directly.
-4. **Kernel issue #6 approach.** Check every term that enters a proof through a
-   primitive rule against the theory (`check_term`), or make the recognizers
-   (`is_implies`, …) check types. *Recommended: the checker approach* (WS3 §#6);
-   it changes one function instead of every caller of the recognizers.
-5. **Kernel fixes reject previously accepted proofs.** That is the intent, but if
-   WS0's library check shows a bundled theorem that relied on a bug, the fix
-   stops there and asks. *Recommended: repair the theorem, never weaken the fix.*
-6. **`holpy.integral`.** 68 failing tests against an older API. *Recommended:*
-   WS5-A triages first; if most failures are call-signature drift in the tests,
-   fix the tests; otherwise mark the module experimental for v0.1.0 and list the
-   failures as known (strict `xfail` with a reason, never a silent skip). **Blocking
-   for WS5-A's second half.**
-7. **Publishing as `holpy`.** The PyPI name looks free, and the upstream author
-   is listed in `pyproject.toml`. *Recommended: ask Bohua Zhan before the first
-   upload,* or publish under a distinct name. **Blocking for the upload, not for
-   the tag.**
-8. **API-visible changes in this plan** (none removes a public name, but each
-   changes behaviour someone may rely on):
-   - `from holpy.data import real` no longer loads `interval_arith` as a side
-     effect, and so no longer replaces the current theory (WS2-B);
-   - theory JSON written by holpy becomes compact instead of `indent=4` (WS1-A),
-     and `proof` lines may omit `th` (readers must accept a missing key);
-   - `basic.user_file()` returns the file found on the search path instead of a
-     fixed directory (WS2-A);
-   - fixing `Monomial.__le__` and `compare_fst` (WS4-util) changes polynomial
-     ordering, which `nat_norm`/`real_norm` results may depend on. *Recommended:*
-     land `__le__` (already on the branch, with a test); document `compare_fst`
-     only and defer its fix past v0.1.0;
-   - `auto_macro.get_proof_term(args, pts)` was renamed to `(args, prevs)` on
-     `style/logic`, which breaks keyword callers. *Recommended: keep the old name.*
-9. **`Development Status` classifier.** It says "4 - Beta". *Recommended:
-   "3 - Alpha" for 0.1.0.*
-10. **The missing condensing report.** If `json-size-and-proof-efficiency-2026-10-27.md`
-    still exists, add it to the project files. WS1 will then be checked against
-    it for ideas this plan missed.
+| # | Question | Decision |
+|---|---|---|
+| 1 | PR #2 (macros) | Alex merges it next, before wave 1. WS1 and WS4-macros start from `main` with it included. |
+| 2 | Level names | `macro` / `annotated` / `primitive` stay. |
+| 3 | `steps` in the bundled library | **Keep them.** `steps` cannot be rebuilt from a proof, so nothing is dropped until a way to drop them without losing reconstructibility is designed (after v0.1.0). `condense(..., steps="drop")` stays in the API but the CLI and WS1-D never use it. |
+| 4 | Issue #6 approach | `check_term` in the checker (WS3-6 as written). The constructive approach (recognizers that check types) is for a future major version, since it breaks the API. |
+| 5 | A fix rejects a bundled theorem | **Quarantine, never weaken.** See "Quarantine" below. |
+| 6 | `holpy.integral` | WS5-A triage as written. |
+| 7 | Publishing as `holpy` | Bohua Zhan agreed. No longer blocking. |
+| 8 | API-visible changes (list in WS-files) | Go ahead. Document each in the changelog under "Changed". |
+| 9 | Classifier | `Development Status :: 3 - Alpha`. |
+| 10 | Condensing report | Uploaded by Alex. Alex gives it to the agents locally; it is not committed. Reconciled in WS1 §4. |
+
+### Quarantine (decision 5)
+
+When a kernel fix (WS3) or any other check makes a bundled theorem stop
+checking, and the cause is that the old proof relied on the bug:
+
+1. Do **not** weaken the fix, and do not hand-repair the proof.
+2. Save the original theorem item, unchanged, to
+   `docs/quarantine/<theory>/<theorem>.json` (the whole item, with its `proof`
+   and `steps`), together with a one-line `reason` and the failing error in a
+   sibling `<theorem>.txt`.
+3. In the library file, keep the theorem's statement and replace its `proof`
+   by a single `sorry` line (a gap), with `num_gaps: 1` and no `steps`.
+4. Add the theorem to `docs/quarantine/INDEX.md` (theory, name, issue number,
+   error). `scripts/check_library.py` reports quarantined theorems with status `gaps`.
+5. Mention each one in the PR body and in the changelog under "Known issues".
+
+The quarantine is Alex's later work list; v0.1.0 may ship with it non-empty.
+
+## Still open
+
+1. **Dropping `th` is slower in `set`.** The planning prototype found `set.nat_finite`
+   takes 198 s without intermediate `th`, while the downstream project found
+   dropping `th` made checking about twice as fast (WS1 §4). WS1-A3 investigates; no
+   decision needed unless it finds `th` is required in many places.
+2. **`compare_fst` ordering bug** (WS4-util): documented only, fix deferred past
+   v0.1.0 unless Alex wants it now.
+3. **`auto_macro.get_proof_term` keyword rename**: WS4-logic reverts it. Say if
+   the rename should stay.
+4. **Kernel change review.** WS3 PRs change the trusted core. Alex reviews each
+   before merge; no agent merges them.

@@ -76,7 +76,7 @@ Review: *style logic — documentation review.md*.
 | `imp_conj_macro`, `sub_conv`, `strip_disj`, `strip_conj` | Docstrings as the review says. |
 | 56 copied `get_proof_term` docstrings | Delete them (the base class documents the method), except where you replace one with a description of that construction. |
 | `auto.py` `debug_auto` | Document that output goes to `logging.debug`. |
-| `auto_macro.get_proof_term(args, pts)` renamed to `(args, prevs)` | **Revert the rename** (keyword callers break; open decision 8). |
+| `auto_macro.get_proof_term(args, pts)` renamed to `(args, prevs)` | **Revert the rename** (keyword callers break; decision 8, approved). |
 | `basic.py` `load_metadata` | **Restore** the `os.path.getmtime(...)` call (its removal silently changed a failure mode). |
 | Unused imports in `tactic.py` (`Any`, `copy`, `TyInst`) and `logic.py` (`term`) | Remove, in a separate commit. Check each for a registration side effect first. |
 
@@ -86,7 +86,7 @@ Review: *style macros — documentation review.md*. **Most of this branch is
 overtaken by PR #2**, which rewrites `holpy/macros/induct.py` and replaces
 `InductMacro`.
 
-- If PR #2 is merged: do not rebase `style/macros`. Start from `main` and
+- PR #2 is merged (decision 1): do not rebase `style/macros`. Start from `main` and
   (a) change `holpy/macros/__init__.py` to absolute imports
   (`from holpy.macros import induct  # noqa: F401`, …); (b) give every module in
   `holpy/macros/` a module docstring and `__all__`, checked against the code;
@@ -94,7 +94,6 @@ overtaken by PR #2**, which rewrites `holpy/macros/induct.py` and replaces
   from `theory.get_theorem` and `MatchException` from the matcher, not
   `KeyError`), checked by test; (d) fix or remove the pointer to
   `docs/tutorial/macros.ipynb`. Close `style/macros` unmerged, with a note.
-- If PR #2 is not merged: wait. Report that the task is blocked on open decision 1.
 
 ## WS4-util
 
@@ -102,7 +101,7 @@ Review: *style util — documentation review.md*.
 
 | Where | Do |
 |---|---|
-| `Monomial.__le__` | Keep the change, as its **own commit titled as a bug fix**, with a test showing `a <= a` is `True` and `sorted` of coefficients 3, 1, 2 gives 1, 2, 3. Run the library check on `nat`, `real`, `int` and report any change (open decision 8). |
+| `Monomial.__le__` | Keep the change, as its **own commit titled as a bug fix**, with a test showing `a <= a` is `True` and `sorted` of coefficients 3, 1, 2 gives 1, 2, 3. Run the library check on `nat`, `real`, `int` and report any change (decision 8, approved). |
 | `Monomial.__mul__`, `collect_pairs` (example and key requirement), `Monomial` class docstring, `typecheck.checkinstance` | Docstrings as the review says. Replace the `collect_pairs` example with one that runs, and add it as a doctest or unit test. |
 | `compare_fst` (only the first factor is compared) | **Document only** ("sorted up to ties"). The fix changes polynomial ordering and is deferred past v0.1.0. Add an `expectedFailure` test that shows `Polynomial([x, x^2]) == Polynomial([x^2, x])` is `False`, referencing a new GitHub issue you draft in the report (do not open it yourself). |
 

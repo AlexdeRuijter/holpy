@@ -34,6 +34,7 @@ python scripts/check_library.py [THEORY ...] [--out FILE] [--jobs N] [--check-le
   be deterministic, so two runs give the same file apart from times.
 - `--jobs N` checks theories in parallel processes. A theory's dependencies are
   loaded in each process; results are identical to `--jobs 1`.
+- Quarantined theorems (overview, "Quarantine") show up as status `gaps`; with `docs/quarantine/INDEX.md` present, the script also prints which `gaps` rows are listed there and which are not.
 - Uses `logging`, exits 0 even when theorems fail (the TSV is the result).
 - A `--compare OLD.tsv` option prints the theorems whose `status`, `statement`
   or `steps` differ, and the total time before and after, and exits 1 if any

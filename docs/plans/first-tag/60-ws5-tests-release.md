@@ -14,8 +14,8 @@ Most of it is not real breakage. Make the suite tell the truth.
 | A3 | `integral/tests/improper_test.py` fails to import | Find out why; fix if it is the same kind of import mistake. |
 | A4 | `prover/tests/sat_test.py::testPelletier` opens `prover/tests/pelletier.json` relative to the cwd | Resolve the path from `__file__` (`Path(__file__).with_name(...)`). |
 | A5 | `prover/tests/proofrec_test.py::testRecSolveSet` raises `NameError` | Find the missing name; fix if it is a test bug; report if it is a code bug. |
-| A6 | 68 failures in `holpy/integral/tests` | **Triage only, then stop** (open decision 6). Group the failures by cause (for example "`eval()` now needs `ctx`": `rules_test`, `slagle_test`, `solve_test`). For each group: the cause, whether the test or the code is stale (check out `923e3b1f` and run the same test there), and the estimated work. Put the table in the PR. |
-| A7 | after Alex's decision on A6 | Either fix the stale tests to the current API, or mark the module experimental: each remaining failing test gets `@unittest.expectedFailure` with a comment naming the cause group and a GitHub issue, and the README says `holpy.integral` is experimental in 0.1.0. |
+| A6 | 68 failures in `holpy/integral/tests` | **Triage only, then stop** (decision 6). Group the failures by cause (for example "`eval()` now needs `ctx`": `rules_test`, `slagle_test`, `solve_test`). For each group: the cause, whether the test or the code is stale (check out `923e3b1f` and run the same test there), and the estimated work. Put the table in the PR. |
+| A7 | after the triage (decision 6 approved the approach) | Either fix the stale tests to the current API, or mark the module experimental: each remaining failing test gets `@unittest.expectedFailure` with a comment naming the cause group and a GitHub issue, and the README says `holpy.integral` is experimental in 0.1.0. |
 
 **Tests.** No new tests, except where a fix needs one. The suite must not lose
 a passing test: compare the list of passed test IDs before and after.
@@ -57,8 +57,8 @@ The agent prepares; **Alex uploads and tags** (both are hard to undo).
 
 | Step | Work |
 |---|---|
-| C1 | `pyproject.toml`: version `0.1.0`; `Development Status` as Alex decides (open decision 9); check `requires-python`, dependencies with lower bounds that CI actually tested, and that `holpy/library/*.json` is in the wheel while tests are not. |
-| C2 | `CHANGELOG.md` (Keep a Changelog format): everything since the upstream fork point, grouped as Added (packaging, theory path, proof levels, macros), Fixed (issues #3–#6, other bug fixes from WS4), Changed (the API-visible items of open decision 8), Known issues (from WS5-A). |
+| C1 | `pyproject.toml`: version `0.1.0`; `Development Status :: 3 - Alpha` (decision 9); check `requires-python`, dependencies with lower bounds that CI actually tested, and that `holpy/library/*.json` is in the wheel while tests are not. |
+| C2 | `CHANGELOG.md` (Keep a Changelog format): everything since the upstream fork point, grouped as Added (packaging, theory path, proof levels, macros), Fixed (issues #3–#6, other bug fixes from WS4), Changed (the API-visible items of decision 8), Known issues (from WS5-A). |
 | C3 | README: install, quick start, "Your own theories" (WS2), "Proof levels" (WS1: `python -m holpy.proofs ...`), what is experimental, and a line on the relation to upstream HolPy. |
 | C4 | `RELEASING.md`: the exact steps for Alex: build, `twine check`, upload to TestPyPI, install from TestPyPI in a clean venv and run the smoke test, upload to PyPI, `git tag -s v0.1.0`, push the tag. Optionally a `publish.yml` workflow using PyPI trusted publishing that runs on a tag, if Alex wants that. |
 | C5 | Dry run: build, `twine check`, clean-venv install from the built wheel on 3.10 and 3.13, smoke test, wheel and sdist sizes. Do **not** upload. |
