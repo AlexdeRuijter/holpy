@@ -146,6 +146,7 @@ def load_theory_cache(filename, username="master"):
         from holpy.data import expr
     if filename == 'real':
         from holpy.data import real
+        from holpy.macros import linarith
     if filename == 'hoare':
         from holpy.imperative import imp
 
