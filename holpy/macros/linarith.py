@@ -25,9 +25,11 @@ Numeral arithmetic is done in binary on ``nat`` with the expandable
 ``add_conv``/``mult_conv`` of :mod:`holpy.data.nat`, so no step evaluates
 numbers outside the kernel.
 
-Limitations of this first version: coefficients and constants must be
-integers (a fraction such as ``1/2`` is an opaque atom), and only the
-type ``real`` is handled.
+Fractions are handled as HolPy writes them, ``u / q`` with ``q`` a
+positive integer numeral (``Real(Fraction(1, 2))`` is ``1 / 2``): each fact
+is first multiplied by a common denominator (:func:`push_denom`, using
+``real_div_lmul``), so the certificate and the normal form only ever see
+integers.  Division by anything else is an opaque atom.
 
 The expansion cites these ``real`` theorems that the bundled library
 states without proof, so a transport certificate must list them:
@@ -50,6 +52,7 @@ from holpy.kernel.macro import Macro
 from holpy.kernel.proofterm import ProofTerm, refl
 from holpy.kernel.term import Binary, Nat, Not, Real, Term
 from holpy.kernel.theory import register_macro
+from holpy.kernel.thm import Thm
 from holpy.kernel.type import RealType
 from holpy.logic.conv import Conv, arg1_conv, arg_conv, binop_conv, rewr_conv
 from holpy.logic.logic import apply_theorem
@@ -319,6 +322,79 @@ def lin_norm(t: Term) -> ProofTerm:
     return _atom(t)
 
 
+def _lcm(a: int, b: int) -> int:
+    return a * b // gcd(a, b)
+
+
+def denom(t: Term) -> int:
+    """A common denominator of the numeral divisions in the linear part of t."""
+    if is_num(t):
+        return 1
+    if t.is_plus() or t.is_minus():
+        return _lcm(denom(t.arg1), denom(t.arg))
+    if t.is_uminus():
+        return denom(t.arg)
+    if t.is_times():
+        if is_num(t.arg1):
+            return denom(t.arg)
+        if is_num(t.arg):
+            return denom(t.arg1)
+        return 1
+    if t.is_divides():
+        q = dest_num(t.arg)
+        if q is not None and q > 0:
+            return q * denom(t.arg1)
+    return 1
+
+
+def num_nonzero(q: int) -> ProofTerm:
+    """``¬(q = 0)`` for a positive integer q."""
+    return apply_theorem("ineq_sym", apply_theorem("real_lt_neq", num_pos(q)))
+
+
+def push_denom(t: Term) -> ProofTerm:
+    """``D * e = e'`` where D is a non-zero integer numeral that clears every
+    numeral division in the linear part of e, and e' has none left there.
+    """
+    d, e = dest_num(t.arg1), t.arg
+    assert d is not None and d != 0, "push_denom: %s" % t
+    if denom(e) == 1:
+        return refl(t)
+    if e.is_plus():
+        return refl(t).on_rhs(rewr_conv("real_add_ldistrib"),
+                              binop_conv(FunConv(push_denom)))
+    if e.is_minus():
+        return refl(t).on_rhs(arg_conv(rewr_conv("real_poly_neg2")), FunConv(push_denom))
+    if e.is_uminus():
+        return refl(t).on_rhs(arg_conv(rewr_conv("real_poly_neg1")), FunConv(push_denom))
+    if e.is_times():
+        pt = refl(t)
+        if not is_num(e.arg1):
+            pt = pt.on_rhs(arg_conv(rewr_conv("real_mult_comm")))
+        return pt.on_rhs(rewr_conv("real_mult_assoc"), arg1_conv(FunConv(num_mul)),
+                         FunConv(push_denom))
+    # e = u / q with q a positive numeral, and q divides d.
+    u, q = e.arg1, dest_num(e.arg)
+    k = d // q
+    assert k * q == d, "push_denom: %d does not clear %s" % (d, e)
+    split = num_mul(Real(k) * Real(q)).symmetric()
+    cancel = ProofTerm.theorem("real_div_lmul").substitution(x=u, y=Real(q)).implies_elim(
+        num_nonzero(q))
+    pt = refl(t).on_rhs(arg1_conv(EqConv(split)), rewr_conv("real_mult_assoc", sym=True),
+                        arg_conv(EqConv(cancel)))
+    if k == 1:
+        return pt.on_rhs(rewr_conv("real_mul_lid"))
+    return pt.on_rhs(FunConv(push_denom))
+
+
+def norm_fact(pt: ProofTerm) -> ProofTerm:
+    """From ``0 ≤/< e`` prove ``0 ≤/< nf``: clear denominators, then normalise."""
+    d = denom(pt.prop.arg)
+    if d > 1:
+        pt = _scale_fact(d, pt).on_prop(arg_conv(FunConv(push_denom)))
+    return pt.on_prop(arg_conv(FunConv(lin_norm)))
+
+
 def lin_coeffs(nf: Term) -> Tuple[Dict[Term, Fraction], Fraction]:
     """Read the atom coefficients and the constant of a normal form."""
     coeffs: Dict[Term, Fraction] = {}
@@ -448,6 +524,84 @@ def find_certificate(facts: List[Tuple[Dict[Term, Fraction], Fraction, bool]]) -
 
 
 # ---------------------------------------------------------------------------
+# Evaluation without building a proof.
+#
+# eval only needs to know that a certificate exists.  It reads the linear
+# structure directly and treats every other subterm as an atom, compared
+# syntactically.  That is sound, and never stronger than the expansion,
+# whose normal form identifies at least the terms this identifies.
+
+def py_lin(t: Term) -> Tuple[Dict[Term, Fraction], Fraction]:
+    """Linear form of a real term as (atom coefficients, constant)."""
+    n = dest_num(t)
+    if n is not None:
+        return {}, Fraction(n)
+
+    def comb(f1, k1, f2, k2):
+        (c1, a1), (c2, a2) = f1, f2
+        c = {}
+        for a in set(c1) | set(c2):
+            v = k1 * c1.get(a, 0) + k2 * c2.get(a, 0)
+            if v != 0:
+                c[a] = v
+        return c, k1 * a1 + k2 * a2
+
+    zero = ({}, Fraction(0))
+    if t.is_plus():
+        return comb(py_lin(t.arg1), 1, py_lin(t.arg), 1)
+    if t.is_minus():
+        return comb(py_lin(t.arg1), 1, py_lin(t.arg), -1)
+    if t.is_uminus():
+        return comb(zero, 0, py_lin(t.arg), -1)
+    if t.is_times():
+        if is_num(t.arg1):
+            return comb(zero, 0, py_lin(t.arg), dest_num(t.arg1))
+        if is_num(t.arg):
+            return comb(zero, 0, py_lin(t.arg1), dest_num(t.arg))
+    if t.is_divides():
+        q = dest_num(t.arg)
+        if q is not None and q != 0:
+            return comb(zero, 0, py_lin(t.arg1), Fraction(1, q))
+    return {t: Fraction(1)}, Fraction(0)
+
+
+def py_sign_facts(p: Term) -> List[Tuple[Dict[Term, Fraction], Fraction, bool]]:
+    """Mirror of :func:`to_sign_facts` on statements."""
+    if p.is_not():
+        q = p.arg
+        if q.is_less_eq():
+            return py_sign_facts(q.arg < q.arg1)
+        if q.is_less():
+            return py_sign_facts(q.arg <= q.arg1)
+        if q.is_greater_eq():
+            return py_sign_facts(q.arg1 < q.arg)
+        if q.is_greater():
+            return py_sign_facts(q.arg1 <= q.arg)
+        raise LinarithException("real_linarith: cannot use %s" % p)
+    if p.is_equals() and p.lhs.get_type() == RealType:
+        return py_sign_facts(p.lhs <= p.rhs) + py_sign_facts(p.rhs <= p.lhs)
+    if not _comparison(p):
+        raise LinarithException("real_linarith: not a real comparison: %s" % p)
+    if p.is_greater_eq() or p.is_greater():
+        a, b = p.arg, p.arg1  # a ≤ b, a < b
+    else:
+        a, b = p.arg1, p.arg
+    c1, k1 = py_lin(b)
+    c2, k2 = py_lin(a)
+    coeffs = {x: c1.get(x, 0) - c2.get(x, 0) for x in set(c1) | set(c2)}
+    coeffs = {x: v for x, v in coeffs.items() if v != 0}
+    return [(coeffs, k1 - k2, p.is_less() or p.is_greater())]
+
+
+def can_refute(props: List[Term]) -> bool:
+    try:
+        find_certificate([f for p in props for f in py_sign_facts(p)])
+    except LinarithException:
+        return False
+    return True
+
+
+# ---------------------------------------------------------------------------
 # Proof replay.
 
 def _scale_fact(k: int, pt: ProofTerm) -> ProofTerm:
@@ -497,9 +651,10 @@ def prove_false(pts: List[ProofTerm]) -> ProofTerm:
     sign_facts = [f for pt in pts for f in to_sign_facts(pt)]
     if not sign_facts:
         raise LinarithException("real_linarith: no facts")
+    sign_facts = [norm_fact(f) for f in sign_facts]
     data = []
     for f in sign_facts:
-        coeffs, const = lin_coeffs(lin_norm(f.prop.arg).rhs)
+        coeffs, const = lin_coeffs(f.prop.arg)
         data.append((coeffs, const, f.prop.is_less()))
     ks = find_certificate(data)
 
@@ -541,6 +696,19 @@ class RealLinarithMacro(Macro):
         self.level = 1
         self.sig = Term
         self.limit = None
+
+    def eval(self, goal: Term, prevs) -> Thm:
+        check_goal(goal)
+        props = [prev.prop for prev in prevs]
+        if goal.is_const("false"):
+            goals = [props]
+        elif goal.is_equals():
+            goals = [props + [Not(goal.lhs <= goal.rhs)], props + [Not(goal.rhs <= goal.lhs)]]
+        else:
+            goals = [props + [Not(goal)]]
+        if not all(can_refute(g) for g in goals):
+            raise LinarithException("real_linarith: no linear proof of %s" % goal)
+        return Thm(goal, *(prev.hyps for prev in prevs))
 
     def get_proof_term(self, goal: Term, pts) -> ProofTerm:
         pts = list(pts)

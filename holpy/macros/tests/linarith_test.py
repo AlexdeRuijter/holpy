@@ -83,7 +83,7 @@ class RealLinarithTest(unittest.TestCase):
         self.assertEqual(pt.prop, g)
         # Hypotheses the certificate does not need are dropped.
         th = full_check(self, pt)
-        self.assertEqual(th, pt.th)
+        self.assertEqual(pt.th, Thm(g, *hs))
         self.assertTrue(th.can_prove(Thm(g, *hs)))
 
         # The stored line round-trips through JSON.
@@ -119,6 +119,28 @@ class RealLinarithTest(unittest.TestCase):
     def testEsupLeaf(self):
         # The shape of the real leaves in the esup/einf lemmas.
         self.prove(["0 < e", "s - e < a", "a ≤ s"], "s < a + e")
+
+    def testFractions(self):
+        self.prove(["x ≤ 1 / 2", "y ≤ 1 / 3"], "x + y ≤ 5 / 6")
+        self.prove(["x / 2 + y / 3 ≥ 1", "x ≤ 0"], "y ≥ 3")
+        self.prove(["(x + y) / 4 < -(3 / 2)"], "x + y < -6")
+        self.prove(["x = 2 / 3"], "3 * x = 2")
+
+    def testFractionNumerals(self):
+        from fractions import Fraction
+        from holpy.macros import linarith as L
+        t = Real(6) * (Real(Fraction(1, 2)) + Real(Fraction(-2, 3)))
+        pt = L.push_denom(t).on_rhs(L.FunConv(L.lin_norm))
+        self.assertEqual(pt.rhs, Real(-1))
+        full_check(self, pt)
+
+    def testEvalMatchesExpansion(self):
+        from holpy.macros.linarith import LinarithException
+        with context.fresh_context(vars=VARS):
+            g = parser.parse_term("x < 1 / 2")
+            h = parser.parse_term("2 * x ≤ 1")
+        with self.assertRaises(LinarithException):
+            ProofTerm("real_linarith", g, [ProofTerm.assume(h)])
 
     def testFailure(self):
         from holpy.macros.linarith import LinarithException
