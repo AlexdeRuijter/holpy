@@ -15,6 +15,7 @@ from holpy.logic.conv import Conv, then_conv, all_conv, arg_conv, binop_conv, re
     top_conv, top_sweep_conv, beta_conv, beta_norm_conv, has_rewrite
 from holpy.kernel.proofterm import ProofTerm, refl
 from holpy.logic import matcher
+from holpy.macros.induct import InductMacro
 from holpy.util import name
 from holpy.util import typecheck
 
@@ -317,24 +318,6 @@ class apply_theorem_macro(Macro):
             pt = pt.forall_intr(v)
 
         return pt
-
-class apply_induct_macro(Macro):
-    """Apply induction. Directly invokes apply_theorem."""
-    def __init__(self):
-        self.level = 1
-        self.sig = Tuple[str, Term, Term]
-        self.limit = None
-
-    def get_proof_term(self, args, pts):
-        th_name, var, goal = args
-        th = theory.get_theorem(th_name)
-        f, th_args = th.concl.strip_comb()
-        P = Lambda(var, goal)
-        if len(th_args) != 1:
-            raise NotImplementedError
-        inst = matcher.first_order_match(th_args[0], var)
-        inst[f.name] = P
-        return apply_theorem(th_name, *pts, inst=inst)
 
 class apply_fact_macro(Macro):
     """Apply a given fact to a list of facts. The first input fact is
@@ -845,7 +828,8 @@ theory.global_macros.update({
     "intros": intros_macro(),
     "apply_theorem": apply_theorem_macro(),
     "apply_theorem_for": apply_theorem_macro(with_inst=True),
-    "apply_induct": apply_induct_macro(),
+    # Legacy name: stored proofs written by var_induct keep loading.
+    "apply_induct": InductMacro(),
     "resolve_theorem": resolve_theorem_macro(),
     "apply_fact": apply_fact_macro(),
     "apply_fact_for": apply_fact_macro(with_inst=True),

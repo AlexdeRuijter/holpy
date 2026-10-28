@@ -13,6 +13,7 @@ from holpy.logic import matcher
 from holpy.logic.conv import then_conv, top_conv, rewr_conv, beta_conv, beta_norm_conv, \
     top_sweep_conv, has_rewrite
 from holpy.logic.logic import apply_theorem
+from holpy.macros.induct import induct_cases
 
 
 class Tactic:
@@ -146,19 +147,11 @@ class intros(Tactic):
         return ProofTerm('intros', None, ptVars + ptAs + [pt])
 
 class var_induct(Tactic):
-    """Apply induction rule on a variable."""
+    """Apply an induction or case rule on a variable, using the induct macro."""
     def get_proof_term(self, goal, *, args=None, prevs=None):
         th_name, var = args
-        P = Lambda(var, goal.prop)
-        th = theory.get_theorem(th_name)
-        f, th_args = th.concl.strip_comb()
-        if len(th_args) != 1:
-            raise NotImplementedError
-        inst = matcher.first_order_match(th_args[0], var)
-        inst[f.name] = P
-        As, _ = th.prop.subst_norm(inst).strip_implies()
-        pts = [ProofTerm.sorry(Thm(A, goal.hyps)) for A in As]
-        return ProofTerm("apply_induct", (th_name, var, goal.prop), pts)
+        pts = [ProofTerm.sorry(Thm(A, goal.hyps)) for A in induct_cases(th_name, var, goal.prop)]
+        return ProofTerm("induct", (th_name, var, goal.prop), pts)
 
 class rewrite_goal(Tactic):
     """Rewrite the goal using a theorem."""
