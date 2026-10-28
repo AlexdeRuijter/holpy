@@ -21,6 +21,9 @@ certificate replayed with ordered-field lemmas:
    ``real_le_add2`` and friends), the sum is normalised to ``c`` by the
    expandable conversion :func:`lin_norm`, and ``0 ≤ c`` is refuted.
 
+``nat_linarith`` does the same for ``nat`` by moving every fact to
+``real`` through ``of_nat`` (see :func:`nat_fact_to_real`).
+
 Numeral arithmetic is done in binary on ``nat`` with the expandable
 ``add_conv``/``mult_conv`` of :mod:`holpy.data.nat`, so no step evaluates
 numbers outside the kernel.
@@ -35,7 +38,8 @@ The expansion cites these ``real`` theorems that the bundled library
 states without proof, so a transport certificate must list them:
 ``real_mult_comm``, ``real_mul_lid``, ``real_add_ldistrib``,
 ``real_poly_neg1``, ``real_poly_neg2``, ``real_of_nat_add``,
-``real_of_nat_mul``, ``real_of_nat_lt``, ``real_not_leq``, ``real_not_lt``,
+``real_of_nat_mul``, ``real_of_nat_lt``, ``real_of_nat_le`` (nat only),
+``real_mul_lid``, ``real_lt_neq``, ``real_not_leq``, ``real_not_lt``,
 ``real_not_geq``, ``real_not_gt``, and from ``nat`` (through
 ``nat_const_less``) ``less_lesseqI``.
 """
@@ -50,10 +54,10 @@ from holpy.data import nat
 from holpy.kernel import term_ord
 from holpy.kernel.macro import Macro
 from holpy.kernel.proofterm import ProofTerm, refl
-from holpy.kernel.term import Binary, Nat, Not, Real, Term
+from holpy.kernel.term import Binary, Const, Nat, Not, Real, Term
 from holpy.kernel.theory import register_macro
 from holpy.kernel.thm import Thm
-from holpy.kernel.type import RealType
+from holpy.kernel.type import NatType, RealType, TFun
 from holpy.logic.conv import Conv, arg1_conv, arg_conv, binop_conv, rewr_conv
 from holpy.logic.logic import apply_theorem
 
@@ -721,3 +725,119 @@ class RealLinarithMacro(Macro):
                                  _by_contradiction(b <= a, pts))
             return ProofTerm.theorem("real_le_antisym").substitution(x=a, y=b).equal_elim(both)
         return _by_contradiction(goal, pts)
+
+
+# ---------------------------------------------------------------------------
+# Linear arithmetic over nat, by transfer to real.
+#
+# Each nat fact is moved to real through of_nat (real_of_nat_le and friends),
+# with a non-negativity fact 0 ≤ of_nat x for every atom x.  Strict facts are
+# first made integral, a < b becoming a + 1 ≤ b, which covers the usual
+# off-by-one reasoning; the search itself is over the rationals, so it is
+# not complete for nat.  The theory must import real.
+
+OfNat = Const("of_nat", TFun(NatType, RealType))
+
+
+def nat_to_real(t: Term, atoms: List[Term]) -> ProofTerm:
+    """``of_nat x = r`` pushing of_nat through +, *, Suc and numerals.
+
+    Every remaining ``of_nat a`` is recorded in ``atoms``.
+    """
+    x = t.arg
+    if x.is_zero():
+        return refl(t).on_rhs(rewr_conv("real_zero_def", sym=True))
+    if x.is_one():
+        return refl(t).on_rhs(rewr_conv("real_one_def", sym=True))
+    if x.is_comb("of_nat", 1) and x.arg.is_binary():
+        return refl(t).on_rhs(rewr_conv("real_of_nat_id"))
+    if x.is_comb("Suc", 1):
+        return refl(t).on_rhs(arg_conv(rewr_conv("add_1_right", sym=True)),
+                              FunConv(lambda u: nat_to_real(u, atoms)))
+    rec = FunConv(lambda u: nat_to_real(u, atoms))
+    if x.is_plus():
+        return refl(t).on_rhs(rewr_conv("real_of_nat_add", sym=True), binop_conv(rec))
+    if x.is_times():
+        return refl(t).on_rhs(rewr_conv("real_of_nat_mul", sym=True), binop_conv(rec))
+    if t not in atoms:
+        atoms.append(t)
+    return refl(t)
+
+
+def nat_fact_to_real(pt: ProofTerm, atoms: List[Term]) -> ProofTerm:
+    """Turn a nat comparison or equality into a real one over of_nat terms."""
+    p = pt.prop
+    if p.is_not():
+        q = p.arg
+        if q.is_greater_eq() or q.is_greater():
+            pt = pt.on_prop(arg_conv(rewr_conv("greater_eq_def" if q.is_greater_eq()
+                                               else "greater_def")))
+            q = pt.prop.arg
+        if q.is_less_eq():
+            return nat_fact_to_real(pt.on_prop(rewr_conv("not_le")), atoms)
+        if q.is_less():
+            return nat_fact_to_real(pt.on_prop(rewr_conv("not_lt")), atoms)
+        raise LinarithException("nat_linarith: cannot use %s" % p)
+    if p.is_greater_eq():
+        return nat_fact_to_real(pt.on_prop(rewr_conv("greater_eq_def")), atoms)
+    if p.is_greater():
+        return nat_fact_to_real(pt.on_prop(rewr_conv("greater_def")), atoms)
+    rec = FunConv(lambda u: nat_to_real(u, atoms))
+    if p.is_less():
+        # a < b  becomes  a + 1 ≤ b
+        pt = pt.on_prop(rewr_conv("lesseq_Suc_less", sym=True),
+                        arg1_conv(rewr_conv("add_1_right", sym=True)))
+        p = pt.prop
+    if p.is_less_eq():
+        pt = pt.on_prop(rewr_conv("real_of_nat_le", sym=True))
+        return pt.on_prop(binop_conv(rec))
+    if p.is_equals():
+        pt = ProofTerm.reflexive(OfNat).combination(pt)
+        return pt.on_prop(binop_conv(rec))
+    raise LinarithException("nat_linarith: not a nat comparison: %s" % p)
+
+
+def _nat_comparison(t: Term) -> bool:
+    return (t.is_less_eq() or t.is_less() or t.is_greater_eq() or t.is_greater()
+            or t.is_equals()) and t.arg.get_type() == NatType
+
+
+def nat_prove_false(pts: List[ProofTerm]) -> ProofTerm:
+    atoms: List[Term] = []
+    facts = [nat_fact_to_real(pt, atoms) for pt in pts]
+    for a in atoms:
+        facts.append(ProofTerm.theorem("real_pos").substitution(n=a.arg))
+    return prove_false(facts)
+
+
+@register_macro("nat_linarith")
+class NatLinarithMacro(Macro):
+    """``nat_linarith goal``: linear arithmetic on nat, through real."""
+
+    def __init__(self) -> None:
+        self.level = 1
+        self.sig = Term
+        self.limit = None
+
+    def get_proof_term(self, goal: Term, pts) -> ProofTerm:
+        pts = list(pts)
+        for pt in pts:
+            p = pt.prop.arg if pt.prop.is_not() else pt.prop
+            if not _nat_comparison(p):
+                raise LinarithException("nat_linarith: not a nat comparison: %s" % pt.prop)
+        if goal.is_const("false"):
+            return nat_prove_false(pts)
+        if not _nat_comparison(goal):
+            raise LinarithException("nat_linarith: unsupported goal %s" % goal)
+
+        def by_contradiction(g):
+            neg = Not(g)
+            false_pt = nat_prove_false(pts + [ProofTerm.assume(neg)])
+            g_pt = apply_theorem("falseE", false_pt, concl=g)
+            return apply_theorem("contradiction", g_pt.implies_intr(neg))
+
+        if goal.is_equals():
+            a, b = goal.args
+            both = apply_theorem("conjI", by_contradiction(a <= b), by_contradiction(b <= a))
+            return ProofTerm.theorem("le_antisym").substitution(m=a, n=b).equal_elim(both)
+        return by_contradiction(goal)

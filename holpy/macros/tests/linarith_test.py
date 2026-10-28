@@ -151,5 +151,33 @@ class RealLinarithTest(unittest.TestCase):
             ProofTerm("real_linarith", g, [ProofTerm.assume(h)])
 
 
+NAT_VARS = {"m": "nat", "n": "nat", "k": "nat"}
+
+
+class NatLinarithTest(unittest.TestCase):
+    def prove(self, hyps, goal):
+        with context.fresh_context(vars=NAT_VARS):
+            hs = [parser.parse_term(h) for h in hyps]
+            g = parser.parse_term(goal)
+        pt = ProofTerm("nat_linarith", g, [ProofTerm.assume(h) for h in hs])
+        self.assertEqual(pt.prop, g)
+        self.assertTrue(full_check(self, pt).can_prove(Thm(g, *hs)))
+
+    def testOffByOne(self):
+        self.prove(["m < n"], "m + 1 ≤ n")
+        self.prove(["m < n", "n < k"], "m + 2 ≤ k")
+        self.prove(["¬(m ≤ n)"], "n < m")
+
+    def testSucAndNumerals(self):
+        self.prove(["Suc m ≤ n"], "m < n")
+        self.prove(["m + 3 ≤ n", "n ≤ 5"], "m ≤ 2")
+        self.prove([], "m ≤ m + k")
+
+    def testEquality(self):
+        self.prove(["m ≤ n", "n ≤ m"], "m = n")
+        self.prove(["m = n + 1"], "n < m")
+        self.prove(["m ≥ n", "m > n + k"], "k < m")
+
+
 if __name__ == "__main__":
     unittest.main()
