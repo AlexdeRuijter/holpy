@@ -208,7 +208,9 @@ class InductMacro(Macro):
         pt = ProofTerm.theorem(rule).subst_type(inst.tyinst).substitution(inst)
         # beta_norm is itself an expandable macro, so the whole expansion
         # stays expandable to primitive steps.
-        pt = ProofTerm("beta_norm", None, [pt])
+        if pt.prop.beta_norm() != pt.prop:
+            # beta_norm cannot expand on a statement that is already normal.
+            pt = ProofTerm("beta_norm", None, [pt])
         # Discharge premises one at a time, counted from the rule rather
         # than from the instantiated statement, so implications inside the
         # goal are never mistaken for premises.

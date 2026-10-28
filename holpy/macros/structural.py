@@ -30,6 +30,9 @@ class StructuralException(Exception):
 
 
 def _beta(pt: ProofTerm) -> ProofTerm:
+    # beta_norm cannot expand on a statement that is already normal.
+    if pt.prop.beta_norm() == pt.prop:
+        return pt
     return ProofTerm("beta_norm", None, [pt])
 
 
