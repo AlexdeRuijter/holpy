@@ -5,3 +5,4 @@
 # loaded (see holpy.logic.basic.load_theory_cache).
 from . import induct  # noqa: F401  (registers the macro)
 from . import structural  # noqa: F401  (registers exI_list, conj_*, contr, cases)
+from . import semiring  # noqa: F401  (registers semiring_norm)
