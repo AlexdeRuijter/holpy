@@ -504,6 +504,11 @@ def parse_args(sig, args):
         elif sig == Tuple[str, Term]:
             s1, s2 = args.split(",", 1)
             return s1, parse_term(s2)
+        elif sig == Tuple[str, Term, Term]:
+            # The middle term is a variable (as in induct), so it holds no
+            # comma and the third term may contain any.
+            s1, s2, s3 = args.split(",", 2)
+            return s1, parse_term(s2), parse_term(s3)
         elif sig == Tuple[str, Inst]:
             s1, s2 = args.split(",", 1)
             inst = parse_inst(s2)
