@@ -1,2 +1,6 @@
 # macros/__init__.py
-from . import induct
+#
+# induct is registered on import (holpy.logic.logic imports it).
+# linarith depends on holpy.data and is registered when the real theory is
+# loaded (see holpy.logic.basic.load_theory_cache).
+from . import induct  # noqa: F401  (registers the macro)
