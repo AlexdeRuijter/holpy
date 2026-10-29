@@ -13,8 +13,9 @@ Project-specific rules for working on **holpy**. Read this before changing code.
   cwd-relative paths such as `library/...`.
 - User theories go to `holpy._paths.user_dir(username)`, never inside
   `site-packages`. `HOLPY_USER_DIR` overrides the data root;
-  `HOLPY_LIBRARY_DIR` points at a writable checkout for rewriting bundled
-  theories.
+  `HOLPY_THEORY_PATH` adds theory directories searched before the bundled
+  library; `HOLPY_LIBRARY_DIR` points at a writable checkout for rewriting
+  bundled theories.
 - `archive/smt` and `archive/webapp` are archives. Do not reintroduce
   `app/`, `smt/`, `sat/`, or `holsmt/` into `main`.
 
