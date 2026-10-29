@@ -1,6 +1,7 @@
 """Set of rules."""
 
-from holpy.geometry.expr import Fact, Rule
+from __future__ import annotations
+
 from holpy.geometry import parser
 
 ruleset_raw = {
