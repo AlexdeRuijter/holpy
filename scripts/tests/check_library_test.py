@@ -46,8 +46,8 @@ class CheckLibraryTest(unittest.TestCase):
         header = lines[0].split("\t")
         return [dict(zip(header, line.split("\t"))) for line in lines[1:]]
 
-    def test_logic_has_45_ok_rows_and_no_failures(self) -> None:
-        """Checking logic gives the planned 45 ok rows and no fail rows."""
+    def test_logic_has_42_ok_3_gaps_and_no_failures(self) -> None:
+        """Checking logic gives 42 ok, 3 gaps, no fail."""
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp) / "logic.tsv"
             result = self.run_script(
@@ -58,15 +58,18 @@ class CheckLibraryTest(unittest.TestCase):
             )
             self.assertEqual(result.returncode, 0, result.stderr)
             rows = self.read_rows(out)
-            self.assertEqual(sum(row["status"] == "ok" for row in rows), 45)
+            self.assertEqual(sum(row["status"] == "ok" for row in rows), 42)
+            self.assertEqual(sum(row["status"] == "gaps" for row in rows), 3)
+            gaps = sorted([row["name"] for row in rows if row["status"] == "gaps"])
+            self.assertEqual(gaps, ["de_morgan_thm1", "imply_neg", "not_imp"])
             self.assertEqual(
                 [row["name"] for row in rows if row["status"] == "fail"],
                 [],
             )
             self.assertTrue(all(row["theory"] == "logic" for row in rows))
 
-    def test_corrupted_th_marks_only_that_theorem_failed(self) -> None:
-        """A bad th in a temporary logic.json fails exactly its theorem."""
+    def test_corrupted_th_marks_only_that_theorem_failed_with_41_ok_3_gaps(self) -> None:
+        """A bad th fails exactly its theorem; others are 41 ok, 3 gaps."""
         with tempfile.TemporaryDirectory() as tmp:
             library = Path(tmp) / "library"
             library.mkdir()
@@ -97,7 +100,8 @@ class CheckLibraryTest(unittest.TestCase):
             rows = self.read_rows(out)
             failed = [row["name"] for row in rows if row["status"] == "fail"]
             self.assertEqual(failed, [corrupted])
-            self.assertEqual(sum(row["status"] == "ok" for row in rows), 44)
+            self.assertEqual(sum(row["status"] == "ok" for row in rows), 41)
+            self.assertEqual(sum(row["status"] == "gaps" for row in rows), 3)
 
     def test_compare_self_and_changed_status(self) -> None:
         """Compare exits 0 for identical files and 1 for an ok-to-fail change."""

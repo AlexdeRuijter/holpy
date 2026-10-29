@@ -68,7 +68,10 @@ class Row:
     name : str
         Theorem name.
     status : str
-        One of ``ok``, ``gaps``, ``fail`` or ``noproof``.
+        ``ok`` when the proof checks and contains no ``sorry`` lines;
+        ``gaps`` when it checks and contains at least one ``sorry`` line;
+        ``fail`` when the check raises; ``noproof`` when there is no
+        stored proof.
     error_type : str
         Exception class name for a failed proof, otherwise an empty string.
     statement : str
@@ -167,7 +170,9 @@ def _theorem_row(
     Returns
     -------
     Row
-        The theorem's status and check statistics.
+        ``fail`` if parsing or checking raises; ``noproof`` if there is
+        no proof; ``gaps`` if the stored proof checks but contains at
+        least one ``sorry`` line; ``ok`` otherwise.
     """
     statement = _printed_statement(item, raw)
 
@@ -210,16 +215,9 @@ def _theorem_row(
             state.prf, rpt=report, no_gaps=False, check_level=check_level
         )
         elapsed = time.perf_counter() - start
-        # A quarantined theorem is stored as a stub containing only `sorry`
-        # (plus optional variable declarations). Ordinary proofs that still
-        # contain an internal `sorry` are treated as checked, matching the
-        # prototype's 45-ok measurement for logic.
-        is_gap_stub = any(
+        status = "gaps" if any(
             line.get("rule") == "sorry" for line in item.proof
-        ) and all(
-            line.get("rule") in ("", "variable", "sorry") for line in item.proof
-        )
-        status = "gaps" if is_gap_stub else "ok"
+        ) else "ok"
         return Row(
             theory=theory_name,
             item=index,
@@ -582,7 +580,10 @@ def build_parser() -> argparse.ArgumentParser:
         Parser for the check-library command.
     """
     parser = argparse.ArgumentParser(
-        description="Check stored proofs in the holpy library."
+        description=(
+            "Check stored proofs in the holpy library. "
+            "Status is gaps when a proof checks but contains a sorry line."
+        )
     )
     parser.add_argument(
         "theory",
