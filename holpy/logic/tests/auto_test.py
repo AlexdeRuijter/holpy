@@ -2,7 +2,7 @@
 
 import unittest
 from holpy.logic import auto
-from holpy.logic.tests.logic_test import test_macro
+from holpy.logic.tests.logic_test import run_macro
 
 
 class AutoTest(unittest.TestCase):
@@ -17,7 +17,7 @@ class AutoTest(unittest.TestCase):
 
         vars = {'A': 'bool', 'B': 'bool'}
         for expr in test_data:
-            test_macro(self, 'logic_base', 'auto', vars=vars, args=expr, res=expr)
+            run_macro(self, 'logic_base', 'auto', vars=vars, args=expr, res=expr)
 
 
 if __name__ == "__main__":

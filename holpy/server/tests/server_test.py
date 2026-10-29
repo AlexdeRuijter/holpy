@@ -17,7 +17,7 @@ from holpy.server import method, server
 from holpy.syntax import parser
 
 
-def testSteps(self, thy_name, thm_name, *, no_gaps=True, print_proof=False, \
+def run_steps(self, thy_name, thm_name, *, no_gaps=True, print_proof=False, \
               print_stat=False, print_search=False, print_steps=False):
     """Test list of steps for the given theorem."""
     def test_val(val):
@@ -158,103 +158,103 @@ class ServerTest(unittest.TestCase):
 
     def testConjComm(self):
         """Proof of A & B --> B & A."""
-        testSteps(self, 'logic', 'conj_comm')
+        run_steps(self, 'logic', 'conj_comm')
 
     def testDisjComm(self):
         """Proof of A | B --> B | A."""
-        testSteps(self, 'logic', 'disj_comm')
+        run_steps(self, 'logic', 'disj_comm')
 
     def testDoubleNegInv(self):
         """Proof of ~~A = A."""
-        testSteps(self, 'logic', 'double_neg')
+        run_steps(self, 'logic', 'double_neg')
 
     def testExistsConj(self):
         """Proof of (?x. A x & B x) --> (?x. A x) & (?x. B x)."""
-        testSteps(self, 'logic', 'ex_conj_distrib')
+        run_steps(self, 'logic', 'ex_conj_distrib')
 
     def testForallConj(self):
         """Proof of (!x. A x & B x) --> (!x. A x) & (!x. B x)."""
-        testSteps(self, 'logic', 'all_conj_distrib')
+        run_steps(self, 'logic', 'all_conj_distrib')
 
     def testAddZeroRight(self):
         """Proof of n + 0 = n by induction."""
-        testSteps(self, 'nat', 'add_0_right')
+        run_steps(self, 'nat', 'add_0_right')
 
     def testAddComm(self):
         """Proof of n + m = m + n."""
-        testSteps(self, 'nat', 'add_comm')
+        run_steps(self, 'nat', 'add_comm')
 
     def testMultZeroRight(self):
         """Proof of n * 0 = 0 by induction."""
-        testSteps(self, 'nat', 'mult_0_right')
+        run_steps(self, 'nat', 'mult_0_right')
 
     def testAppendNil(self):
         """Proof of xs @ [] = xs by induction."""
-        testSteps(self, 'list', 'append_right_neutral')
+        run_steps(self, 'list', 'append_right_neutral')
 
     def testFunUpdTriv(self):
         """Proof of (f)(a := f a) = f."""
-        testSteps(self, 'function', 'fun_upd_triv')
+        run_steps(self, 'function', 'fun_upd_triv')
 
     def testAVal1(self):
         """Proof of aval (Plus (V 1) (N 5)) ((λx. 0)(1 := 7)) = 12."""
-        testSteps(self, 'expr', 'aval_test1')
+        run_steps(self, 'expr', 'aval_test1')
 
     def testAVal2(self):
         """Proof of aval (Plus (V 0) (N 5)) ((%x. 0)(1 := 7)) = 5."""
-        testSteps(self, 'expr', 'aval_test2')
+        run_steps(self, 'expr', 'aval_test2')
 
     def testPierce(self):
         """Proof of ((A --> B) --> A) --> A."""
-        testSteps(self, 'logic', 'pierce')
+        run_steps(self, 'logic', 'pierce')
 
     def testHoarePreRule(self):
         """Proof of Entail P Q --> Valid Q c R --> Valid P c R."""
-        testSteps(self, 'hoare', 'pre_rule')
+        run_steps(self, 'hoare', 'pre_rule')
 
     def testNatLessEqTrans(self):
         """Proof of k <= m --> m <= n --> k <= n."""
-        testSteps(self, 'nat', 'less_eq_trans')
+        run_steps(self, 'nat', 'less_eq_trans')
 
     def testDrinker(self):
         """Proof of ?x. P x --> (!x. P x)."""
-        testSteps(self, 'logic', 'drinker')
+        run_steps(self, 'logic', 'drinker')
 
     def testCantor(self):
         """Proof of ?a. !x. ~f x = a."""
-        testSteps(self, 'set', 'cantor')
+        run_steps(self, 'set', 'cantor')
 
     def testSubsetEmpty(self):
         """Proof of subset empty A."""
-        testSteps(self, 'set', 'subset_empty')
+        run_steps(self, 'set', 'subset_empty')
 
     def testUnionUnion(self):
         """Proof of UN (A Un B) = (UN A) Un (UN B)."""
-        testSteps(self, 'set', 'Union_union')
+        run_steps(self, 'set', 'Union_union')
 
     def testFixpoint(self):
         """Proof of bnd_mono h --> h (lfp h) = lfp h."""
-        testSteps(self, 'set', 'lfp_unfold')
+        run_steps(self, 'set', 'lfp_unfold')
 
     def testInjectiveCompFun(self):
         """Proof of injective f --> injective g --> injective (g o f)."""
-        testSteps(self, 'function', 'injective_comp_fun')
+        run_steps(self, 'function', 'injective_comp_fun')
 
     def testSurjectiveCompFun(self):
         """Proof of surjective f --> surjective g --> surjective (g o f)."""
-        testSteps(self, 'function', 'surjective_comp_fun')
+        run_steps(self, 'function', 'surjective_comp_fun')
 
     def testSurjectiveD(self):
         """Proof of surjective f --> (?x. f x = y)."""
-        testSteps(self, 'function', 'surjectiveD')
+        run_steps(self, 'function', 'surjectiveD')
 
     def testHasLimitUnique(self):
         """Proof of has_limit f x --> has_limit f y --> x = y."""
-        testSteps(self, 'limits', 'has_limit_unique', no_gaps=False)
+        run_steps(self, 'limits', 'has_limit_unique', no_gaps=False)
 
     def testTheI(self):
         """Proof of P a --> (!x. P x --> x = a) --> P (THE x. P x)."""
-        testSteps(self, 'logic_base', 'theI')
+        run_steps(self, 'logic_base', 'theI')
 
 
 if __name__ == "__main__":

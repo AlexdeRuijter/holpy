@@ -9,8 +9,8 @@ from holpy.data import nat
 from holpy.data.nat import Suc, Pre
 from holpy.logic import basic
 from holpy.logic import logic
-from holpy.logic.tests.logic_test import test_macro
-from holpy.logic.tests.conv_test import test_conv
+from holpy.logic.tests.logic_test import run_macro
+from holpy.logic.tests.conv_test import run_conv
 from holpy.syntax import parser
 
 basic.load_theory('nat')
@@ -23,7 +23,7 @@ class NatTest(unittest.TestCase):
         ]
 
         for n in test_data:
-            test_conv(self, 'nat', nat.Suc_conv(), t=Suc(Binary(n)), t_res=Binary(n + 1))
+            run_conv(self, 'nat', nat.Suc_conv(), t=Suc(Binary(n)), t_res=Binary(n + 1))
 
     def testAddConv(self):
         test_data = [
@@ -41,7 +41,7 @@ class NatTest(unittest.TestCase):
         ]
 
         for m, n in test_data:
-            test_conv(self, 'nat', nat.add_conv(), t=Binary(m) + Binary(n), t_res=Binary(m + n))
+            run_conv(self, 'nat', nat.add_conv(), t=Binary(m) + Binary(n), t_res=Binary(m + n))
 
     def testMultConv(self):
         test_data = [
@@ -59,7 +59,7 @@ class NatTest(unittest.TestCase):
         ]
 
         for m, n in test_data:
-            test_conv(self, 'nat', nat.mult_conv(), t=Binary(m) * Binary(n), t_res=Binary(m * n))
+            run_conv(self, 'nat', nat.mult_conv(), t=Binary(m) * Binary(n), t_res=Binary(m * n))
 
     def testNatConv(self):
         test_data = [
@@ -72,7 +72,7 @@ class NatTest(unittest.TestCase):
         ]
 
         for t, n in test_data:
-            test_conv(self, 'nat', nat.nat_conv(), t=t, t_res=Nat(n))
+            run_conv(self, 'nat', nat.nat_conv(), t=t, t_res=Nat(n))
 
     def testNormFull(self):
         test_data = [
@@ -93,7 +93,7 @@ class NatTest(unittest.TestCase):
 
         vars = {"x": 'nat', "y": 'nat', "z": 'nat'}
         for expr, res in test_data:
-            test_conv(self, 'nat', nat.norm_full(), vars=vars, t=expr, t_res=res)
+            run_conv(self, 'nat', nat.norm_full(), vars=vars, t=expr, t_res=res)
 
     def testNormFullLevel1(self):
         test_data = [
@@ -107,7 +107,7 @@ class NatTest(unittest.TestCase):
         limit = ('thm', 'mult_0_right')
         vars = {"x": 'nat', "y": 'nat', "z": 'nat'}
         for expr, res in test_data:
-            test_conv(self, 'nat', nat.norm_full(), limit=limit, vars=vars, t=expr, t_res=res)
+            run_conv(self, 'nat', nat.norm_full(), limit=limit, vars=vars, t=expr, t_res=res)
 
     def testNormFullLevel2(self):
         test_data = [
@@ -119,7 +119,7 @@ class NatTest(unittest.TestCase):
         limit = ('thm', 'add_cancel_left')
         vars = {"x": 'nat', "y": 'nat', "z": 'nat'}
         for expr, res in test_data:
-            test_conv(self, 'nat', nat.norm_full(), limit=limit, vars=vars, t=expr, t_res=res)
+            run_conv(self, 'nat', nat.norm_full(), limit=limit, vars=vars, t=expr, t_res=res)
 
     def testNatNormMacro(self):
         test_data = [
@@ -130,7 +130,7 @@ class NatTest(unittest.TestCase):
 
         vars = {"x": 'nat', "y": 'nat', "z": 'nat'}
         for expr in test_data:
-            test_macro(self, 'nat', 'nat_norm', vars=vars, args=expr, res=expr)
+            run_macro(self, 'nat', 'nat_norm', vars=vars, args=expr, res=expr)
 
     def testNatIneqMacro(self):
         test_data = [
@@ -144,7 +144,7 @@ class NatTest(unittest.TestCase):
 
         for m, n in test_data:
             goal = "~(%d::nat) = %d" % (m, n)
-            test_macro(self, 'nat', 'nat_const_ineq', args=goal, res=goal)
+            run_macro(self, 'nat', 'nat_const_ineq', args=goal, res=goal)
 
     def testNatEqConv(self):
         test_data = [
@@ -155,7 +155,7 @@ class NatTest(unittest.TestCase):
 
         for (a, b), res in test_data:
             expr = "(%d::nat) = %d" % (a, b)
-            test_conv(self, 'nat', nat.nat_eq_conv(), t=expr, t_res=res)
+            run_conv(self, 'nat', nat.nat_eq_conv(), t=expr, t_res=res)
 
     def testNatLessEqMacro(self):
         test_data = [
@@ -165,7 +165,7 @@ class NatTest(unittest.TestCase):
 
         for m, n in test_data:
             goal = "(%d::nat) <= %d" % (m, n)
-            test_macro(self, 'nat', 'nat_const_less_eq', args=goal, res=goal)
+            run_macro(self, 'nat', 'nat_const_less_eq', args=goal, res=goal)
 
     def testNatLessMacro(self):
         test_data = [
@@ -175,7 +175,7 @@ class NatTest(unittest.TestCase):
 
         for m, n in test_data:
             goal = "(%d::nat) < %d" % (m, n)
-            test_macro(self, 'nat', 'nat_const_less', args=goal, res=goal)
+            run_macro(self, 'nat', 'nat_const_less', args=goal, res=goal)
 
 
 if __name__ == "__main__":

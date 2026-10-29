@@ -2,7 +2,7 @@ import unittest
 from holpy.data import proplogic
 from holpy.kernel.term import BoolVars, And, Or, Not
 from holpy.logic import context
-from holpy.logic.tests.conv_test import test_conv
+from holpy.logic.tests.conv_test import run_conv
 from holpy.syntax import parser
 
 A, B, C, D, E, F, G, P, Q, R = BoolVars('A B C D E F G P Q R')
@@ -29,7 +29,7 @@ class PropLogicTest(unittest.TestCase):
         context.set_context('logic', vars=vars)
         for t, res in test_data:
             t, res = parser.parse_term(t), parser.parse_term(res)
-            test_conv(self, 'logic', proplogic.nnf_conv(), vars=vars, t=t, t_res=res)
+            run_conv(self, 'logic', proplogic.nnf_conv(), vars=vars, t=t, t_res=res)
 
     def testSwapConjRConv(self):
         test_data = [
@@ -41,7 +41,7 @@ class PropLogicTest(unittest.TestCase):
         context.set_context('logic', vars=vars)
         for t, res in test_data:
             t, res = parser.parse_term(t), parser.parse_term(res)
-            test_conv(self, 'logic', proplogic.swap_conj_r(), vars=vars, t=t, t_res=res)  
+            run_conv(self, 'logic', proplogic.swap_conj_r(), vars=vars, t=t, t_res=res)  
 
     def testNormConjAtomConv(self):
         test_data = [
@@ -61,7 +61,7 @@ class PropLogicTest(unittest.TestCase):
         context.set_context('logic', vars=vars)
         for t, res in test_data:
             t, res = parser.parse_term(t), parser.parse_term(res)
-            test_conv(self, 'logic', proplogic.norm_conj_atom(), vars=vars, t=t, t_res=res)
+            run_conv(self, 'logic', proplogic.norm_conj_atom(), vars=vars, t=t, t_res=res)
 
     def testNormConjConjunction(self):
         test_data = [
@@ -73,7 +73,7 @@ class PropLogicTest(unittest.TestCase):
         context.set_context('logic', vars=vars)
         for t, res in test_data:
             t, res = parser.parse_term(t), parser.parse_term(res)
-            test_conv(self, 'logic', proplogic.norm_conj_conjunction(), vars=vars, t=t, t_res=res)
+            run_conv(self, 'logic', proplogic.norm_conj_conjunction(), vars=vars, t=t, t_res=res)
 
     def testSwapDisjRConv(self):
         test_data = [
@@ -85,7 +85,7 @@ class PropLogicTest(unittest.TestCase):
         context.set_context('logic', vars=vars)
         for t, res in test_data:
             t, res = parser.parse_term(t), parser.parse_term(res)
-            test_conv(self, 'logic', proplogic.swap_disj_r(), vars=vars, t=t, t_res=res)  
+            run_conv(self, 'logic', proplogic.swap_disj_r(), vars=vars, t=t, t_res=res)  
 
     def testNormDisjAtomConv(self):
         test_data = [
@@ -106,7 +106,7 @@ class PropLogicTest(unittest.TestCase):
         context.set_context('logic', vars=vars)
         for t, res in test_data:
             t, res = parser.parse_term(t), parser.parse_term(res)
-            test_conv(self, 'logic', proplogic.norm_disj_atom(), vars=vars, t=t, t_res=res)
+            run_conv(self, 'logic', proplogic.norm_disj_atom(), vars=vars, t=t, t_res=res)
 
     def testNormDisjDisjunction(self):
         test_data = [
@@ -118,7 +118,7 @@ class PropLogicTest(unittest.TestCase):
         context.set_context('logic', vars=vars)
         for t, res in test_data:
             t, res = parser.parse_term(t), parser.parse_term(res)
-            test_conv(self, 'logic', proplogic.norm_disj_disjunction(), vars=vars, t=t, t_res=res)
+            run_conv(self, 'logic', proplogic.norm_disj_disjunction(), vars=vars, t=t, t_res=res)
 
     def testSortConjuntion(self):
         test_data = [
@@ -136,7 +136,7 @@ class PropLogicTest(unittest.TestCase):
 
         for t, t_res in test_data:
             t, t_res = parser.parse_term(t), parser.parse_term(t_res)
-            test_conv(self, 'logic', proplogic.sort_conj(), vars=vars, t=t, t_res=t_res)
+            run_conv(self, 'logic', proplogic.sort_conj(), vars=vars, t=t, t_res=t_res)
 
     def testSortDisjunction(self):
         test_data = [
@@ -153,4 +153,4 @@ class PropLogicTest(unittest.TestCase):
 
         for t, t_res in test_data:
             t, t_res = parser.parse_term(t), parser.parse_term(t_res)
-            test_conv(self, 'logic', proplogic.sort_disj(), vars=vars, t=t, t_res=t_res)
+            run_conv(self, 'logic', proplogic.sort_disj(), vars=vars, t=t, t_res=t_res)

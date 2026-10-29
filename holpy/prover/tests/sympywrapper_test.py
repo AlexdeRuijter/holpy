@@ -6,7 +6,7 @@ from sympy import Symbol, sqrt, sin, cos
 from sympy.abc import x
 
 from holpy.logic import context
-from holpy.logic.tests.logic_test import test_macro
+from holpy.logic.tests.logic_test import run_macro
 from holpy.syntax import parser
 from holpy.prover import sympywrapper
 
@@ -83,7 +83,7 @@ class SymPyWrapperTest(unittest.TestCase):
 
         vars = {'x': 'real'}
         for expr in test_data:
-            test_macro(self, 'interval_arith', 'auto', vars=vars, args=expr, res=expr)
+            run_macro(self, 'interval_arith', 'auto', vars=vars, args=expr, res=expr)
 
 
 if __name__ == "__main__":
