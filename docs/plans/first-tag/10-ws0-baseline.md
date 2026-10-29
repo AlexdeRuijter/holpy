@@ -15,6 +15,8 @@ what must be checked.
 
 ## Task WS0-1: `scripts/check_library.py`
 
+**Status: open** (ready to be picked up, 2026-10-29)
+
 **Behaviour.**
 
 ```
@@ -66,6 +68,8 @@ awk -F'\t' 'NR>1{print $3}' docs/library_check.tsv | sort | uniq -c  # status co
 ```
 
 ## Task WS0-2: test baseline
+
+**Status: open** (ready to be picked up, 2026-10-29)
 
 Commit `docs/test_baseline.txt`: the sorted list of failing and erroring test
 IDs from
