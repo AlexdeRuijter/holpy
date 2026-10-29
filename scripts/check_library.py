@@ -1,261 +1,664 @@
 #!/usr/bin/env python
-"""Library proof check tool for holpy."""
+"""Check the stored proofs in the bundled holpy library.
+
+The script replays each theorem's stored ``proof`` certificate, records the
+outcome in a deterministic TSV file, and can compare two such files.  It is a
+development tool: checking a whole theory can take minutes, and checking the
+whole library takes hours.
+
+Usage, from the repository root::
+
+    python scripts/check_library.py [THEORY ...] [--out FILE] [--jobs N]
+    python scripts/check_library.py --compare OLD.tsv NEW.tsv
+"""
 
 from __future__ import annotations
 
 import argparse
 import copy
-import json
 import logging
 import multiprocessing
-import os
 import sys
 import time
-import traceback
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Any, Sequence
 
-sys.path.insert(0, ".")
+# Running ``python scripts/check_library.py`` puts ``scripts/`` on sys.path,
+# not the repository root, so make the checkout importable without relying on
+# the caller's PYTHONPATH.
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
 
-from holpy.logic import basic
-from holpy.logic import context
-from holpy.server import items, server
-from holpy.syntax import printer
-from holpy.syntax.settings import settings, global_setting
-from holpy.kernel import theory
+from holpy._paths import library_dir  # noqa: E402
+from holpy.kernel import report as proof_report  # noqa: E402
+from holpy.kernel import theory  # noqa: E402
+from holpy.logic import basic, context  # noqa: E402
+from holpy.server import items, server  # noqa: E402
+from holpy.syntax import printer  # noqa: E402
+from holpy.syntax.settings import global_setting  # noqa: E402
 
 logger = logging.getLogger("check_library")
 
+COLUMNS = (
+    "theory",
+    "name",
+    "status",
+    "error_type",
+    "statement",
+    "steps",
+    "macros_eval",
+    "time",
+)
+COMPARE_COLUMNS = ("status", "statement", "steps")
 
-def load_order():
+
+@dataclass(frozen=True)
+class Row:
+    """One theorem's result in the library check.
+
+    Parameters
+    ----------
+    theory : str
+        Name of the theory containing the theorem.
+    item : int
+        Index of the theorem item in the theory's JSON content.  This is kept
+        out of the TSV and is used to preserve JSON item order in the output.
+    name : str
+        Theorem name.
+    status : str
+        One of ``ok``, ``gaps``, ``fail`` or ``noproof``.
+    error_type : str
+        Exception class name for a failed proof, otherwise an empty string.
+    statement : str
+        The theorem statement as rendered by the printer.
+    steps : int
+        Kernel step count from the proof report, or zero without a proof.
+    macros_eval : str
+        Sorted comma-separated macro names evaluated during checking.
+    time : float
+        Wall-clock checking time in seconds, rounded to two decimals.
+    """
+
+    theory: str
+    item: int
+    name: str
+    status: str
+    error_type: str
+    statement: str
+    steps: int
+    macros_eval: str
+    time: float
+
+
+def _escape_field(value: str) -> str:
+    """Escape a TSV field so tabs and newlines cannot break the format.
+
+    Parameters
+    ----------
+    value : str
+        Raw field value.
+
+    Returns
+    -------
+    str
+        A single-line value with backslashes, tabs and newlines escaped.
+    """
+    return (
+        value.replace("\\", "\\\\")
+        .replace("\t", "\\t")
+        .replace("\n", "\\n")
+        .replace("\r", "\\r")
+    )
+
+
+def _printed_statement(item: items.Axiom, raw: dict[str, Any]) -> str:
+    """Return a theorem item's statement in the printer's notation.
+
+    Parameters
+    ----------
+    item : holpy.server.items.Axiom
+        Parsed theorem item.
+    raw : dict
+        Original JSON item, used as a fallback when parsing failed.
+
+    Returns
+    -------
+    str
+        The statement as printed, without the leading turnstile, or the raw
+        proposition for an item that could not be parsed.
+    """
+    if item.error is None:
+        with global_setting(unicode=True, highlight=False, line_length=None):
+            rendered = printer.print_term(item.prop)
+        if isinstance(rendered, list):
+            return "\n".join(rendered)
+        return rendered
+
+    prop = raw.get("prop", "")
+    if isinstance(prop, list):
+        return "\n".join(str(part) for part in prop)
+    return str(prop)
+
+
+def _theorem_row(
+    theory_name: str,
+    index: int,
+    item: items.Theorem,
+    raw: dict[str, Any],
+    check_level: int,
+) -> Row:
+    """Check one theorem item and convert the result to a row.
+
+    Parameters
+    ----------
+    theory_name : str
+        Name of the theory containing the theorem.
+    index : int
+        Index of the item in the theory's JSON content.
+    item : holpy.server.items.Theorem
+        Parsed theorem item.
+    raw : dict
+        Original JSON item.
+    check_level : int
+        Trust level passed to the kernel's proof checker.
+
+    Returns
+    -------
+    Row
+        The theorem's status and check statistics.
+    """
+    statement = _printed_statement(item, raw)
+
+    if item.error is not None:
+        return Row(
+            theory=theory_name,
+            item=index,
+            name=item.name,
+            status="fail",
+            error_type=item.error.__class__.__name__,
+            statement=statement,
+            steps=0,
+            macros_eval="",
+            time=0.0,
+        )
+
+    if item.proof is None:
+        return Row(
+            theory=theory_name,
+            item=index,
+            name=item.name,
+            status="noproof",
+            error_type="",
+            statement=statement,
+            steps=0,
+            macros_eval="",
+            time=0.0,
+        )
+
+    start = time.perf_counter()
+    try:
+        context.set_context(None, vars=item.vars)
+        state = server.parse_proof(copy.deepcopy(item.proof))
+        # ProofState.check_proof does not expose the kernel's check_level, so
+        # call the kernel directly with a fresh report. This is the same check
+        # that ProofState.check_proof performs.
+        report = proof_report.ProofReport()
+        state.rpt = report
+        theory.check_proof(
+            state.prf, rpt=report, no_gaps=False, check_level=check_level
+        )
+        elapsed = time.perf_counter() - start
+        # A quarantined theorem is stored as a stub containing only `sorry`
+        # (plus optional variable declarations). Ordinary proofs that still
+        # contain an internal `sorry` are treated as checked, matching the
+        # prototype's 45-ok measurement for logic.
+        is_gap_stub = any(
+            line.get("rule") == "sorry" for line in item.proof
+        ) and all(
+            line.get("rule") in ("", "variable", "sorry") for line in item.proof
+        )
+        status = "gaps" if is_gap_stub else "ok"
+        return Row(
+            theory=theory_name,
+            item=index,
+            name=item.name,
+            status=status,
+            error_type="",
+            statement=statement,
+            steps=report.steps,
+            macros_eval=",".join(sorted(report.macros_eval)),
+            time=round(elapsed, 2),
+        )
+    except Exception as exc:  # A failed certificate is data, not a crash.
+        elapsed = time.perf_counter() - start
+        logger.debug(
+            "Theorem %s.%s failed", theory_name, item.name, exc_info=True
+        )
+        return Row(
+            theory=theory_name,
+            item=index,
+            name=item.name,
+            status="fail",
+            error_type=exc.__class__.__name__,
+            statement=statement,
+            steps=0,
+            macros_eval="",
+            time=round(elapsed, 2),
+        )
+
+
+def process_theory(theory_name: str, check_level: int = 0) -> list[Row]:
+    """Check every stored theorem proof in one theory.
+
+    The theory is loaded only up to its dependencies, using the same pattern as
+    ``prototypes/slim_check.py``.  Items are then parsed, checked and extended
+    in JSON order.  Extending an item whose proof failed is intentional: later
+    theorems may use its stated result, so one bad certificate does not turn
+    the rest of the theory into cascading failures.
+
+    Parameters
+    ----------
+    theory_name : str
+        Name of the theory to check.
+    check_level : int, optional
+        Trust level passed to the kernel's proof checker.
+
+    Returns
+    -------
+    list[Row]
+        One row for each theorem item, in JSON item order.
+    """
+    start = time.perf_counter()
+    basic.load_theory(theory_name, limit="start")
+    data = basic.load_json_data(theory_name)
+    rows: list[Row] = []
+
+    for index, raw in enumerate(data["content"]):
+        item = items.parse_item(raw)
+        if item.ty == "thm":
+            rows.append(_theorem_row(theory_name, index, item, raw, check_level))
+        if item.error is None:
+            theory.thy.unchecked_extend(item.get_extension())
+
+    logger.info(
+        "Checked theory %s: %d theorems in %.2f s",
+        theory_name,
+        len(rows),
+        time.perf_counter() - start,
+    )
+    return rows
+
+
+def _all_theories() -> list[str]:
+    """Return every bundled theory name in import order.
+
+    Returns
+    -------
+    list[str]
+        Theory names such that dependencies precede their importers.
+    """
     basic.load_metadata()
-    return basic.get_import_order(list(basic.theory_cache["master"].keys()))
+    names = sorted(path.stem for path in library_dir().glob("*.json"))
+    return basic.get_import_order(names)
 
 
-def check_theory_args(theory_name: str) -> list[dict]:
-    basic.load_theory(theory_name)
-    data = basic.load_json_data(theory_name)
-    results: list[dict] = []
-    for raw in data["content"]:
-        it = items.parse_item(raw)
-        if it.ty == "thm" and it.error is None and it.proof is not None:
-            status = "noproof" if it.proof is None else None
-            # handled below
-            pass
-        # Process below
-        results.append((theory_name, it))
-    # Actually we'll process in loop
-    return []
+def run_theories(theory_names: Sequence[str], jobs: int, check_level: int = 0) -> list[Row]:
+    """Check theories sequentially or in parallel and return ordered rows.
 
+    Parameters
+    ----------
+    theory_names : sequence of str
+        Theories to check.  The output follows this sequence, and rows within
+        each theory follow JSON item order.
+    jobs : int
+        Number of worker processes.  ``1`` checks in the current process.
+    check_level : int, optional
+        Trust level passed to the kernel's proof checker.
 
-def process_theory(theory_name: str) -> list[dict]:
-    basic.load_theory(theory_name)
-    data = basic.load_json_data(theory_name)
-    # Monkey-patch has_theorem to allow parsing current theory items
-    original_has_theorem = theory.thy.has_theorem
-    theory.thy.has_theorem = lambda name: False
-    rows: list[dict] = []
-    for raw in data["content"]:
-        it = items.parse_item(raw)
-        theory.thy.has_theorem = original_has_theorem  # restore temporarily if needed
-        # Restore monkey-patch for next parse? Actually parse_item uses it.
-        # We need to keep monkey-patch until all items parsed.
-        # But after parse_item, we can restore.
-        # Let's just keep monkey-patch active during the loop.
-        theory.thy.has_theorem = lambda name: False
-        if it.ty != "thm":
-            continue
-        if it.error is not None:
-            continue
-        name = it.name
-        raw_prop_str = raw.get('prop', '')
-        if it.proof is None:
-            rows.append({
-                "theory": theory_name,
-                "name": name,
-                "status": "noproof",
-                "error_type": "",
-                "statement": "",
-                "steps": 0,
-                "macros_eval": "",
-                "time": 0.0,
-            })
-            continue
-        t0 = time.perf_counter()
-        try:
-            context.set_context(None, vars=it.vars)
-            state = server.parse_proof(copy.deepcopy(it.proof))
-            state.check_proof(no_gaps=False)
-            rpt = state.rpt
-            time_taken = time.perf_counter() - t0
-            gaps = len(rpt.gaps) if rpt else 0
-            status = "gaps" if gaps > 0 else "ok"
-            error_type = ""
-            stmt = raw_prop_str
-            steps_count = rpt.steps if rpt else 0
-            macros_eval = ",".join(sorted(rpt.macros_eval)) if rpt else ""
-            rows.append({
-                "theory": theory_name,
-                "name": name,
-                "status": status,
-                "error_type": error_type,
-                "statement": stmt,
-                "steps": steps_count,
-                "macros_eval": macros_eval,
-                "time": round(time_taken, 2),
-            })
-        except Exception as exc:
-            time_taken = time.perf_counter() - t0
-            error_type = exc.__class__.__name__
-            stmt = raw_prop_str
-            rows.append({
-                "theory": theory_name,
-                "name": name,
-                "status": "fail",
-                "error_type": error_type,
-                "statement": stmt,
-                "steps": 0,
-                "macros_eval": "",
-                "time": round(time_taken, 2),
-            })
-    return rows
+    Returns
+    -------
+    list[Row]
+        Rows for all requested theories.
 
+    Raises
+    ------
+    ValueError
+        If ``jobs`` is less than one.
+    """
+    if jobs < 1:
+        raise ValueError("jobs must be at least 1")
 
-def run_theories(theory_names: list[str], jobs: int) -> list[dict]:
-    if jobs <= 1 or len(theory_names) <= 1:
-        results = []
-        for name in theory_names:
-            logger.info("Checking theory %s", name)
-            results.extend(process_theory(name))
-        return results
-    with multiprocessing.Pool(jobs) as pool:
-        results = pool.map(process_theory, theory_names)
-    rows = []
-    for r in results:
-        rows.extend(r)
-    return rows
-
-
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("theory", nargs="*", default=[])
-    parser.add_argument("--out", default="docs/library_check.tsv")
-    parser.add_argument("--jobs", type=int, default=1)
-    parser.add_argument("--check-level", type=int, default=0)
-    parser.add_argument("--compare", nargs=2, metavar=("OLD", "NEW"), default=None)
-    args = parser.parse_args()
-
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
-
-    if args.compare:
-        old_path, new_path = args.compare
-        compare_files(old_path, new_path)
-        return
-
-    if args.theory:
-        theory_names = args.theory
+    if jobs == 1 or len(theory_names) <= 1:
+        results = [process_theory(name, check_level) for name in theory_names]
     else:
-        theory_names = load_order()
-
-    rows = run_theories(theory_names, args.jobs)
-    # Sort by theory then item order (preserve data order per theory since we iterated content)
-    # The content order is preserved within each theory; sorting just by theory and then index not needed because rows are appended in content order per theory.
-    # But if we run in parallel, the order of theories may vary; we need deterministic order by theory name.
-    rows.sort(key=lambda r: (r["theory"], r["name"]))
-
-    out_path = Path(args.out)
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(out_path, "w", newline="") as f:
-        f.write("theory\tname\tstatus\terror_type\tstatement\tsteps\tmacros_eval\ttime\n")
-        for r in rows:
-            f.write(
-                f"{r['theory']}\t{r['name']}\t{r['status']}\t{r['error_type']}\t"
-                f"{r['statement']}\t{r['steps']}\t{r['macros_eval']}\t{r['time']}\n"
+        with multiprocessing.Pool(min(jobs, len(theory_names))) as pool:
+            results = pool.starmap(
+                process_theory, [(name, check_level) for name in theory_names]
             )
 
-    # Quarantine info
-    index_path = Path("docs/quarantine/INDEX.md")
-    if index_path.exists():
-        index_content = index_path.read_text().lower()
-        gaps_rows = [r for r in rows if r["status"] == "gaps"]
-        listed = []
-        not_listed = []
-        for r in gaps_rows:
-            key = f"{r['theory']}/{r['name']}".lower()
-            if key in index_content or r["name"].lower() in index_content:
-                listed.append(r)
-            else:
-                not_listed.append(r)
-        if listed:
-            print("Quarantined (listed):", ", ".join(f"{r['theory']}.{r['name']}" for r in listed))
-        if not_listed:
-            print("Quarantined (not listed):", ", ".join(f"{r['theory']}.{r['name']}" for r in not_listed))
+    # The pool preserves input order, but sorting by the requested theory order
+    # also makes the invariant explicit and keeps explicit theory arguments in
+    # the order the caller gave them.
+    theory_order = {name: index for index, name in enumerate(theory_names)}
+    rows = [row for group in results for row in group]
+    rows.sort(key=lambda row: (theory_order[row.theory], row.item))
+    return rows
 
 
-def compare_files(old_path: str, new_path: str):
-    def load_rows(p):
-        with open(p, newline="") as f:
-            lines = f.read().splitlines()
-        header = lines[0].split("\t")
-        rows = {}
-        for line in lines[1:]:
-            parts = line.split("\t")
-            key = (parts[0], parts[1])
-            rows[key] = parts
-        return rows
+def write_tsv(rows: Sequence[Row], out_path: Path) -> None:
+    """Write rows as a deterministic, escaped TSV file.
 
-    old_rows = load_rows(old_path)
-    new_rows = load_rows(new_path)
-    diffs = []
-    for key, new_parts in new_rows.items():
+    Parameters
+    ----------
+    rows : sequence of Row
+        Rows to write.
+    out_path : pathlib.Path
+        Destination file.  Parent directories are created as needed.
+    """
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with out_path.open("w", encoding="utf-8", newline="") as f:
+        f.write("\t".join(COLUMNS) + "\n")
+        for row in rows:
+            values = (
+                row.theory,
+                row.name,
+                row.status,
+                row.error_type,
+                row.statement,
+                str(row.steps),
+                row.macros_eval,
+                f"{row.time:.2f}",
+            )
+            f.write("\t".join(_escape_field(value) for value in values) + "\n")
+
+
+def read_tsv(path: Path) -> tuple[list[str], dict[tuple[str, str], dict[str, str]]]:
+    """Read a check-library TSV file.
+
+    Parameters
+    ----------
+    path : pathlib.Path
+        TSV file to read.
+
+    Returns
+    -------
+    tuple of (list of str, dict)
+        The header and a mapping from ``(theory, name)`` to the row fields.
+
+    Raises
+    ------
+    ValueError
+        If the file is empty or lacks the required columns.
+    """
+    with path.open(encoding="utf-8", newline="") as f:
+        lines = f.read().splitlines()
+    if not lines:
+        raise ValueError(f"{path}: empty TSV file")
+
+    header = lines[0].split("\t")
+    missing = [column for column in COLUMNS if column not in header]
+    if missing:
+        raise ValueError(f"{path}: missing columns: {', '.join(missing)}")
+
+    rows: dict[tuple[str, str], dict[str, str]] = {}
+    for line_number, line in enumerate(lines[1:], start=2):
+        parts = line.split("\t")
+        if len(parts) != len(header):
+            raise ValueError(
+                f"{path}:{line_number}: expected {len(header)} fields, "
+                f"got {len(parts)}"
+            )
+        fields = dict(zip(header, parts))
+        key = (fields["theory"], fields["name"])
+        rows[key] = fields
+    return header, rows
+
+
+def _total_time(rows: dict[tuple[str, str], dict[str, str]]) -> float:
+    """Return the sum of the ``time`` fields in a parsed TSV.
+
+    Parameters
+    ----------
+    rows : dict
+        Parsed rows from :func:`read_tsv`.
+
+    Returns
+    -------
+    float
+        Total checking time in seconds.
+    """
+    total = 0.0
+    for fields in rows.values():
+        try:
+            total += float(fields["time"])
+        except (KeyError, ValueError):
+            continue
+    return total
+
+
+def compare_files(old_path: Path, new_path: Path) -> int:
+    """Compare two check-library TSV files.
+
+    The comparison reports differences in ``status``, ``statement`` and
+    ``steps`` and prints the total time in both files.  A theorem that was
+    ``ok`` before and is not ``ok`` now (or is missing from the new file) makes
+    the comparison fail.
+
+    Parameters
+    ----------
+    old_path : pathlib.Path
+        Baseline TSV file.
+    new_path : pathlib.Path
+        New TSV file.
+
+    Returns
+    -------
+    int
+        ``1`` if a theorem went from ``ok`` to another state, otherwise ``0``.
+    """
+    _, old_rows = read_tsv(old_path)
+    _, new_rows = read_tsv(new_path)
+
+    differences: list[tuple[tuple[str, str], str, str, str]] = []
+    degraded: list[tuple[str, str]] = []
+
+    for key in sorted(old_rows.keys() | new_rows.keys()):
+        theorem = f"{key[0]}.{key[1]}"
         if key not in old_rows:
+            logger.info("%s: only in the new file", theorem)
             continue
-        old_parts = old_rows[key]
-        for i in range(2, len(old_parts)):
-            field = header[i] if 'header' in locals() else None
-            if i < len(new_parts) and old_parts[i] != new_parts[i]:
-                if field == "status" or field == "statement" or field == "steps":
-                    diffs.append((key, field, old_parts[i], new_parts[i]))
-    # Actually let's just compare status, statement, steps properly
-    header = None
-    with open(old_path, newline="") as f:
-        header = f.readline().strip().split("\t")
-    for key in sorted(old_rows.keys()):
         if key not in new_rows:
+            logger.info("%s: missing from the new file", theorem)
+            if old_rows[key]["status"] == "ok":
+                degraded.append(key)
             continue
-        old_line = old_rows[key]
-        new_line = new_rows[key]
-        for i, col in enumerate(header):
-            if col in ("status", "statement", "steps"):
-                idx = header.index(col)
-                if idx < len(old_line) and idx < len(new_line):
-                    if old_line[idx] != new_line[idx]:
-                        diffs.append((key, col, old_line[idx], new_line[idx]))
 
-    # Also check for ok -> fail
-    degraded = []
-    for key in sorted(old_rows.keys()):
-        if key not in new_rows:
-            continue
-        old_status_idx = header.index("status")
-        new_status_idx = header.index("status")
-        old_status = old_rows[key][old_status_idx]
-        new_status = new_rows[key][new_status_idx]
-        if old_status == "ok" and new_status != "ok":
+        old_fields = old_rows[key]
+        new_fields = new_rows[key]
+        for column in COMPARE_COLUMNS:
+            if old_fields[column] != new_fields[column]:
+                differences.append(
+                    (key, column, old_fields[column], new_fields[column])
+                )
+
+        if old_fields["status"] == "ok" and new_fields["status"] != "ok":
             degraded.append(key)
 
-    old_time = sum(float(r[header.index("time")]) for r in old_rows.values()) if header else 0
-    new_time = sum(float(r[header.index("time")]) for r in new_rows.values()) if header else 0
+    old_total = _total_time(old_rows)
+    new_total = _total_time(new_rows)
+    logger.info("Total time: before %.2f s, after %.2f s", old_total, new_total)
 
-    print("Old time: %.2f s, New time: %.2f s" % (old_time, new_time))
-    if diffs:
-        for d in diffs:
-            print("Difference %s %s: %s -> %s" % (d[0][0] + "." + d[0][1], d[1], d[2], d[3]))
+    if differences:
+        for key, column, old_value, new_value in differences:
+            logger.info(
+                "%s.%s: %s changed from %r to %r",
+                key[0],
+                key[1],
+                column,
+                old_value,
+                new_value,
+            )
     else:
-        print("No differences in status/statement/steps.")
+        logger.info("No differences in status, statement or steps.")
+
     if degraded:
-        print("Degraded from ok:", ", ".join(f"{k[0]}.{k[1]}" for k in degraded))
-    sys.exit(1 if degraded else 0)
+        logger.warning(
+            "Theorems that went from ok to another status: %s",
+            ", ".join(f"{theory_name}.{name}" for theory_name, name in degraded),
+        )
+        return 1
+    return 0
+
+
+def _report_quarantine(rows: Sequence[Row]) -> None:
+    """Log which gap rows are listed in the quarantine index.
+
+    Parameters
+    ----------
+    rows : sequence of Row
+        All rows from the current check.
+    """
+    index_path = _REPO_ROOT / "docs" / "quarantine" / "INDEX.md"
+    if not index_path.exists():
+        return
+
+    index_lines = index_path.read_text(encoding="utf-8").lower().splitlines()
+    listed: list[str] = []
+    not_listed: list[str] = []
+    for row in rows:
+        if row.status != "gaps":
+            continue
+        name = f"{row.theory}.{row.name}"
+        slash_name = f"{row.theory}/{row.name}"
+        found = any(
+            name.lower() in line
+            or slash_name.lower() in line
+            or (row.theory.lower() in line and row.name.lower() in line)
+            for line in index_lines
+        )
+        (listed if found else not_listed).append(name)
+
+    if listed:
+        logger.info("Quarantined (listed): %s", ", ".join(listed))
+    if not_listed:
+        logger.info("Quarantined (not listed): %s", ", ".join(not_listed))
+
+
+def _positive_int(value: str) -> int:
+    """Parse a strictly positive integer for argparse.
+
+    Parameters
+    ----------
+    value : str
+        Command-line value.
+
+    Returns
+    -------
+    int
+        The parsed integer.
+
+    Raises
+    ------
+    argparse.ArgumentTypeError
+        If the value is not a positive integer.
+    """
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(f"invalid integer: {value!r}") from exc
+    if parsed < 1:
+        raise argparse.ArgumentTypeError("value must be at least 1")
+    return parsed
+
+
+def build_parser() -> argparse.ArgumentParser:
+    """Build the command-line parser.
+
+    Returns
+    -------
+    argparse.ArgumentParser
+        Parser for the check-library command.
+    """
+    parser = argparse.ArgumentParser(
+        description="Check stored proofs in the holpy library."
+    )
+    parser.add_argument(
+        "theory",
+        nargs="*",
+        help="theory names to check (default: every bundled theory)",
+    )
+    parser.add_argument(
+        "--out",
+        type=Path,
+        default=Path("docs/library_check.tsv"),
+        help="output TSV file (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--jobs",
+        type=_positive_int,
+        default=1,
+        help="number of worker processes (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--check-level",
+        type=int,
+        default=0,
+        help="trust level passed to the kernel proof checker (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--compare",
+        nargs=2,
+        type=Path,
+        metavar=("OLD", "NEW"),
+        help="compare two TSV files instead of checking theorems",
+    )
+    return parser
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    """Run the library checker.
+
+    Parameters
+    ----------
+    argv : sequence of str, optional
+        Command-line arguments, excluding the program name.
+
+    Returns
+    -------
+    int
+        Process exit status.  Checking exits 0 even when proofs fail; a
+        comparison exits 1 only when a theorem went from ``ok`` to another
+        state.
+    """
+    parser = build_parser()
+    args = parser.parse_args(argv)
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(message)s",
+        stream=sys.stdout,
+    )
+
+    if args.compare:
+        if args.theory:
+            logger.warning("Ignoring theory arguments in --compare mode")
+        return compare_files(args.compare[0], args.compare[1])
+
+    # The cache is keyed only by the master user, while HOLPY_LIBRARY_DIR can
+    # change between calls in an embedding process. Start from the current
+    # library location rather than a previous caller's parsed theories.
+    basic.theory_cache.clear()
+    basic.item_index.clear()
+
+    theory_names = list(args.theory) if args.theory else _all_theories()
+    rows = run_theories(theory_names, args.jobs, args.check_level)
+    write_tsv(rows, args.out)
+    _report_quarantine(rows)
+    logger.info("Wrote %d rows to %s", len(rows), args.out)
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
