@@ -1,8 +1,9 @@
 """Expressions in geometry prover."""
 
-import itertools, copy
-from pstats import Stats
-import cProfile
+from __future__ import annotations
+
+import copy
+import itertools
 from typing import Tuple, Sequence, Optional, List, Dict
 
 POINT, LINE, PonL, SEG, TRI, CIRC, CYCL, MIDP = range(8)
@@ -23,6 +24,9 @@ class Fact:
 
     def __init__(self, pred_name: str, args: Sequence[str], *, updated=False, lemma=None, cond=None, negation=False,
                  tail=False):
+        """Create a geometry fact from a predicate name and argument names.
+        The ``tail`` parameter is accepted but ignored (``self.tail`` is always set to ``False``).
+        """
         self.pred_name = pred_name
         self.args = args
 
@@ -54,10 +58,12 @@ class Fact:
         # tail = False -> Match failed.
         self.tail = False
 
-    def __hash__(self):
+    def __hash__(self) -> int:
+        """Return a hash based on the predicate and arguments."""
         return hash(("Fact", self.pred_name, tuple(self.args)))
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
+        """Return whether two facts have the same predicate and arguments."""
         if isinstance(other, Fact) and self.pred_name == other.pred_name:
             if self.pred_name == 'circle':
                 return self.args[0] == other.args[0] and set(self.args[1:]) == set(other.args[1:])
@@ -66,7 +72,8 @@ class Fact:
             else:
                 return self.args == other.args
 
-    def __str__(self):
+    def __str__(self) -> str:
+        """Return the predicate applied to its arguments."""
         if self.negation:
             pre = "¬"
         else:
@@ -81,10 +88,12 @@ class Fact:
         else:
             return pre + "%s(%s)" % (self.pred_name, ",".join(self.args))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        """Return the same text as __str__."""
         return str(self)
 
-    def get_subfact(self, indices):
+    def get_subfact(self, indices: list[int]) -> Fact:
+        """Map selected arguments back to the source fact of a combined fact."""
         if self.lemma != 'combine':
             return self
         # return self
@@ -134,26 +143,33 @@ class Line:
     """Represent a line contains more than one point."""
 
     def __init__(self, args: Sequence[str]):
+        """Create a line from an argument sequence."""
         assert len(args) > 1
         self.args = set(args)
 
-    def __hash__(self):
+    def __hash__(self) -> int:
+        """Return a hash based on the line arguments."""
         return hash(("line", tuple(sorted(self.args))))
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
+        """Return whether two lines have the same arguments."""
         return isinstance(other, Line) and self.args == other.args
 
-    def __str__(self):
+    def __str__(self) -> str:
+        """Return the line in predicate form."""
         return "Line(%s)" % (",".join(self.args))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        """Return the same text as __str__."""
         return str(self)
 
-    def is_same_line(self, other):
+    def is_same_line(self, other: Line) -> bool:
+        """Return whether the lines share at least two points."""
         # Two lines are same if they have at least 2 identical points.
         return isinstance(other, Line) and len(self.args.intersection(other.args)) >= 2
 
-    def combine(self, other):
+    def combine(self, other: Line) -> None:
+        """Merge the points of `other` into this line in place."""
         # If the other line refers to the same line of this line,
         # add the points of other line that are not in this line.
         assert self.is_same_line(other), "combine line"
@@ -164,25 +180,30 @@ class Line:
 class Circle:
     """Represent a circle."""
 
-    def __init__(self, args: Sequence[str], center=None):
+    def __init__(self, args: Sequence[str], center: Optional[str] = None):
+        """Create a circle from points and an optional center."""
         self.args = set(args)
         self.center = center
 
-    def __hash__(self):
+    def __hash__(self) -> int:
+        """Return a hash based on the circle arguments."""
         return hash(("circle", self.center, tuple(sorted(self.args))))
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
+        """Return whether two circles have the same arguments. Also returns False when the centres differ."""
         if self.center and other.center and self.center != other.center:
             return False
         return isinstance(other, Circle) and self.args == other.args
 
-    def __str__(self):
+    def __str__(self) -> str:
+        """Return the circle in predicate form."""
         return "Circle(%s,%s)" % (self.center, ",".join(self.args))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        """Return the same text as __str__."""
         return str(self)
 
-    def is_same_circle(self, other):
+    def is_same_circle(self, other: Circle) -> bool:
         """Two circles are the same if they have 3 or more identical points.
         If both circles have center and they have 3 or more identical points
         then two centers must be the same.
@@ -195,7 +216,8 @@ class Circle:
         else:
             return False
 
-    def combine(self, other):
+    def combine(self, other: Circle) -> None:
+        """Merge the points of `other` into this circle in place."""
         # If the other circle refers to the same as this circle,
         # add the points of other circle that are not in this circle.
         assert self.is_same_circle(other), "combine circle"
@@ -214,6 +236,7 @@ class Rule:
     """
 
     def __init__(self, assums: Sequence[Fact], concl: Fact):
+        """Create a rule from assumptions and a conclusion."""
         self.assums = assums
         self.assums_pos = [a for a in self.assums if not a.negation]
         if len(self.assums_pos) > 1:
@@ -224,10 +247,12 @@ class Rule:
         self.assums_neg = [a for a in self.assums if a.negation]
         self.concl = concl
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
+        """Return whether two rules have the same assumptions and conclusion."""
         return isinstance(other, Rule) and self.assums == other.assums and self.concl == other.concl
 
-    def __str__(self):
+    def __str__(self) -> str:
+        """Return the rule in implication form."""
         return "%s :- %s" % (str(self.concl), ", ".join(str(assum) for assum in self.assums))
 
     def check_tail_condition(self, fact):
@@ -246,7 +271,9 @@ def make_pairs(args, pair_len=2):
 
 
 class Prover:
+    """Geometric fact saturation prover over a ruleset and hypotheses."""
     def __init__(self, ruleset: Dict, hyps: Optional[List[Fact]] = None, concl: Fact = None, lines=None, circles=None):
+        """Initialize the prover with a ruleset, hypotheses, goal, lines, and circles."""
         self.ruleset = ruleset
         if hyps is None:
             hyps = []
@@ -267,22 +294,27 @@ class Prover:
         self.line_map = dict()
 
     def equal_pair(self, p1, p2) -> bool:
+        """Return whether two point pairs denote the same segment."""
         return p1 == p2 or p1 == (p2[1], p2[0])
 
     def equal_line(self, p1, p2) -> bool:
+        """Return whether two point pairs denote the same line."""
         return self.get_line(p1) == self.get_line(p2)
 
     def equal_angle(self, a1, a2) -> bool:
+        """Return whether two four-point angle tuples are equal."""
         p1, p2 = a1[0:2], a1[2:4]
         q1, q2 = a2[0:2], a2[2:4]
         return self.get_line(p1) == self.get_line(q1) and self.get_line(p2) == self.get_line(q2)
 
     def equal_angle_reflected(self, a1, a2) -> bool:
+        """Return whether two angle tuples are equal up to reflection."""
         p1, p2 = a1[0:2], a1[2:4]
         q1, q2 = a2[0:2], a2[2:4]
         return self.get_line(p1) == self.get_line(q2) and self.get_line(p2) == self.get_line(q1)
 
     def equal_triangle(self, t1, t2) -> bool:
+        """Return whether two triangle point tuples have the same points."""
         return set(t1) == set(t2)
 
     def get_line(self, pair: Tuple[str]) -> Line:
@@ -595,7 +627,7 @@ class Prover:
 
         return new_insts
 
-    def get_applicable_facts(self, rule: Rule) -> List[Fact]:
+    def get_applicable_facts(self, rule: Rule) -> List[List[Fact]]:
         """Obtain the list of tuples of facts that may match the assumptions
         of the rule, according to their pred_name.
 
@@ -630,6 +662,7 @@ class Prover:
         return True
 
     def check_redundant(self, hyp, fact) -> bool:
+        """Return False if the unshadowed hyp already implies fact (the fact is redundant), otherwise True."""
         return not(not hyp.shadowed and self.check_imply(hyp, fact))
 
     def check_imply_reverse(self, goal, fact) -> bool:
@@ -911,7 +944,6 @@ class Prover:
         elif fact.pred_name == 'cong':
             # Check if any pair of points in fact and goal are the same
             # (exchange is allowed)
-            can_combine = False
             f_pairs = make_pairs(fact.args)
             g_pairs = make_pairs(goal.args)
             if any(self.equal_pair(p1, p2) for p1 in f_pairs for p2 in g_pairs):
@@ -931,7 +963,6 @@ class Prover:
 
         elif fact.pred_name == 'para':
             # Check if any pair of points in fact and goal denote the same line
-            can_combine = False
             f_pairs = make_pairs(fact.args)
             g_pairs = make_pairs(goal.args)
             if any(self.equal_line(p1, p2) for p1 in f_pairs for p2 in g_pairs):
@@ -951,7 +982,6 @@ class Prover:
 
         elif fact.pred_name in ('eqangle', 'eqratio'):
             # Check if any 4-tuple of points in fact and goal denote the same angle
-            can_combine = False
             f_angles = make_pairs(fact.args, pair_len=4)
             g_angles = make_pairs(goal.args, pair_len=4)
             if any(self.equal_angle(a1, a2) for a1 in f_angles for a2 in g_angles):
