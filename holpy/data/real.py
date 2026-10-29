@@ -15,7 +15,6 @@ from holpy.kernel.proofterm import TacticException
 from holpy.kernel import term_ord
 from holpy.data import nat, integer
 from holpy.data.set import setT
-from holpy.logic import basic
 from holpy.logic import logic
 from holpy.logic import auto
 from holpy.logic import matcher
@@ -27,7 +26,10 @@ from holpy.server.method import Method, register_method
 from holpy.util import poly
 import functools
 
-basic.load_theory('interval_arith')
+# Nothing here loads interval_arith: the theory loader imports this module
+# itself, so a module-level load would re-enter the loader.  Code that needs
+# the interval arithmetic lemmas loads interval_arith itself (see
+# holpy/integral/run_integral.py and holpy/integral/proof.py).
 
 # Basic definitions
 
