@@ -6,23 +6,25 @@ from holpy.integral import expr
 from holpy.integral.expr import Var, Const, pi, E
 from holpy.integral.poly import reduce_power, extract_frac, ConstantMonomial, Monomial, normalize_constant
 from fractions import Fraction
+from holpy.integral.conditions import Conditions
 from holpy.integral.parser import parse_expr
+from holpy.integral.expr import Var
 
 
 class PolynomialTest(unittest.TestCase):
     def testPrintMonomial(self):
         test_data = [
-            (Monomial(1, []), "1"),
-            (Monomial(2, []), "2"),
-            (Monomial(0, []), "0"),
-            (Monomial(2, [("x", 1)]), "2 * x"),
-            (Monomial(2, [("x", 2)]), "2 * x^2"),
-            (Monomial(2, [("x", 2), ("y", 2)]), "2 * x^2 * y^2"),
-            (Monomial(2, [("y", 2), ("x", 2)]), "2 * x^2 * y^2"),
-            (Monomial(2, [("x+y", 2)]), "2 * (x+y)^2"),
-            (Monomial(2, [("x", 1), ("x", 2)]), "2 * x^3"),
-            (Monomial(1, [("x", Fraction(1, 2))]), "x^1/2"),
-            (Monomial(1, [("x", Fraction(1, 2)), ("x", Fraction(1, 2))]), "x")
+            (Monomial(1, [], Conditions()), "1"),
+            (Monomial(2, [], Conditions()), "2"),
+            (Monomial(0, [], Conditions()), "0"),
+            (Monomial(2, [(Var("x"), 1)], Conditions()), "2 * x"),
+            (Monomial(2, [(Var("x"), 2)], Conditions()), "2 * x^2"),
+            (Monomial(2, [(Var("x"), 2), (Var("y"), 2)], Conditions()), "2 * x^2 * y^2"),
+            (Monomial(2, [(Var("y"), 2), (Var("x"), 2)], Conditions()), "2 * x^2 * y^2"),
+            (Monomial(2, [(parse_expr("x+y"), 2)], Conditions()), "2 * (x + y)^2"),
+            (Monomial(2, [(Var("x"), 1), (Var("x"), 2)], Conditions()), "2 * x^3"),
+            (Monomial(1, [(Var("x"), Fraction(1, 2))], Conditions()), "x^1/2"),
+            (Monomial(1, [(Var("x"), Fraction(1, 2)), (Var("x"), Fraction(1, 2))], Conditions()), "x"),
         ]
 
         for m, s in test_data:
