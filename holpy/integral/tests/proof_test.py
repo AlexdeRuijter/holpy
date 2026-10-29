@@ -13,8 +13,8 @@ from holpy.logic import context
 from holpy.kernel.proofterm import refl, ProofTerm, TacticException
 from holpy.logic.conv import top_conv, arg_conv
 from holpy.syntax import parser
-from holpy.logic.tests.logic_test import test_macro
-from holpy.logic.tests.conv_test import test_conv
+from holpy.logic.tests.logic_test import run_macro
+from holpy.logic.tests.conv_test import run_conv
 from holpy.prover import sympywrapper
 import holpy.integral
 from holpy.integral import convert
@@ -54,7 +54,7 @@ class ProofTest(unittest.TestCase):
         ]
 
         for expr in test_data:
-            test_macro(self, 'interval_arith', 'auto', args=expr, res=expr)
+            run_macro(self, 'interval_arith', 'auto', args=expr, res=expr)
 
     def testRealContinuousOnFail(self):
         test_data = [
@@ -67,7 +67,7 @@ class ProofTest(unittest.TestCase):
         ]
 
         for expr in test_data:
-            test_macro(self, 'interval_arith', 'auto', args=expr, failed=TacticException)
+            run_macro(self, 'interval_arith', 'auto', args=expr, failed=TacticException)
 
     def testRealIntegrableOn(self):
         test_data = [
@@ -76,7 +76,7 @@ class ProofTest(unittest.TestCase):
         ]
 
         for expr in test_data:
-            test_macro(self, 'interval_arith', 'auto', args=expr, res=expr)
+            run_macro(self, 'interval_arith', 'auto', args=expr, res=expr)
 
     def testRealDifferentiable(self):
         test_data = [
@@ -109,7 +109,7 @@ class ProofTest(unittest.TestCase):
         ]
 
         for expr in test_data:
-            test_macro(self, 'interval_arith', 'auto', vars={'x': 'real'}, args=expr, res=expr)
+            run_macro(self, 'interval_arith', 'auto', vars={'x': 'real'}, args=expr, res=expr)
 
     def testNormTranscendental(self):
         test_data = [
@@ -133,7 +133,7 @@ class ProofTest(unittest.TestCase):
         ]
 
         for t, res in test_data:
-            test_conv(self, 'interval_arith', auto.auto_conv(), t=t, t_res=res)
+            run_conv(self, 'interval_arith', auto.auto_conv(), t=t, t_res=res)
 
     def testNormAbsoluteValue(self):
         test_data = [
@@ -150,7 +150,7 @@ class ProofTest(unittest.TestCase):
         for t, conds, res in test_data:
             conds_pt = [ProofTerm.assume(parser.parse_term(cond)) for cond in conds]
             cv = auto.auto_conv(conds_pt)
-            test_conv(self, 'interval_arith', cv, vars=vars, t=t, t_res=res, assms=conds)
+            run_conv(self, 'interval_arith', cv, vars=vars, t=t, t_res=res, assms=conds)
 
     def testNormRealDerivative(self):
         test_data = [
@@ -190,7 +190,7 @@ class ProofTest(unittest.TestCase):
         for t, conds, res in test_data:
             conds_pt = [ProofTerm.assume(parser.parse_term(cond)) for cond in conds]
             cv = auto.auto_conv(conds_pt)
-            test_conv(self, 'interval_arith', cv, vars=vars, t=t, t_res=res, assms=conds)
+            run_conv(self, 'interval_arith', cv, vars=vars, t=t, t_res=res, assms=conds)
 
     def testIneq(self):
         test_data = [
@@ -200,7 +200,7 @@ class ProofTest(unittest.TestCase):
         ]
 
         for expr in test_data:
-            test_macro(self, 'interval_arith', 'auto', vars={'x': 'real'}, args=expr, res=expr)
+            run_macro(self, 'interval_arith', 'auto', vars={'x': 'real'}, args=expr, res=expr)
 
     def testRealIncreasing(self):
         test_data = [
@@ -209,7 +209,7 @@ class ProofTest(unittest.TestCase):
         ]
 
         for expr in test_data:
-            test_macro(self, 'interval_arith', 'auto', vars={'x': 'real'}, args=expr, res=expr)
+            run_macro(self, 'interval_arith', 'auto', vars={'x': 'real'}, args=expr, res=expr)
 
     def testNormRealIntegral(self):
         test_data = [
@@ -233,7 +233,7 @@ class ProofTest(unittest.TestCase):
         ]
 
         for expr, res in test_data:
-            test_conv(self, 'interval_arith', auto.auto_conv(), t=expr, t_res=res)
+            run_conv(self, 'interval_arith', auto.auto_conv(), t=expr, t_res=res)
 
     def testIntegrateByParts(self):
         test_data = [
@@ -248,7 +248,7 @@ class ProofTest(unittest.TestCase):
             u = parser.parse_term(u)
             v = parser.parse_term(v)
             res = parser.parse_term(res)
-            test_conv(self, 'interval_arith', proof.integrate_by_parts(u, v, res), t=expr, t_res=res)
+            run_conv(self, 'interval_arith', proof.integrate_by_parts(u, v, res), t=expr, t_res=res)
 
     def testSubstitution(self):
         test_data = [
@@ -263,7 +263,7 @@ class ProofTest(unittest.TestCase):
             f = parser.parse_term(f)
             g = parser.parse_term(g)
             res = parser.parse_term(res)
-            test_conv(self, 'interval_arith', proof.substitution(f, g, res), t=expr, t_res=res)
+            run_conv(self, 'interval_arith', proof.substitution(f, g, res), t=expr, t_res=res)
 
     def testSimplifyRewrConv(self):
         test_data = [
@@ -274,7 +274,7 @@ class ProofTest(unittest.TestCase):
         for s, t in test_data:
             s = parser.parse_term(s)
             t = parser.parse_term(t)
-            test_conv(self, 'interval_arith', proof.simplify_rewr_conv(t), t=s, t_res=t)
+            run_conv(self, 'interval_arith', proof.simplify_rewr_conv(t), t=s, t_res=t)
 
     def testLocationConv(self):
         test_data = [
@@ -291,7 +291,7 @@ class ProofTest(unittest.TestCase):
             t = parser.parse_term(t)
             res = parser.parse_term(res)
             cv = proof.simplify_rewr_conv(t)
-            test_conv(self, 'interval_arith', proof.location_conv(loc, cv), t=s, t_res=res)
+            run_conv(self, 'interval_arith', proof.location_conv(loc, cv), t=s, t_res=res)
 
     def testTrigRewrConv(self):
         test_data = [
@@ -308,7 +308,7 @@ class ProofTest(unittest.TestCase):
             res = parser.parse_term(res)
             loc = proof.Location(loc)
             cv = proof.location_conv(loc, proof.trig_rewr_conv(code, target=proof.get_at_location(loc, res)))
-            test_conv(self, 'interval_arith', cv, t=s, t_res=res)
+            run_conv(self, 'interval_arith', cv, t=s, t_res=res)
 
     def testCombineFractionConv(self):
         test_data = [
@@ -329,7 +329,7 @@ class ProofTest(unittest.TestCase):
             res = parser.parse_term(res)
             cond_t = parser.parse_term(cond)
             cv = proof.combine_fraction([ProofTerm.assume(cond_t)])
-            test_conv(self, 'interval_arith', cv, vars=vars, t=s, t_res=res, assms=[cond])
+            run_conv(self, 'interval_arith', cv, vars=vars, t=s, t_res=res, assms=[cond])
 
     def testExprToHolpy(self):
         test_data = [

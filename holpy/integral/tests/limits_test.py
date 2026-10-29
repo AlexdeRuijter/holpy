@@ -1,7 +1,6 @@
 """Unit tests for limit."""
 
 from fractions import Fraction
-from msilib.schema import Condition
 import unittest
 from holpy.integral.conditions import Conditions
 

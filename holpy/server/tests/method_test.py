@@ -13,7 +13,7 @@ from holpy.server import server
 from holpy.syntax import parser
 
 
-def test_method(self: unittest.TestCase, thy_name: str, *, vars=None,
+def run_method(self: unittest.TestCase, thy_name: str, *, vars=None,
                 assms: Optional[List[str]] = None, concl: str,
                 method_name: str, prevs=None, args=None,
                 gaps=None, lines=None, query=None, failed=None):
@@ -29,7 +29,7 @@ def test_method(self: unittest.TestCase, thy_name: str, *, vars=None,
 
     # Build starting state
     if assms is not None:
-        assert isinstance(assms, list), "test_method: assms need to be a list"
+        assert isinstance(assms, list), "run_method: assms need to be a list"
         assms = [parser.parse_term(t) for t in assms]
     else:
         assms = []
@@ -60,7 +60,7 @@ def test_method(self: unittest.TestCase, thy_name: str, *, vars=None,
     elif gaps == False:
         gaps = []  # assert no gaps
     else:
-        assert isinstance(gaps, list), "test_method: gaps need to be a list"
+        assert isinstance(gaps, list), "run_method: gaps need to be a list"
         gaps = [parser.parse_term(gap) for gap in gaps]
     self.assertEqual([gap.prop for gap in state.rpt.gaps], gaps)
 
@@ -88,7 +88,7 @@ class MethodTest(unittest.TestCase):
         self.assertEqual([res['theorem'] for res in search_res], res)
 
     def testCases(self):
-        test_method(self,
+        run_method(self,
             'logic_base',
             vars={'B': 'bool', 'C': 'bool'},
             concl='B | C',
@@ -98,7 +98,7 @@ class MethodTest(unittest.TestCase):
         )
 
     def testCasesFail(self):
-        test_method(self,
+        run_method(self,
             'logic_base',
             vars={'B': 'bool', 'C': 'bool'},
             concl='B | C',
@@ -108,7 +108,7 @@ class MethodTest(unittest.TestCase):
         )
 
     def testGoal(self):
-        test_method(self,
+        run_method(self,
             'logic_base',
             vars={'B': 'bool', 'C': 'bool'},
             concl='B & C',
@@ -118,7 +118,7 @@ class MethodTest(unittest.TestCase):
         )
 
     def testGoalFail(self):
-        test_method(self,
+        run_method(self,
             'logic_base',
             vars={'B': 'bool', 'C': 'bool'},
             concl='B & C',
@@ -169,7 +169,7 @@ class MethodTest(unittest.TestCase):
         )
 
     def testApplyBackwardStep(self):
-        test_method(self,
+        run_method(self,
             'logic_base',
             vars={'A': 'bool', 'B': 'bool'},
             assms=['A & B'],
@@ -181,7 +181,7 @@ class MethodTest(unittest.TestCase):
 
     def testApplyBackwardStep2(self):
         """Case where one or more assumption also needs to be matched."""
-        test_method(self,
+        run_method(self,
             'logic_base',
             vars={'A': 'bool', 'B': 'bool'},
             assms=['A | B'],
@@ -194,7 +194,7 @@ class MethodTest(unittest.TestCase):
 
     def testApplyBackwardStep3(self):
         """Test when additional instantiation is not provided."""
-        test_method(self,
+        run_method(self,
             'logic_base',
             vars={'A': 'bool', 'B': 'bool'},
             assms=['A & B'],
@@ -206,7 +206,7 @@ class MethodTest(unittest.TestCase):
 
     def testApplyBackwardStep4(self):
         """Test when additional instantiation is not provided."""
-        test_method(self,
+        run_method(self,
             'logic_base',
             vars={'A': 'bool', 'B': 'bool'},
             assms=['A & B'],
@@ -218,7 +218,7 @@ class MethodTest(unittest.TestCase):
 
     def testApplyBackwardStep5(self):
         """Test case with type variable only."""
-        test_method(self,
+        run_method(self,
             'set',
             concl='finite (empty_set::nat set)',
             method_name='apply_backward_step',
@@ -238,7 +238,7 @@ class MethodTest(unittest.TestCase):
         )
 
     def testApplyForwardStep1(self):
-        test_method(self,
+        run_method(self,
             'logic_base',
             vars={'A': 'bool', 'B': 'bool'},
             assms=['A & B'],
@@ -250,7 +250,7 @@ class MethodTest(unittest.TestCase):
         )
 
     def testApplyForwardStep2(self):
-        test_method(self,
+        run_method(self,
             'logic_base',
             vars={'A': 'bool', 'B': 'bool'},
             assms=['A'],
@@ -262,7 +262,7 @@ class MethodTest(unittest.TestCase):
         )
 
     def testApplyForwardStep3(self):
-        test_method(self,
+        run_method(self,
             'logic_base',
             vars={'A': 'bool', 'B': 'bool'},
             assms=['A'],
@@ -274,7 +274,7 @@ class MethodTest(unittest.TestCase):
         )
 
     def testApplyForwardStep4(self):
-        test_method(self,
+        run_method(self,
             'set',
             vars={'A': 'nat set', 'B': 'nat set'},
             assms=['A Sub B'],
@@ -286,7 +286,7 @@ class MethodTest(unittest.TestCase):
         )
 
     def testApplyForwardStep5(self):
-        test_method(self,
+        run_method(self,
             'set',
             vars={'A': 'nat set', 'B': 'nat set', 'C': 'nat set'},
             assms=['A Sub B'],
@@ -298,7 +298,7 @@ class MethodTest(unittest.TestCase):
         )
 
     def testApplyForwardStep6(self):
-        test_method(self,
+        run_method(self,
             'set',
             vars={'A': 'nat set', 'B': 'nat set', 'C': 'nat set'},
             concl='false',
@@ -329,7 +329,7 @@ class MethodTest(unittest.TestCase):
         )
 
     def testIntroduction(self):
-        test_method(self,
+        run_method(self,
             'logic_base',
             vars={'A': "'a => bool", 'B': "'a => bool"},
             concl='!x. A x --> B x',
@@ -339,7 +339,7 @@ class MethodTest(unittest.TestCase):
         )
 
     def testRevertIntro(self):
-        test_method(self,
+        run_method(self,
             'logic_base',
             vars={'A': 'bool', 'B': 'bool'},
             assms=['A & B'],
@@ -350,7 +350,7 @@ class MethodTest(unittest.TestCase):
         )
 
     def testApplyInduction(self):
-        test_method(self,
+        run_method(self,
             'nat',
             vars={'n': 'nat'},
             concl='n + 0 = n',
@@ -378,7 +378,7 @@ class MethodTest(unittest.TestCase):
         )
 
     def testRewriteGoal(self):
-        test_method(self,
+        run_method(self,
             'logic_base',
             vars={'P': 'bool', 'a': "'a", 'b': "'a"},
             assms=['P'],
@@ -390,7 +390,7 @@ class MethodTest(unittest.TestCase):
         )
 
     def testRewriteGoal2(self):
-        test_method(self,
+        run_method(self,
             'logic_base',
             vars={'P': 'bool', 'a': "'a", 'b': "'a"},
             assms=['P'],
@@ -402,7 +402,7 @@ class MethodTest(unittest.TestCase):
         )
 
     def testRewriteGoal3(self):
-        test_method(self,
+        run_method(self,
             'set',
             vars={'g': "'a => 'b", 'f': "'b => 'c", 's': "'a set", 't': "'c set"},
             concl='image f (image g s) = t',
@@ -412,7 +412,7 @@ class MethodTest(unittest.TestCase):
         )
 
     def testRewriteGoal4(self):
-        test_method(self,
+        run_method(self,
             'set',
             vars={'f': "'a => 'b", 's': "'a set", 't': "'a set"},
             concl='(∃x1. x1 ∈ s) ⟷ x ∈ image f s',
@@ -422,7 +422,7 @@ class MethodTest(unittest.TestCase):
         )
 
     def testRewriteGoalWithPrev(self):
-        test_method(self,
+        run_method(self,
             'nat',
             vars={'f': 'nat => nat', 'g': 'nat => nat', 'a': 'nat'},
             assms=['!n. f n = g n'],
@@ -433,7 +433,7 @@ class MethodTest(unittest.TestCase):
         )
 
     def testRewriteGoalWithPrev2(self):
-        test_method(self,
+        run_method(self,
             'nat',
             vars={'f': 'nat => nat => nat', 'g': 'nat => nat => nat'},
             assms=['!m. !n. f m n = g m n'],
@@ -477,7 +477,7 @@ class MethodTest(unittest.TestCase):
         )
 
     def testRewriteFact(self):
-        test_method(self,
+        run_method(self,
             'set',
             vars={'g': "'a => 'b", 'f': "'b => 'c", 's': "'a set", 't': "'c set"},
             assms=['image f (image g s) = t'],
@@ -489,7 +489,7 @@ class MethodTest(unittest.TestCase):
         )
 
     def testRewriteFact2(self):
-        test_method(self,
+        run_method(self,
             'logic_base',
             vars={'P': 'bool', 'a': "'a", 'b': "'a", 'c': "'a"},
             assms=['(if P then a else b) = c', 'P'],
@@ -501,7 +501,7 @@ class MethodTest(unittest.TestCase):
         )
 
     def testRewriteFactWithPrev(self):
-        test_method(self,
+        run_method(self,
             'nat',
             vars={'f': 'nat => nat', 'g': 'nat => nat', 'a': 'nat'},
             assms=['!n. f n = g n', '?x. f x = a'],
@@ -512,7 +512,7 @@ class MethodTest(unittest.TestCase):
         )
 
     def testForallElim(self):
-        test_method(self,
+        run_method(self,
             'nat',
             vars={'n': 'nat', 'P': 'nat => bool', 'Q': 'nat => bool'},
             assms=['!x. P x --> Q x'],
@@ -524,7 +524,7 @@ class MethodTest(unittest.TestCase):
         )
 
     def testForallElim2(self):
-        test_method(self,
+        run_method(self,
             'nat',
             vars={'n': 'nat', 'P': 'nat => bool', 'Q': 'nat => bool'},
             assms=['!P. P n'],
@@ -536,7 +536,7 @@ class MethodTest(unittest.TestCase):
         )
 
     def testForallElimFail(self):
-        test_method(self,
+        run_method(self,
             'nat',
             vars={'n': 'nat', 'P': 'nat => bool', 'Q': 'nat => bool'},
             assms=['!x. P x --> Q x'],
@@ -548,7 +548,7 @@ class MethodTest(unittest.TestCase):
         )
 
     def testInstExistsGoal(self):
-        test_method(self,
+        run_method(self,
             'nat',
             vars={'n': 'nat', 'P': 'nat => bool', 'Q': 'nat => bool'},
             assms=['P n'],
@@ -559,7 +559,7 @@ class MethodTest(unittest.TestCase):
         )
 
     def testInstExistsGoalFail(self):
-        test_method(self,
+        run_method(self,
             'nat',
             vars={'n': 'nat', 'P': 'nat => bool', 'Q': 'nat => bool'},
             assms=['P n'],
@@ -570,7 +570,7 @@ class MethodTest(unittest.TestCase):
         )
 
     def testInstExistsFact(self):
-        test_method(self,
+        run_method(self,
             'nat',
             assms=['?n::nat. n + 1 = 2'],
             concl='false',
@@ -581,7 +581,7 @@ class MethodTest(unittest.TestCase):
         )
 
     def testInstExistsFactFail(self):
-        test_method(self,
+        run_method(self,
             'nat',
             vars={'n': 'nat'},
             assms=['?n::nat. n + 1 = 2'],

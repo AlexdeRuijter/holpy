@@ -4,8 +4,8 @@ import unittest
 import math
 from fractions import Fraction
 
-from holpy.logic.tests.conv_test import test_conv
-from holpy.logic.tests.logic_test import test_macro
+from holpy.logic.tests.conv_test import run_conv
+from holpy.logic.tests.logic_test import run_macro
 from holpy.logic import context
 from holpy.logic import auto
 from holpy.kernel.proofterm import ProofTerm
@@ -24,7 +24,7 @@ class RealTest(unittest.TestCase):
 
         vars = {'x': 'real', 'y': 'real', 'z': 'real'}
         for expr in test_data:
-            test_macro(self, 'real', 'real_norm', vars=vars, args=expr, res=expr, eval_only=True)
+            run_macro(self, 'real', 'real_norm', vars=vars, args=expr, res=expr, eval_only=True)
 
     def testRealNormMacroFailed(self):
         test_data = [
@@ -34,7 +34,7 @@ class RealTest(unittest.TestCase):
 
         vars = {'x': 'real', 'y': 'real', 'z': 'real'}
         for expr in test_data:
-            test_macro(self, 'real', 'real_norm', vars=vars, args=expr, failed=AssertionError, eval_only=True)
+            run_macro(self, 'real', 'real_norm', vars=vars, args=expr, failed=AssertionError, eval_only=True)
 
     def testRealNormConv(self):
         test_data = [
@@ -52,7 +52,7 @@ class RealTest(unittest.TestCase):
 
         vars = {'x': 'real', 'y': 'real', 'z': 'real', 'm': 'nat', 'n': 'nat'}
         for expr, res in test_data:
-            test_conv(self, 'real', real.real_norm_conv(), vars=vars, t=expr, t_res=res)
+            run_conv(self, 'real', real.real_norm_conv(), vars=vars, t=expr, t_res=res)
 
     def testRealEval(self):
         test_data = [
@@ -99,7 +99,7 @@ class RealTest(unittest.TestCase):
         ]
 
         for expr, res in test_data:
-            test_conv(self, 'real', real.real_eval_conv(), t=expr, t_res=res)
+            run_conv(self, 'real', real.real_eval_conv(), t=expr, t_res=res)
 
     def testCombineAtomConv(self):
         test_data = [
@@ -119,7 +119,7 @@ class RealTest(unittest.TestCase):
         for t, conds, res in test_data:
             conds_pt = [ProofTerm.assume(parser.parse_term(cond)) for cond in conds]
             cv = real.combine_atom(conds_pt)
-            test_conv(self, 'realintegral', cv, vars=vars, t=t, t_res=res, assms=conds)
+            run_conv(self, 'realintegral', cv, vars=vars, t=t, t_res=res, assms=conds)
 
     def testNormMultMonomials(self):
         test_data = [
@@ -142,7 +142,7 @@ class RealTest(unittest.TestCase):
         for t, conds, res in test_data:
             conds_pt = [ProofTerm.assume(parser.parse_term(cond)) for cond in conds]
             cv = real.norm_mult_monomials(conds_pt)
-            test_conv(self, 'realintegral', cv, vars=vars, t=t, t_res=res, assms=conds)
+            run_conv(self, 'realintegral', cv, vars=vars, t=t, t_res=res, assms=conds)
 
     def testNormPoly(self):
         test_data = [
@@ -170,7 +170,7 @@ class RealTest(unittest.TestCase):
 
         vars = {'x': 'real', 'y': 'real'}
         for expr, res in test_data:
-            test_conv(self, 'transcendentals', auto.auto_conv(), vars=vars, t=expr, t_res=res)
+            run_conv(self, 'transcendentals', auto.auto_conv(), vars=vars, t=expr, t_res=res)
 
     def testNegInequation(self):
         test_data = [
@@ -182,7 +182,7 @@ class RealTest(unittest.TestCase):
 
         vars = {'x' : 'real', 'y' : 'real'}
         for expr, res in test_data:
-            test_conv(self, 'transcendentals', real.norm_neg_real_ineq_conv(), vars=vars, t=expr, t_res=res)
+            run_conv(self, 'transcendentals', real.norm_neg_real_ineq_conv(), vars=vars, t=expr, t_res=res)
 
     def testNormInequation(self):
         test_data = [
@@ -194,7 +194,7 @@ class RealTest(unittest.TestCase):
 
         for expr, res in test_data:
             vars = {'a' : 'real', 'b' : 'real', 'c' : 'real'}
-            test_conv(self, 'transcendentals', real.norm_real_ineq_conv(), vars=vars, t=expr, t_res=res)
+            run_conv(self, 'transcendentals', real.norm_real_ineq_conv(), vars=vars, t=expr, t_res=res)
 
     def testRelaxSimplexMacro(self):
         # test_data = [
@@ -216,7 +216,7 @@ class RealTest(unittest.TestCase):
         for ts, res in test_data:
             ts = [parser.parse_term(t) for t in ts]
             res = parser.parse_term(res)
-            # test_macro(self, 'real', 'non_strict_simplex', vars=vars, args=ts, res=res)
+            # run_macro(self, 'real', 'non_strict_simplex', vars=vars, args=ts, res=res)
             # print(real.relax_strict_simplex_macro().get_proof_term(args=ts).prop)
             self.assertEqual(real.relax_strict_simplex_macro().get_proof_term(args=ts).prop, res)
 

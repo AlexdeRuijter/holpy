@@ -1,5 +1,6 @@
 import unittest
 import json
+from pathlib import Path
 
 from holpy.kernel.term import Not
 from holpy.logic import logic
@@ -55,7 +56,7 @@ class SATTest(unittest.TestCase):
         self.assertTrue(sat.is_solution(cnf, cert))
     
     def testPelletier(self):
-        with open('prover/tests/pelletier.json', 'r', encoding='utf-8') as f:
+        with open(Path(__file__).with_name('pelletier.json'), 'r', encoding='utf-8') as f:
             f_data = json.load(f)
 
         for problem in f_data:

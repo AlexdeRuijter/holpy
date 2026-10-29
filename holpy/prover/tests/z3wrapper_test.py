@@ -6,11 +6,11 @@ from holpy.kernel.type import TFun
 from holpy.kernel.thm import Thm
 from holpy.data import nat
 from holpy.logic import basic
-from holpy.logic.tests.logic_test import test_macro
+from holpy.logic.tests.logic_test import run_macro
 from holpy.syntax import parser
 from holpy.logic import context
 from holpy.prover import z3wrapper
-from holpy.server.tests.method_test import test_method
+from holpy.server.tests.method_test import run_method
 
 
 class Z3WrapperTest(unittest.TestCase):
@@ -115,7 +115,7 @@ class Z3WrapperTest(unittest.TestCase):
         if not z3wrapper.z3_loaded:
             return
 
-        test_macro(
+        run_macro(
             self, 'real', 'z3',
             vars={'S': 'real set', 'T': 'real set', 'x': 'real'},
             assms=['S Int T = empty_set'],
@@ -128,7 +128,7 @@ class Z3WrapperTest(unittest.TestCase):
         if not z3wrapper.z3_loaded:
             return
 
-        test_macro(
+        run_macro(
             self, 'logic_base', 'z3',
             vars={'P': 'bool', 'Q': 'bool'},
             args='P --> Q',
@@ -140,7 +140,7 @@ class Z3WrapperTest(unittest.TestCase):
         if not z3wrapper.z3_loaded:
             return
 
-        test_method(
+        run_method(
             self, 'real',
             vars={'S': 'real set', 'T': 'real set', 'x': 'real'},
             assms=['S Int T = empty_set'],
@@ -154,7 +154,7 @@ class Z3WrapperTest(unittest.TestCase):
         if not z3wrapper.z3_loaded:
             return
 
-        test_method(
+        run_method(
             self, 'logic_base',
             vars={'P': 'bool', 'Q': 'bool'},
             concl='P --> Q',

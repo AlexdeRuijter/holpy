@@ -2,8 +2,8 @@ import unittest
 from holpy.data import integer
 from holpy.kernel import term
 from holpy.kernel.type import IntType
-from holpy.logic.tests.logic_test import test_macro
-from holpy.logic.tests.conv_test import test_conv
+from holpy.logic.tests.logic_test import run_macro
+from holpy.logic.tests.conv_test import run_conv
 from holpy.syntax import parser
 from holpy.logic import basic, context
 
@@ -37,7 +37,7 @@ class IntegerTest(unittest.TestCase):
         context.set_context('int', vars=vars)
         for t, t_res in test_data:
             t, t_res = parser.parse_term(t), parser.parse_term(t_res)
-            test_conv(self, 'int', integer.int_norm_conv(), vars=vars, t=t, t_res=t_res)
+            run_conv(self, 'int', integer.int_norm_conv(), vars=vars, t=t, t_res=t_res)
 
     def testSimplexFormConv(self):
         test_data = (
@@ -54,4 +54,4 @@ class IntegerTest(unittest.TestCase):
         context.set_context('int', vars=vars)
         for t, t_res in test_data:
             t, t_res = parser.parse_term(t), parser.parse_term(t_res)
-            test_conv(self, 'int', integer.int_simplex_form(), vars=vars, t=t, t_res=t_res)
+            run_conv(self, 'int', integer.int_simplex_form(), vars=vars, t=t, t_res=t_res)

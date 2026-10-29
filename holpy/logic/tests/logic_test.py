@@ -14,7 +14,7 @@ from holpy.kernel.proofterm import ProofTerm
 from holpy.logic import logic
 from holpy.logic import basic
 from holpy.logic import matcher
-from holpy.logic.tests.conv_test import test_conv
+from holpy.logic.tests.conv_test import run_conv
 from holpy.data import nat
 from holpy.syntax import parser
 from holpy.logic import context
@@ -27,7 +27,7 @@ d = Var("d", BoolType)
 x = Var("x", Ta)
 y = Var("y", Ta)
 
-def test_macro(self: unittest.TestCase, thy_name: str, macro: Macro, *,
+def run_macro(self: unittest.TestCase, thy_name: str, macro: Macro, *,
                vars=None, assms=None, res=None, args="", failed=None,
                limit=None, eval_only=False):
     context.set_context(thy_name, vars=vars, limit=limit)
@@ -76,7 +76,7 @@ class LogicTest(unittest.TestCase):
         ]
 
         for t, t_res in test_data:
-            test_conv(self, 'logic', logic.norm_bool_expr(), t=t, t_res=t_res)
+            run_conv(self, 'logic', logic.norm_bool_expr(), t=t, t_res=t_res)
 
     def testNormConjAssoc(self):
         test_data = [
@@ -88,17 +88,17 @@ class LogicTest(unittest.TestCase):
 
         vars = {'A': 'bool', 'B': 'bool'}
         for t, t_res in test_data:
-            test_conv(self, 'logic', logic.norm_conj_assoc(), vars=vars, t=t, t_res=t_res)
+            run_conv(self, 'logic', logic.norm_conj_assoc(), vars=vars, t=t, t_res=t_res)
 
     def testBetaNorm(self):
-        test_macro(
+        run_macro(
             self, 'logic_base', "beta_norm",
             vars={'f': "'a => 'b", 'x': "'a", 'y': "'b"},
             assms=["(%x. f x) x = y"],
             res="f x = y")
 
     def testApplyTheorem(self):
-        test_macro(
+        run_macro(
             self, 'logic_base', "apply_theorem",
             vars={'A': 'bool', 'B': 'bool'},
             assms=["A & B"],
@@ -107,7 +107,7 @@ class LogicTest(unittest.TestCase):
         )
 
     def testApplyTheorem2(self):
-        test_macro(
+        run_macro(
             self, 'set', 'apply_theorem',
             vars={'A': "'a set", 'B': "'a set", 'C': "'a set"},
             assms=["A Sub B"],
@@ -116,7 +116,7 @@ class LogicTest(unittest.TestCase):
         )
 
     def testApplyTheorem3(self):
-        test_macro(
+        run_macro(
             self, 'set', 'apply_theorem_for',
             vars={'A': 'nat set'},
             args="subset_trans, {A: A}",
@@ -141,14 +141,14 @@ class LogicTest(unittest.TestCase):
         self.assertEqual(theory.check_proof(prf), Thm(C, ex_P))
 
     def testRewriteGoal(self):
-        test_macro(
+        run_macro(
             self, 'nat', "rewrite_goal",
             args=("nat_plus_def_1, (0::nat) + 0 = 0"),
             res="(0::nat) + 0 = 0"
         )
 
     def testRewriteGoal2(self):
-        test_macro(
+        run_macro(
             self, 'set', 'rewrite_goal_sym',
             vars={'g': "'a => 'b", 'f': "'b => 'c", 's': "'a set"},
             args=("image_combine, image f (image g s) = t"),
@@ -157,7 +157,7 @@ class LogicTest(unittest.TestCase):
         )
 
     def testRewriteFactWithPrev(self):
-        test_macro(
+        run_macro(
             self, 'nat', 'rewrite_fact_with_prev',
             vars={'m': 'nat', 'n': 'nat', 'p': 'nat', 'q': 'nat'},
             assms=['p = m + n', 'p = q'],
@@ -165,7 +165,7 @@ class LogicTest(unittest.TestCase):
         )
 
     def testRewriteFactWithPrev2(self):
-        test_macro(
+        run_macro(
             self, 'nat', 'rewrite_fact_with_prev',
             vars={'f': 'nat => nat', 'g': 'nat => nat', 'a': 'nat'},
             assms=['!n. f n = g n', 'f x = a'],
@@ -173,7 +173,7 @@ class LogicTest(unittest.TestCase):
         )
 
     def testRewriteFactWithPrev3(self):
-        test_macro(
+        run_macro(
             self, 'nat', 'rewrite_fact_with_prev',
             vars={'f': 'nat => nat', 'g': 'nat => nat', 'a': 'nat'},
             assms=['!n. f n = g n', '?x. f x = a'],
@@ -181,7 +181,7 @@ class LogicTest(unittest.TestCase):
         )
 
     def testForallElimGen(self):
-        test_macro(
+        run_macro(
             self, 'nat', 'forall_elim_gen',
             vars={'n': 'nat'},
             assms=['!P::nat => bool. P n'],
@@ -190,7 +190,7 @@ class LogicTest(unittest.TestCase):
         )
 
     def testTrivialMacro(self):
-        test_macro(
+        run_macro(
             self, 'logic_base', 'trivial',
             vars={'A': 'bool', 'B': 'bool'},
             args='A --> B --> A',
@@ -198,7 +198,7 @@ class LogicTest(unittest.TestCase):
         )
 
     def testTrivialMacro2(self):
-        test_macro(
+        run_macro(
             self, 'logic_base', 'trivial',
             vars={'A': 'bool', 'B': 'bool'},
             args='A --> A --> B --> A',
@@ -206,7 +206,7 @@ class LogicTest(unittest.TestCase):
         )
 
     def testTrivialMacro3(self):
-        test_macro(
+        run_macro(
             self, 'logic_base', 'trivial',
             vars={'P': "'a => bool", 'Q': "'a => bool"},
             args='!x. P x --> Q x --> P x',
@@ -214,7 +214,7 @@ class LogicTest(unittest.TestCase):
         )
 
     def testApplyFactMacro(self):
-        test_macro(
+        run_macro(
             self, 'logic_base', 'apply_fact',
             vars={"P": "'a => bool", "Q": "'a => bool", "s": "'a"},
             assms=["!s. P s --> Q s", "P s"],
@@ -222,7 +222,7 @@ class LogicTest(unittest.TestCase):
         )
 
     def testApplyFactMacro2(self):
-        test_macro(
+        run_macro(
             self, 'logic_base', 'apply_fact',
             vars={'P': "'a => bool", 'R': "'a => 'a => bool", 's': "'a"},
             assms=['!x. !y. P x --> R x y', 'P s'],
@@ -230,7 +230,7 @@ class LogicTest(unittest.TestCase):
         )
 
     def testApplyFactMacro3(self):
-        test_macro(
+        run_macro(
             self, 'logic_base', 'apply_fact',
             vars={'P': "'a => bool", 'R': "'a => 'a => bool", 's': "'a"},
             assms=['!x. !y. P y --> R x y', 'P s'],
@@ -251,9 +251,9 @@ class LogicTest(unittest.TestCase):
         vars = {'A': 'bool', 'B': 'bool', 'C': 'bool', 'D': 'bool'}
         for t, success in test_data:
             if success:
-                test_macro(self, 'logic_base', 'imp_conj', vars=vars, args=t, res=t)
+                run_macro(self, 'logic_base', 'imp_conj', vars=vars, args=t, res=t)
             else:
-                test_macro(self, 'logic_base', 'imp_conj', vars=vars, args=t, failed=AssertionError)
+                run_macro(self, 'logic_base', 'imp_conj', vars=vars, args=t, failed=AssertionError)
 
     def testConjNorm(self):
         test_data = [
@@ -263,7 +263,7 @@ class LogicTest(unittest.TestCase):
 
         vars = {'A': 'bool', 'B': 'bool', 'C': 'bool', 'D': 'bool'}
         for t, t_res in test_data:
-            test_conv(self, 'logic', logic.conj_norm(), vars=vars, t=t, t_res=t_res)
+            run_conv(self, 'logic', logic.conj_norm(), vars=vars, t=t, t_res=t_res)
 
     def testImpDisjMacro(self):
         test_data = [
@@ -276,9 +276,9 @@ class LogicTest(unittest.TestCase):
         vars = {'A': 'bool', 'B': 'bool', 'C': 'bool', 'D': 'bool'}
         for t, success in test_data:
             if success:
-                test_macro(self, 'logic', 'imp_disj', vars=vars, args=t, res=t)
+                run_macro(self, 'logic', 'imp_disj', vars=vars, args=t, res=t)
             else:
-                test_macro(self, 'logic', 'imp_disj', vars=vars, args=t, failed=AssertionError)
+                run_macro(self, 'logic', 'imp_disj', vars=vars, args=t, failed=AssertionError)
 
     def testDisjNorm(self):
         test_data = [
@@ -288,7 +288,7 @@ class LogicTest(unittest.TestCase):
 
         vars = {'A': 'bool', 'B': 'bool', 'C': 'bool', 'D': 'bool'}
         for t, t_res in test_data:
-            test_conv(self, 'logic', logic.disj_norm(), vars=vars, t=t, t_res=t_res)
+            run_conv(self, 'logic', logic.disj_norm(), vars=vars, t=t, t_res=t_res)
 
     def testResolution(self):
         test_data = [
@@ -302,7 +302,7 @@ class LogicTest(unittest.TestCase):
 
         vars = {'P': 'bool', 'Q': 'bool', 'R': 'bool'}
         for t1, t2, t_res in test_data:
-            test_macro(self, 'logic', 'resolution', vars=vars, assms=[t1, t2], res=t_res)
+            run_macro(self, 'logic', 'resolution', vars=vars, assms=[t1, t2], res=t_res)
 
 
 if __name__ == "__main__":
