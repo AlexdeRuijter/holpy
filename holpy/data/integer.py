@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 from holpy.kernel.type import TFun, IntType
 from holpy.kernel.term import Var, Int, Eq, Term, Sum, Prod, equals, Const, less, less_eq, greater, greater_eq, Not, int_power, Nat
 from holpy.kernel import term_ord
 from holpy.kernel.proofterm import ProofTerm, refl
 from holpy.kernel.macro import Macro
+from holpy.kernel import theory
 from holpy.kernel.theory import check_proof, register_macro, get_theorem
 from holpy.kernel.proofterm import ProofTerm
 from holpy.kernel.report import ProofReport
@@ -17,7 +20,18 @@ from math import gcd
 from holpy.logic import matcher
 from holpy.util import poly
 import functools
-basic.load_theory('real')
+
+
+def _ensure_real_theory() -> None:
+    """Load the real theory the first time a real theorem is needed.
+
+    ``int_compare_to_real`` rewrites with the ``real_of_int_*`` theorems, which
+    live in the real theory.  Loading them at import time re-enters the theory
+    loader, because ``holpy.data.real`` imports this module, so the load
+    happens here instead.
+    """
+    if theory.thy is None or not theory.thy.has_theorem('real_of_int_eq'):
+        basic.load_theory('real')
 
 
 def strip_plus(t):
@@ -850,6 +864,7 @@ class int_compare_to_real(Conv):
     def get_proof_term(self, t):
         if not (t.is_compares() or t.is_equals()) or not t.arg1.get_type() == IntType:
             raise ConvException(str(t))
+        _ensure_real_theory()
         pt = refl(t)
         if t.is_equals():
             pt1 = pt.on_rhs(rewr_conv("real_of_int_eq", sym=True))
