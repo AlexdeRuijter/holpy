@@ -1,53 +1,59 @@
 # Author: Bohua Zhan
 
-from typing import Tuple
+"""Theorems and the primitive derivation rules of higher-order logic.
+
+A :class:`Thm` is a sequent ``A1, ..., An |- C``. The module also defines the
+primitive rules from which every proof is built. Theorems can only be built by
+the primitive rules below, which are intended to be sound. These rules are the
+trust boundary of holpy: higher layers may define macros and tactics, but every
+result must eventually reduce to applications of the functions in this file.
+"""
+
+from __future__ import annotations
+
+from typing import Any, Callable, Tuple
+
 from holpy.kernel.type import TFun, BoolType, TyInst
 from holpy.kernel import term
 from holpy.kernel.term import Term, Const, Implies, Eq, Forall, Lambda, Inst
-from holpy.kernel import term_ord
 from holpy.util import typecheck
 from holpy.syntax.settings import settings
 
 
 class InvalidDerivationException(Exception):
-    """Exception during derivation. Provides error message."""
-    def __init__(self, str):
+    """Raised when a primitive derivation rule cannot be applied."""
+
+    def __init__(self, str: str):
         self.str = str
 
+
 class Thm:
-    """Represents a theorem in sequent calculus.
+    """A theorem in sequent-calculus form.
 
-    A theorem is given by a list of hypotheses and a proposition.
-    The theorem (As, C) means the list of hypotheses As implies the
-    proposition C. It is usually written as:
+    A theorem is a list of hypotheses and a proposition. ``(As, C)`` means
+    that the hypotheses ``As`` imply ``C`` and is written ``A1, ..., An |- C``.
+    Every hypothesis and the proposition must be boolean terms.
 
-    A1, ... An |- C.
-
-    For a theorem statement to be well-formed, every item in the list As
-    as well as C must be well-formed terms of type boolean.
-
-    This module also contains the list of primitive deduction rules for
-    higher-order logic. Each primitive deduction rule represents a logically
-    sound way of constructing a new theorem from a (possibly empty) list of
-    old theorems. In principle, every theorem should be constructed using
-    primitive deduction rules from the initial axioms. However, this is not
-    enforced by this module, nor is the proof object stored in the theorem.
-    Proof objects are managed by the Proof module.
-
+    The module also contains the primitive deduction rules. A theorem produced
+    by these rules is intended to be sound. The proof object itself is not
+    stored in the theorem; it is managed by :mod:`holpy.kernel.proof`
+    and checked by :mod:`holpy.kernel.theory`.
     """
-    def __init__(self, prop: Term, *hyps):
-        """Create a theorem with the given proposition, followed by a list
-        of hypothesis.
-        
-        Each element of hyps is either a term or a tuple of terms. If it is
-        a tuple, the elements in the tuple are guaranteed to be distinct.
 
+    def __init__(self, prop: Term, *hyps: Term | tuple[Term, ...]):
+        """Create a theorem with ``prop`` and the given hypotheses.
+
+        Each element of ``hyps`` is either a term or a tuple of terms. A tuple
+        is added as a batch; duplicate entries within that tuple are preserved.
+        When a later batch is added, entries already present are skipped. It is
+        expected that the entries within a tuple are distinct.
         """
         typecheck.checkinstance('Thm', prop, Term)
         self.prop: Term = prop
 
-        # Now we form the tuple of hypothesis
-        self.hyps: Tuple[Term] = tuple()
+        # Form the tuple of hypotheses, preserving the first occurrence order
+        # while removing duplicates.
+        self.hyps: Tuple[Term, ...] = tuple()
         for hyp in hyps:
             if isinstance(hyp, Term):
                 if not self.hyps:
@@ -66,23 +72,27 @@ class Thm:
                 raise TypeError('Thm: each hyp argument is either Term or tuple')
 
     @property
-    def assums(self) -> Term:
+    def assums(self) -> list[Term]:
+        """Return the antecedents of an implication-shaped proposition."""
         return self.prop.strip_implies()[0]
 
     @property
     def concl(self) -> Term:
+        """Return the conclusion of an implication-shaped proposition."""
         return self.prop.strip_implies()[1]
 
     @property
     def lhs(self) -> Term:
+        """Return the left side of an equality proposition."""
         return self.concl.lhs
 
     @property
     def rhs(self) -> Term:
+        """Return the right side of an equality proposition."""
         return self.concl.rhs
 
-    def __str__(self):
-        """Print the given theorem."""
+    def __str__(self) -> str:
+        """Print the theorem in sequent form."""
         turnstile = "⊢" if settings.unicode else "|-"
         if self.hyps:
             str_hyps = ", ".join(str(hyp) for hyp in self.hyps)
@@ -90,68 +100,91 @@ class Thm:
         else:
             return turnstile + ' ' + str(self.prop)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(("HYPS", self.hyps, "PROP", self.prop))
 
-    def __eq__(self, other):
-        """Note order of hypotheses does not matter when comparing for
-        equality.
-
-        """
+    def __eq__(self, other: object) -> bool:
+        """Compare theorems up to the order of hypotheses."""
         assert isinstance(other, Thm), "cannot compare Thm with %s" % str(type(other))
         return set(self.hyps) == set(other.hyps) and self.prop == other.prop
 
     def check_thm_type(self):
-        """Make sure the all hypotheses and proposition type-check and
-        have type boolean.
-        
-        """
+        """Check that all hypotheses and the proposition are boolean terms."""
         for t in list(self.hyps) + [self.prop]:
             if t.checked_get_type() != BoolType:
                 raise term.TypeCheckException('expect boolean type for propositions')
 
-    def is_equals(self):
-        """Check whether the proposition of the theorem is of the form x = y."""
+    def is_equals(self) -> bool:
+        """Return whether the proposition is an equality ``x = y``."""
         return self.prop.is_equals()
 
-    def is_reflexive(self):
-        """Check whether the proposition of the theorem is of the form x = x."""
+    def is_reflexive(self) -> bool:
+        """Return whether the proposition is an equality ``x = x``."""
         return self.prop.is_reflexive()
 
-    def can_prove(self, target):
-        """Determine whether self is sufficient to prove target."""
+    def can_prove(self, target: Thm) -> bool:
+        """Return whether this theorem is sufficient to prove ``target``.
+
+        This is true when the propositions agree and this theorem's
+        hypotheses are a subset of ``target``'s hypotheses.
+        """
         return self.prop == target.prop and set(self.hyps).issubset(set(target.hyps))
 
     @staticmethod
-    def assume(A):
-        """Derivation rule ASSUME:
+    def assume(A: Term) -> Thm:
+        """Derivation rule ASSUME.
 
-        A |- A
+        Parameters
+        ----------
+        A : Term
+            Proposition to assume.
+
+        Returns
+        -------
+        Thm
+            The theorem ``A |- A``.
         """
         assert isinstance(A, Term), "Thm.assume"
         return Thm(A, A)
-    
-    @staticmethod
-    def implies_intr(A, th):
-        """Derivation rule IMPLIES_INTR:
 
-        A |- B
-        ------------
-        |- A --> B
+    @staticmethod
+    def implies_intr(A: Term, th: Thm) -> Thm:
+        """Derivation rule IMPLIES_INTR.
+
+        Parameters
+        ----------
+        A : Term
+            Antecedent to discharge.
+        th : Thm
+            Theorem to discharge ``A`` from; ``A`` need not be present in its
+            hypotheses.
+
+        Returns
+        -------
+        Thm
+            ``A1, ..., An |- A --> B`` from ``A1, ..., An, A |- B``. If ``A``
+            is not in the hypotheses, it is simply added as an implication.
         """
         return Thm(Implies(A, th.prop), tuple(t for t in th.hyps if t != A))
 
     @staticmethod
-    def implies_elim(th1, th2):
-        """Derivation rule IMPLIES_ELIM (modus ponens):
+    def implies_elim(th1: Thm, th2: Thm) -> Thm:
+        """Derivation rule IMPLIES_ELIM (modus ponens).
 
-        |- A --> B
-        |- A
-        ------------
-        |- B
+        Parameters
+        ----------
+        th1 : Thm
+            Theorem proving ``A --> B``.
+        th2 : Thm
+            Theorem proving ``A``.
+
+        Returns
+        -------
+        Thm
+            The theorem ``B``.
         """
         if th1.prop.is_implies():
             A, B = th1.prop.args
@@ -163,20 +196,34 @@ class Thm:
             raise InvalidDerivationException("implies_elim: " + str(th1.prop) + " is not implies")
 
     @staticmethod
-    def reflexive(x):
-        """Derivation rule REFLEXIVE:
+    def reflexive(x: Term) -> Thm:
+        """Derivation rule REFLEXIVE.
 
-        |- x = x
+        Parameters
+        ----------
+        x : Term
+            Term to compare with itself.
+
+        Returns
+        -------
+        Thm
+            The theorem ``|- x = x``.
         """
         return Thm(Eq(x, x))
 
     @staticmethod
-    def symmetric(th):
-        """Derivation rule SYMMETRIC:
+    def symmetric(th: Thm) -> Thm:
+        """Derivation rule SYMMETRIC.
 
-        |- x = y
-        ------------
-        |- y = x
+        Parameters
+        ----------
+        th : Thm
+            Theorem proving ``x = y``.
+
+        Returns
+        -------
+        Thm
+            The theorem ``y = x``.
         """
         if th.is_equals():
             x, y = th.prop.args
@@ -185,13 +232,20 @@ class Thm:
             raise InvalidDerivationException("symmetric")
 
     @staticmethod
-    def transitive(th1, th2):
-        """Derivation rule TRANSITIVE:
+    def transitive(th1: Thm, th2: Thm) -> Thm:
+        """Derivation rule TRANSITIVE.
 
-        |- x = y
-        |- y = z
-        ------------
-        |- x = z
+        Parameters
+        ----------
+        th1 : Thm
+            Theorem proving ``x = y``.
+        th2 : Thm
+            Theorem proving ``y = z``.
+
+        Returns
+        -------
+        Thm
+            The theorem ``x = z``.
         """
         if th1.is_equals() and th2.is_equals():
             x, y1 = th1.prop.args
@@ -204,13 +258,20 @@ class Thm:
             raise InvalidDerivationException("transitive: not equalities")
 
     @staticmethod
-    def combination(th1, th2):
-        """Derivation rule COMBINATION:
+    def combination(th1: Thm, th2: Thm) -> Thm:
+        """Derivation rule COMBINATION.
 
-        |- f = g
-        |- x = y
-        ------------
-        |- f x = g y
+        Parameters
+        ----------
+        th1 : Thm
+            Theorem proving ``f = g``.
+        th2 : Thm
+            Theorem proving ``x = y``.
+
+        Returns
+        -------
+        Thm
+            The theorem ``f x = g y``.
         """
         if th1.is_equals() and th2.is_equals():
             f, g = th1.prop.args
@@ -224,13 +285,20 @@ class Thm:
             raise InvalidDerivationException("combination")
 
     @staticmethod
-    def equal_intr(th1, th2):
-        """Derivation rule EQUAL_INTR:
+    def equal_intr(th1: Thm, th2: Thm) -> Thm:
+        """Derivation rule EQUAL_INTR.
 
-        |- A --> B
-        |- B --> A
-        ------------
-        |- A = B
+        Parameters
+        ----------
+        th1 : Thm
+            Theorem proving ``A --> B``.
+        th2 : Thm
+            Theorem proving ``B --> A``.
+
+        Returns
+        -------
+        Thm
+            The theorem ``A = B``.
         """
         if th1.prop.is_implies() and th2.prop.is_implies():
             A1, B1 = th1.prop.args
@@ -243,13 +311,20 @@ class Thm:
             raise InvalidDerivationException("equal_intr")
 
     @staticmethod
-    def equal_elim(th1, th2):
-        """Derivation rule EQUAL_ELIM:
+    def equal_elim(th1: Thm, th2: Thm) -> Thm:
+        """Derivation rule EQUAL_ELIM.
 
-        |- A = B
-        |- A
-        ------------
-        |- B
+        Parameters
+        ----------
+        th1 : Thm
+            Theorem proving ``A = B``.
+        th2 : Thm
+            Theorem proving ``A``.
+
+        Returns
+        -------
+        Thm
+            The theorem ``B``.
         """
         if th1.is_equals():
             A, B = th1.prop.args
@@ -261,30 +336,40 @@ class Thm:
             raise InvalidDerivationException("equal_elim")
 
     @staticmethod
-    def subst_type(tyinst, th):
-        """Derivation rule SUBST_TYPE:
+    def subst_type(tyinst: TyInst, th: Thm) -> Thm:
+        """Derivation rule SUBST_TYPE.
 
-        Perform substitution on the type variables.
+        Parameters
+        ----------
+        tyinst : TyInst
+            Simultaneous type substitution.
+        th : Thm
+            Theorem to instantiate.
 
-        A |- B
-        ------------
-        A[s] |- B[s]  where s is substitution on types
-
+        Returns
+        -------
+        Thm
+            ``A[s] |- B[s]`` from ``A |- B``.
         """
         hyps_new = tuple(hyp.subst_type(tyinst) for hyp in th.hyps)
         prop_new = th.prop.subst_type(tyinst)
         return Thm(prop_new, hyps_new)
 
     @staticmethod
-    def substitution(inst, th):
-        """Derivation rule SUBSTITUTION:
+    def substitution(inst: Inst, th: Thm) -> Thm:
+        """Derivation rule SUBSTITUTION.
 
-        Perform substitution on the term variables.
+        Parameters
+        ----------
+        inst : Inst
+            Simultaneous term-variable substitution.
+        th : Thm
+            Theorem to instantiate.
 
-        A |- B
-        ------------
-        A[s] |- B[s]  where s is substitution on terms
-
+        Returns
+        -------
+        Thm
+            ``A[s] |- B[s]`` from ``A |- B``.
         """
         try:
             hyps_new = tuple(hyp.subst(inst) for hyp in th.hyps)
@@ -294,10 +379,18 @@ class Thm:
         return Thm(prop_new, hyps_new)
 
     @staticmethod
-    def beta_conv(t):
-        """Derivation rule BETA_CONV:
+    def beta_conv(t: Term) -> Thm:
+        """Derivation rule BETA_CONV.
 
-        |- (%x. t1) t2 = t1[t2/x]
+        Parameters
+        ----------
+        t : Term
+            Term of the form ``(%x. t1) t2``.
+
+        Returns
+        -------
+        Thm
+            The theorem ``|- (%x. t1) t2 = t1[t2/x]``.
         """
         try:
             t_new = t.beta_conv()
@@ -306,12 +399,21 @@ class Thm:
         return Thm(Eq(t, t_new))
 
     @staticmethod
-    def abstraction(x, th):
-        """Derivation rule ABSTRACTION:
+    def abstraction(x: Term, th: Thm) -> Thm:
+        """Derivation rule ABSTRACTION.
 
-        A |- t1 = t2
-        ------------------------
-        A |- (%x. t1) = (%x. t2)  where x does not occur in A.
+        Parameters
+        ----------
+        x : Term
+            Variable to abstract over.
+        th : Thm
+            Theorem proving ``t1 = t2``; ``x`` must not occur in its
+            hypotheses.
+
+        Returns
+        -------
+        Thm
+            ``(%x. t1) = (%x. t2)``.
         """
         if any(hyp.occurs_var(x) for hyp in th.hyps):
             raise InvalidDerivationException("abstraction: variable occurs in assmptions")
@@ -326,12 +428,21 @@ class Thm:
             raise InvalidDerivationException("abstraction")
 
     @staticmethod
-    def forall_intr(x, th):
-        """Derivation rule FORALL_INTR:
+    def forall_intr(x: Term, th: Thm) -> Thm:
+        """Derivation rule FORALL_INTR.
 
-        A |- t
-        ------------
-        A |- !x. t    where x does not occur in A.
+        Parameters
+        ----------
+        x : Term
+            Variable to quantify over; it must not occur in the hypotheses.
+        th : Thm
+            Theorem proving the body.
+
+        Returns
+        -------
+        Thm
+            The theorem ``A |- !x. t`` from ``A |- t``, where ``x`` does not
+            occur in ``A``. The hypotheses are kept.
         """
         if any(hyp.occurs_var(x) for hyp in th.hyps):
             raise InvalidDerivationException("forall_intr")
@@ -341,12 +452,20 @@ class Thm:
             return Thm(Forall(x, th.prop), th.hyps)
 
     @staticmethod
-    def forall_elim(s, th):
-        """Derivation rule FORALL_ELIM:
+    def forall_elim(s: Term, th: Thm) -> Thm:
+        """Derivation rule FORALL_ELIM.
 
-        |- !x. t
-        ------------
-        |- t[s/x]
+        Parameters
+        ----------
+        s : Term
+            Witness to substitute for the bound variable.
+        th : Thm
+            Theorem proving a universally quantified statement.
+
+        Returns
+        -------
+        Thm
+            The instantiated body ``t[s/x]``.
         """
         if th.prop.is_forall():
             if th.prop.arg.var_T != s.get_type():
@@ -357,35 +476,63 @@ class Thm:
             raise InvalidDerivationException("forall_elim: input is not forall statement")
 
     @staticmethod
-    def mk_VAR(v):
-        """Construct the internal proposition _VAR(v)."""
+    def mk_VAR(v: Term) -> Thm:
+        """Construct the internal proposition ``_VAR(v)``.
+
+        Parameters
+        ----------
+        v : Term
+            Variable to mark as introduced.
+
+        Returns
+        -------
+        Thm
+            ``|- _VAR(v)``.
+        """
         if not v.is_var():
             raise InvalidDerivationException("mk_VAR")
         return Thm(Const("_VAR", TFun(v.T, BoolType))(v))
 
     @staticmethod
-    def convert_svar(th):
-        """Obtain the version of theorem with SVar."""
+    def convert_svar(th: Thm) -> Thm:
+        """Return a copy of ``th`` with ordinary variables made schematic.
+
+        Parameters
+        ----------
+        th : Thm
+            Theorem without hypotheses.
+
+        Returns
+        -------
+        Thm
+            The converted theorem.
+
+        Raises
+        ------
+        InvalidDerivationException
+            If ``th`` has hypotheses.
+        """
         if len(th.hyps) > 0:
             raise InvalidDerivationException("convert_svar")
         return Thm(th.prop.convert_svar())
 
 
-# Table of primitive derivations
-primitive_deriv = {
-    "assume" : (Thm.assume, Term),
-    "implies_intr" : (Thm.implies_intr, Term),
-    "implies_elim" : (Thm.implies_elim, None),
-    "reflexive" : (Thm.reflexive, Term),
-    "symmetric" : (Thm.symmetric, None),
-    "transitive" : (Thm.transitive, None),
-    "combination" : (Thm.combination, None),
-    "equal_intr" : (Thm.equal_intr, None),
-    "equal_elim" : (Thm.equal_elim, None),
-    "subst_type" : (Thm.subst_type, TyInst),
-    "substitution" : (Thm.substitution, Inst),
-    "beta_conv" : (Thm.beta_conv, Term),
-    "abstraction" : (Thm.abstraction, Term),
-    "forall_intr" : (Thm.forall_intr, Term),
-    "forall_elim" : (Thm.forall_elim, Term)
+# Table of primitive derivations. Each entry is the rule function and the
+# expected argument type for the proof-item layer (None means no argument).
+primitive_deriv: dict[str, tuple[Callable[..., Thm], Any]] = {
+    "assume": (Thm.assume, Term),
+    "implies_intr": (Thm.implies_intr, Term),
+    "implies_elim": (Thm.implies_elim, None),
+    "reflexive": (Thm.reflexive, Term),
+    "symmetric": (Thm.symmetric, None),
+    "transitive": (Thm.transitive, None),
+    "combination": (Thm.combination, None),
+    "equal_intr": (Thm.equal_intr, None),
+    "equal_elim": (Thm.equal_elim, None),
+    "subst_type": (Thm.subst_type, TyInst),
+    "substitution": (Thm.substitution, Inst),
+    "beta_conv": (Thm.beta_conv, Term),
+    "abstraction": (Thm.abstraction, Term),
+    "forall_intr": (Thm.forall_intr, Term),
+    "forall_elim": (Thm.forall_elim, Term)
 }

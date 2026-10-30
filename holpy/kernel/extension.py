@@ -1,49 +1,64 @@
 # Author: Bohua Zhan
 
-from holpy.kernel.term import Const
+"""Theory extensions.
+
+An :class:`Extension` is one atomic addition to a theory: a type constructor,
+a constant, a theorem, a theorem attribute, or an overload registration.
+Extensions are applied by :class:`holpy.kernel.theory.Theory`; callers choose
+between unchecked application and checked application of supplied proofs.
+"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from holpy.kernel.thm import Thm
+from holpy.kernel.type import Type
+
+if TYPE_CHECKING:  # imported for annotations only; avoids a kernel import cycle
+    from holpy.kernel.proof import Proof
 
 
-class Extension():
-    """Represents a single extension to the theory.
+class Extension:
+    """Base class for an atomic theory extension.
 
-    There are currently four kinds of extensions:
-
-    TConst(name, arity): extend the theory by a type with the given
-    name and arity.
-
-    Constant(name, T): extend the theory by a constant with the given
-    name and type.
-
-    Theorem(name, th, prf): extend the theory by adding a theorem with
-    the given name and statement. If prf = None, then the theorem should
-    be accepted as an axiom. Otherwise prf is a proof of the theorem.
-
-    Attribute(name, attribute): add given attribute to the given theorem.
-
-    Overload(name): extend the theory by adding an overloading of a
-    constant.
-
+    The concrete subclasses are :class:`TConst`, :class:`Constant`,
+    :class:`Theorem`, :class:`Attribute`, and :class:`Overload`.
     """
-    # ty values for distinguishing between Extension objects.
+
+    # Values used by ``ty`` to distinguish extension kinds.
     TCONST, CONSTANT, THEOREM, ATTRIBUTE, OVERLOAD = range(5)
 
-    def is_tconst(self):
+    ty: int
+    name: str
+    arity: int
+    T: Type
+    ref_name: str
+    th: Thm
+    prf: object
+    attribute: str
+
+    def is_tconst(self) -> bool:
+        """Return whether this is a type-constructor extension."""
         return self.ty == Extension.TCONST
 
-    def is_constant(self):
+    def is_constant(self) -> bool:
+        """Return whether this is a constant extension."""
         return self.ty == Extension.CONSTANT
 
-    def is_theorem(self):
+    def is_theorem(self) -> bool:
+        """Return whether this is a theorem extension."""
         return self.ty == Extension.THEOREM
 
-    def is_attribute(self):
+    def is_attribute(self) -> bool:
+        """Return whether this is a theorem-attribute extension."""
         return self.ty == Extension.ATTRIBUTE
 
-    def is_overload(self):
+    def is_overload(self) -> bool:
+        """Return whether this is an overload registration."""
         return self.ty == Extension.OVERLOAD
 
-    def __str__(self):
+    def __str__(self) -> str:
         if self.ty == Extension.TCONST:
             return "Type " + self.name + " " + str(self.arity)
         elif self.ty == Extension.CONSTANT:
@@ -58,10 +73,10 @@ class Extension():
         else:
             raise TypeError
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)
 
-    def __eq__(self, other):
+    def __eq__(self, other: Extension) -> bool:
         if self.ty != other.ty:
             return False
         elif self.ty == Extension.TCONST:
@@ -79,62 +94,93 @@ class Extension():
 
 
 class TConst(Extension):
-    def __init__(self, name, arity):
-        """Extending the theory by adding an type.
+    """Extension adding a type constructor."""
 
-        name -- name of the type.
-        arity -- arity of the type.
+    def __init__(self, name: str, arity: int):
+        """Create a type-constructor extension.
 
+        Parameters
+        ----------
+        name : str
+            Name of the type constructor.
+        arity : int
+            Number of type arguments accepted by the constructor.
         """
         self.ty = Extension.TCONST
         self.name = name
         self.arity = arity
 
-class Constant(Extension):
-    def __init__(self, name, T, *, ref_name=None):
-        """Extending the theory by adding a constant.
-        
-        name -- name of the constant.
-        T -- type of the constant.
 
+class Constant(Extension):
+    """Extension adding a term constant."""
+
+    def __init__(self, name: str, T: Type, *, ref_name: str | None = None):
+        """Create a constant extension.
+
+        Parameters
+        ----------
+        name : str
+            Name of the constant.
+        T : Type
+            Most general type of the constant.
+        ref_name : str, optional
+            Name used when printing the constant; defaults to ``name``.
         """
         self.ty = Extension.CONSTANT
         self.name = name
         self.T = T
         self.ref_name = name if ref_name is None else ref_name
 
+
 class Theorem(Extension):
-    def __init__(self, name, th, prf=None):
-        """Extending the theory by adding an axiom/theorem.
+    """Extension adding an axiom or a proved theorem."""
 
-        name -- name of the theorem.
-        th -- statement of the theorem.
-        prf -- proof of the theorem. If None, this is an axiomatic extension.
+    def __init__(self, name: str, th: Thm, prf: Proof | None = None):
+        """Create a theorem extension.
 
+        Parameters
+        ----------
+        name : str
+            Name of the theorem.
+        th : Thm
+            Statement of the theorem.
+        prf : Proof, optional
+            Proof of the theorem. ``None`` makes this an axiomatic extension.
         """
         self.ty = Extension.THEOREM
         self.name = name
         self.th = th
         self.prf = prf
 
+
 class Attribute(Extension):
-    def __init__(self, name, attribute):
-        """Extend the theory by adding an attribute.
+    """Extension attaching an attribute to a theorem."""
 
-        name -- name of the theorem.
-        attribute -- name of the attribute.
+    def __init__(self, name: str, attribute: str):
+        """Create an attribute extension.
 
+        Parameters
+        ----------
+        name : str
+            Name of the theorem receiving the attribute.
+        attribute : str
+            Attribute name.
         """
         self.ty = Extension.ATTRIBUTE
         self.name = name
         self.attribute = attribute
 
+
 class Overload(Extension):
-    def __init__(self, name):
-        """Extending the theory by adding an overloaded constant.
+    """Extension registering an overloaded constant name."""
 
-        name -- name of the overloaded constant.
+    def __init__(self, name: str):
+        """Create an overload extension.
 
+        Parameters
+        ----------
+        name : str
+            Base name of the overloaded constant.
         """
         self.ty = Extension.OVERLOAD
         self.name = name
