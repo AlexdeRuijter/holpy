@@ -15,6 +15,10 @@ the JSON proof format.
 
 from __future__ import annotations
 
+__all__ = ["StructuralException", "ExIListMacro", "conj_list",
+           "ConjIntroMacro", "ConjElimMacro", "ContrMacro",
+           "cases_leaves", "CasesMacro"]
+
 from typing import List, Tuple
 
 from holpy.kernel.macro import Macro

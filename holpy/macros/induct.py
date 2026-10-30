@@ -27,6 +27,8 @@ mechanically to primitive kernel steps.
 
 from __future__ import annotations
 
+__all__ = ["InductException", "rule_shape", "induct_cases", "default_rule", "InductMacro"]
+
 from copy import copy
 from typing import List, Tuple
 
@@ -182,7 +184,24 @@ def default_rule(T: Type) -> str:
 
 @register_macro("induct")
 class InductMacro(Macro):
-    """``induct (rule, var, goal)``: prove ``goal`` from the rule's premises."""
+    """``induct (rule, var, goal)``: prove ``goal`` from the rule's premises.
+
+    ``get_proof_term`` must be called directly; it cannot be driven through
+    ``Macro.eval`` / ``Macro.expand`` because those call ``get_proof_term``
+    with all previous proofs as one sequence ``(prevs,)``, which does not
+    match this signature.
+
+    Raises
+    ------
+    InductException
+        If the rule or variable does not apply, the premises are wrong, or
+        the derived proof does not equal the goal.
+    TheoryException
+        If the named rule is unregistered (raised by ``ProofTerm.theorem``
+        through ``theory.get_theorem``).
+    matcher.MatchException
+        If the induction variable fails to match the rule's pattern.
+    """
 
     def __init__(self) -> None:
         self.level = 1
@@ -200,6 +219,7 @@ class InductMacro(Macro):
         return Thm(goal, *(prev.hyps for prev in prevs))
 
     def get_proof_term(self, args, pts) -> ProofTerm:
+        """Build the proof term; must be called directly (see class docstring)."""
         rule, var, goal = args
         inst, zs_inst, As, Bs = _instantiate(rule, var, goal)
         if len(pts) != len(As) + len(Bs):

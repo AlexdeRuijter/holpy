@@ -37,6 +37,9 @@ given laws, so it is mechanically expandable to primitive steps.
 
 from __future__ import annotations
 
+__all__ = ["SemiringException", "SemiringNormMacro", "Normaliser",
+           "Laws", "OpLaws", "parse_names", "semiring_norm_conv"]
+
 from typing import Dict, List, Optional, Tuple
 
 from holpy.kernel import term_ord
