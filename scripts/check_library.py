@@ -302,7 +302,26 @@ def _all_theories() -> list[str]:
     return basic.get_import_order(names)
 
 
-def run_theories(theory_names: Sequence[str], jobs: int, check_level: int = 0) -> list[Row]:
+def _set_z3_timeout(seconds: int) -> None:
+    """Make every Z3 call give up after ``seconds`` (0 means no limit).
+
+    Without a limit a single Z3 query that answers ``unknown`` never returns
+    and stalls the whole run (``realderivative.lhospital`` does this).  Such a
+    call raises an ordinary proof failure, so the theorem is reported as
+    ``fail`` instead.
+    """
+    if seconds > 0:
+        import z3
+
+        z3.set_param("timeout", seconds * 1000)
+
+
+def run_theories(
+    theory_names: Sequence[str],
+    jobs: int,
+    check_level: int = 0,
+    z3_timeout: int = 0,
+) -> list[Row]:
     """Check theories sequentially or in parallel and return ordered rows.
 
     Parameters
@@ -314,6 +333,8 @@ def run_theories(theory_names: Sequence[str], jobs: int, check_level: int = 0) -
         Number of worker processes.  ``1`` checks in the current process.
     check_level : int, optional
         Trust level passed to the kernel's proof checker.
+    z3_timeout : int, optional
+        Per-call Z3 time limit in seconds; ``0`` means no limit.
 
     Returns
     -------
@@ -329,9 +350,12 @@ def run_theories(theory_names: Sequence[str], jobs: int, check_level: int = 0) -
         raise ValueError("jobs must be at least 1")
 
     if jobs == 1 or len(theory_names) <= 1:
+        _set_z3_timeout(z3_timeout)
         results = [process_theory(name, check_level) for name in theory_names]
     else:
-        with multiprocessing.Pool(min(jobs, len(theory_names))) as pool:
+        with multiprocessing.Pool(
+            min(jobs, len(theory_names)), _set_z3_timeout, (z3_timeout,)
+        ) as pool:
             results = pool.starmap(
                 process_theory, [(name, check_level) for name in theory_names]
             )
@@ -609,6 +633,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="trust level passed to the kernel proof checker (default: %(default)s)",
     )
     parser.add_argument(
+        "--z3-timeout",
+        type=int,
+        default=60,
+        metavar="SECONDS",
+        help="per-call Z3 time limit, 0 for none (default: %(default)s)",
+    )
+    parser.add_argument(
         "--compare",
         nargs=2,
         type=Path,
@@ -654,7 +685,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     basic.item_index.clear()
 
     theory_names = list(args.theory) if args.theory else _all_theories()
-    rows = run_theories(theory_names, args.jobs, args.check_level)
+    rows = run_theories(theory_names, args.jobs, args.check_level, args.z3_timeout)
     write_tsv(rows, args.out)
     _report_quarantine(rows)
     logger.info("Wrote %d rows to %s", len(rows), args.out)
