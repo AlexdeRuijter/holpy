@@ -1,0 +1,3 @@
+wall seconds (--jobs 1): 595
+2
+z3 5.3.3
