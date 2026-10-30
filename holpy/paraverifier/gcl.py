@@ -2,11 +2,12 @@
 
 """Utility functions for GCL (Guarded Command Language)."""
 
+from __future__ import annotations
+
 from holpy.kernel.type import TFun, TConst, BoolType, NatType
 from holpy.kernel import term
 from holpy.kernel.term import Term, Const, Eq, Binary
 from holpy.logic import basic
-from holpy.logic import logic
 from holpy.data import function
 
 thy = basic.load_theory("gcl")
@@ -21,7 +22,7 @@ BoolV = Const("BoolV", TFun(BoolType, scalarValue))
 
 stateT = TFun(varType, scalarValue)
 
-def convert_term(var_map, s, t):
+def convert_term(var_map: dict[Term, int], s: Term, t: Term) -> Term:
     """Convert term t with given var_map and state s.
 
     Examples: given var_map {a: 0, b: 1}, where a is a function
@@ -58,7 +59,7 @@ def convert_term(var_map, s, t):
 
     return convert(t)
     
-def mk_assign(var_map, s, assigns):
+def mk_assign(var_map: dict[Term, int], s: Term, assigns: dict[Term, Term]) -> Term:
     """Given a dictionary of assignments, form the corresponding term.
 
     Example: given var_map {a: 0, b: 1}, where a is a function
