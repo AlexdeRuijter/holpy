@@ -50,7 +50,10 @@ COLUMNS = (
     "steps",
     "macros_eval",
     "time",
+    "message",
 )
+# Files written before the ``message`` column existed are still readable.
+REQUIRED_COLUMNS = COLUMNS[:-1]
 COMPARE_COLUMNS = ("status", "statement", "steps")
 
 
@@ -82,6 +85,9 @@ class Row:
         Sorted comma-separated macro names evaluated during checking.
     time : float
         Wall-clock checking time in seconds, rounded to two decimals.
+    message : str
+        First line (at most 300 characters) of the exception text for a
+        failed proof, otherwise an empty string.
     """
 
     theory: str
@@ -93,6 +99,13 @@ class Row:
     steps: int
     macros_eval: str
     time: float
+    message: str = ""
+
+
+def _first_line(exc: BaseException, limit: int = 300) -> str:
+    """Return the first line of an exception's text, shortened to ``limit``."""
+    text = str(exc).strip()
+    return text.splitlines()[0][:limit] if text else ""
 
 
 def _escape_field(value: str) -> str:
@@ -187,6 +200,7 @@ def _theorem_row(
             steps=0,
             macros_eval="",
             time=0.0,
+            message=_first_line(item.error),
         )
 
     if item.proof is None:
@@ -244,6 +258,7 @@ def _theorem_row(
             steps=0,
             macros_eval="",
             time=round(elapsed, 2),
+            message=_first_line(exc),
         )
 
 
@@ -396,6 +411,7 @@ def write_tsv(rows: Sequence[Row], out_path: Path) -> None:
                 str(row.steps),
                 row.macros_eval,
                 f"{row.time:.2f}",
+                row.message,
             )
             f.write("\t".join(_escape_field(value) for value in values) + "\n")
 
@@ -424,7 +440,7 @@ def read_tsv(path: Path) -> tuple[list[str], dict[tuple[str, str], dict[str, str
         raise ValueError(f"{path}: empty TSV file")
 
     header = lines[0].split("\t")
-    missing = [column for column in COLUMNS if column not in header]
+    missing = [column for column in REQUIRED_COLUMNS if column not in header]
     if missing:
         raise ValueError(f"{path}: missing columns: {', '.join(missing)}")
 
