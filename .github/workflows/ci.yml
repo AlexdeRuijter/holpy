@@ -47,8 +47,8 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - run: pip install -e ".[dev]"
-      # bash on Windows too: PowerShell would fail this step on pytest's exit code 1 (known failures).
-      - run: python -m pytest holpy -q -p no:cacheprovider --continue-on-collection-errors -rfE | tee pytest.txt
+      # bash everywhere (PowerShell fails on pytest's exit code 1; explicit bash adds pipefail): known failures must not fail this step, the compare step decides.
+      - run: python -m pytest holpy -q -p no:cacheprovider --continue-on-collection-errors -rfE | tee pytest.txt || true
         shell: bash
       # On non-Linux OS the baseline may differ; do not fail the build for differences.
       - run: python scripts/compare_test_baseline.py pytest.txt docs/test_baseline.txt
