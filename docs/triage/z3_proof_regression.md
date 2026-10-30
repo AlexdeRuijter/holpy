@@ -43,9 +43,20 @@ alone) give the results of the good runs: `natseg_offset_image` ok (0.13 s), `ta
 `z3wrapper.solve` never reads the proof; only `solve_and_proof` does, and that function
 uses its own `z3.Context()`.
 
-## Options (not applied; this is a prover change, not a kernel change)
+## Decision (Alex, 2026-10-30)
 
-1. Pin `z3-solver<5.3.3` in `pyproject.toml`.
+`pyproject.toml` now pins `z3-solver>=4.12,<5.3.3`, and `docs/library_check.tsv` was
+regenerated with z3-solver 5.3.2.0: two full runs give identical results (1987 ok, 81 gaps,
+108 fail, 1587 without proof; two more theorems pass than with 5.3.3.0:
+`misc.real_open_interval_eq_empty`, `real.real_down`). On 5.3.2.0 `realderivative.lhospital`
+still fails (Z3 gives `unknown` at the 60 s limit); the other four unstable theorems are ok or
+gaps as in the good runs. Getting back to current Z3 is work-package
+`docs/plans/first-tag/70-wp-z3-upgrade.md`.
+
+## Options that were considered
+
+1. Pin `z3-solver<5.3.3` (done).
+
 2. Drop the global `z3.set_param(proof=True)` and create `z3.Context(proof=True)` inside
    `solve_and_proof` only. Smaller risk of future surprises; needs a look at who else
    relies on the global setting.
