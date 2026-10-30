@@ -27,11 +27,10 @@ def compare_fst(p1: tuple[Any, ...], p2: tuple[Any, ...]) -> int:
 def collect_pairs(ps: Iterable[tuple[Any, Any]]) -> tuple[tuple[Any, Any], ...]:
     """Collect pairs by first component and add their second components.
 
-    The first components must be hashable and must be ``Term`` objects or
-    ``(Term, int)`` tuples. Zero coefficients are dropped and the result is
-    sorted up to ties by ``compare_fst``. For example,
-    ``[(Term('x'), 1), (Term('y'), 2), (Term('x'), 3)]`` becomes
-    ``[(Term('x'), 4), (Term('y'), 2)]``.
+    The first components must be hashable. Zero coefficients are dropped and
+    the result is sorted by the first component. For example,
+    ``[(Var('x', IntType), 1), (Var('y', IntType), 2), (Var('x', IntType), 3)]``
+    becomes ``[(Var('x', IntType), 4), (Var('y', IntType), 2)]``.
     """
     res = {}
     for v, c in ps:
@@ -90,20 +89,15 @@ class Monomial:
     def __repr__(self) -> str:
         return "Monomial(%s)" % str(self)
 
-    def __le__(self, other):
-        """Compare monomials by factor list and then coefficient.
-
-        Returns the result of compare_atom (-1, 0 or 1), not a proper
-        boolean ordering.  See #TODO(ws4-util-le): fix in a separate commit.
-        """
-        # TODO(ws4-util-le): fix in a separate commit
-        cp = term_ord.fast_compare_list(self.factors, other.factors)
+    def __le__(self, other: Monomial) -> bool:
+        """Compare monomials by factor list and then coefficient."""
+        cp = term_ord.fast_compare_list(self.factors, other.factors)  # type: ignore[arg-type]
         if cp < 0:
             return True
         elif cp > 0:
             return False
         else:
-            return term_ord.compare_atom(self.coeff, other.coeff)
+            return term_ord.compare_atom(self.coeff, other.coeff) <= 0
 
     def __lt__(self, other: Monomial) -> bool:
         """Return whether this monomial sorts before ``other``."""
