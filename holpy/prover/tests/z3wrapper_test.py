@@ -86,14 +86,18 @@ class Z3WrapperTest(unittest.TestCase):
         q2 = parser.parse_term(
             '!x. m + p <= x & x <= n + p <--> (?x1. x = x1 + p & m <= x1 & x1 <= n)')
 
+        # A Z3 regression must fail the test, not hang it.
         old_seed = z3.get_param('smt.random_seed')
+        old_timeout = z3.get_param('timeout')
         try:
+            z3.set_param('timeout', 10000)
             for seed in range(8):
                 z3.set_param('smt.random_seed', seed)
                 self.assertTrue(z3wrapper.solve(q1))
                 self.assertTrue(z3wrapper.solve(q2))
         finally:
             z3.set_param('smt.random_seed', old_seed)
+            z3.set_param('timeout', int(old_timeout))
 
     def testSolveAndProof(self):
         if not z3wrapper.z3_loaded:

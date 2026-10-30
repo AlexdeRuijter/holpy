@@ -5,6 +5,11 @@ import importlib
 if importlib.util.find_spec("z3"):
     import z3
     z3_loaded = True
+    # Do not call z3.set_param(proof=True) here.  Proof generation is a global
+    # Z3 setting, so it would apply to every query in the process, but only
+    # solve_and_proof needs proofs (it uses its own z3.Context(proof=True)).
+    # With z3-solver 5.3.3.0 proof mode also makes quantified queries return
+    # `unknown` depending on the random seed.  See docs/z3.md.
 else:
     z3_loaded = False
 
@@ -243,13 +248,23 @@ def solve_core(s, t, debug=False):
     return s
 
 def solve(t, debug=False):
-    """Solve the given goal using Z3."""
+    """Solve the given goal using Z3.
+
+    Returns True if Z3 proves the goal.  Runs in Z3's default context with
+    proof generation off; use solve_and_proof when a proof is needed.
+    """
     s = solve_core(z3.Solver(), t, debug)
     return str(s.check()) == 'unsat'
  
 
 def solve_and_proof(t, debug=False):
-    """Solve the given goal using Z3 and get proof."""
+    """Solve the given goal using Z3 and get proof.
+
+    Proof generation is enabled only in the private context created here
+    (z3.Context(proof=True)); it is not a global setting of holpy.  The
+    returned proof and assertions belong to that context, so they cannot be
+    mixed with terms of Z3's default context.  See docs/z3.md.
+    """
     s = solve_core(z3.Solver(ctx=z3.Context(proof=True)) ,t, debug)
     assert str(s.check()) == 'unsat'
     return s.proof(), s.assertions()

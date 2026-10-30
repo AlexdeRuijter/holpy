@@ -5,6 +5,8 @@ by Sascha Böhme and Tjark Weber.
 """
 
 import z3
+# No global z3.set_param(proof=True): proofs come from z3wrapper.solve_and_proof,
+# which enables them in its own context (see docs/z3.md).
 from z3.z3consts import *
 from holpy.data import integer
 from holpy.data import proplogic
