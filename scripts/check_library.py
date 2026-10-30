@@ -330,7 +330,7 @@ def run_theories(
         Theories to check.  The output follows this sequence, and rows within
         each theory follow JSON item order.
     jobs : int
-        Number of worker processes.  ``1`` checks in the current process.
+        Number of worker processes. Each theory is checked in a fresh process.
     check_level : int, optional
         Trust level passed to the kernel's proof checker.
     z3_timeout : int, optional
@@ -349,16 +349,20 @@ def run_theories(
     if jobs < 1:
         raise ValueError("jobs must be at least 1")
 
-    if jobs == 1 or len(theory_names) <= 1:
-        _set_z3_timeout(z3_timeout)
-        results = [process_theory(name, check_level) for name in theory_names]
-    else:
-        with multiprocessing.Pool(
-            min(jobs, len(theory_names)), _set_z3_timeout, (z3_timeout,)
-        ) as pool:
-            results = pool.starmap(
-                process_theory, [(name, check_level) for name in theory_names]
-            )
+    # Every theory is checked in a fresh process. Z3 answers can depend on what
+    # the same process solved earlier (``iterate.natseg_offset_image`` is
+    # decided in 0.2 s after other theories and times out when checked alone),
+    # so sharing a process would make the result depend on the job count and
+    # the order of the theories.
+    with multiprocessing.Pool(
+        min(jobs, len(theory_names)) or 1,
+        _set_z3_timeout,
+        (z3_timeout,),
+        maxtasksperchild=1,
+    ) as pool:
+        results = pool.starmap(
+            process_theory, [(name, check_level) for name in theory_names]
+        )
 
     # The pool preserves input order, but sorting by the requested theory order
     # also makes the invariant explicit and keeps explicit theory arguments in
