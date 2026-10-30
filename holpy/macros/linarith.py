@@ -46,6 +46,12 @@ states without proof, so a transport certificate must list them:
 
 from __future__ import annotations
 
+__all__ = ["LinarithException", "RealLinarithMacro", "NatLinarithMacro",
+           "dest_num", "is_num", "num_add", "num_mul", "num_pos",
+           "lin_norm", "norm_fact", "push_denom", "to_sign_facts",
+           "find_certificate", "py_lin", "py_sign_facts", "check_goal",
+           "can_refute"]
+
 from fractions import Fraction
 from math import gcd
 from typing import Callable, Dict, List, Optional, Tuple

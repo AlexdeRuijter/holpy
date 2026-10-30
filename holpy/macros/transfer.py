@@ -25,6 +25,8 @@ The macro is level 1; its expansion is rewriting with the laws.
 
 from __future__ import annotations
 
+__all__ = ["TransferException", "TransferMacro", "_schematic", "classify", "transfer_conv"]
+
 from typing import List, Tuple
 
 from holpy.kernel.macro import Macro
