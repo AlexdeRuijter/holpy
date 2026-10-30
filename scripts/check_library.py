@@ -50,7 +50,10 @@ COLUMNS = (
     "steps",
     "macros_eval",
     "time",
+    "message",
 )
+# Files written before the ``message`` column existed are still readable.
+REQUIRED_COLUMNS = COLUMNS[:-1]
 COMPARE_COLUMNS = ("status", "statement", "steps")
 
 
@@ -82,6 +85,9 @@ class Row:
         Sorted comma-separated macro names evaluated during checking.
     time : float
         Wall-clock checking time in seconds, rounded to two decimals.
+    message : str
+        First line (at most 300 characters) of the exception text for a
+        failed proof, otherwise an empty string.
     """
 
     theory: str
@@ -93,6 +99,13 @@ class Row:
     steps: int
     macros_eval: str
     time: float
+    message: str = ""
+
+
+def _first_line(exc: BaseException, limit: int = 300) -> str:
+    """Return the first line of an exception's text, shortened to ``limit``."""
+    text = str(exc).strip()
+    return text.splitlines()[0][:limit] if text else ""
 
 
 def _escape_field(value: str) -> str:
@@ -187,6 +200,7 @@ def _theorem_row(
             steps=0,
             macros_eval="",
             time=0.0,
+            message=_first_line(item.error),
         )
 
     if item.proof is None:
@@ -244,6 +258,7 @@ def _theorem_row(
             steps=0,
             macros_eval="",
             time=round(elapsed, 2),
+            message=_first_line(exc),
         )
 
 
@@ -302,7 +317,26 @@ def _all_theories() -> list[str]:
     return basic.get_import_order(names)
 
 
-def run_theories(theory_names: Sequence[str], jobs: int, check_level: int = 0) -> list[Row]:
+def _set_z3_timeout(seconds: int) -> None:
+    """Make every Z3 call give up after ``seconds`` (0 means no limit).
+
+    Without a limit a single Z3 query that answers ``unknown`` never returns
+    and stalls the whole run (``realderivative.lhospital`` does this).  Such a
+    call raises an ordinary proof failure, so the theorem is reported as
+    ``fail`` instead.
+    """
+    if seconds > 0:
+        import z3
+
+        z3.set_param("timeout", seconds * 1000)
+
+
+def run_theories(
+    theory_names: Sequence[str],
+    jobs: int,
+    check_level: int = 0,
+    z3_timeout: int = 0,
+) -> list[Row]:
     """Check theories sequentially or in parallel and return ordered rows.
 
     Parameters
@@ -311,9 +345,11 @@ def run_theories(theory_names: Sequence[str], jobs: int, check_level: int = 0) -
         Theories to check.  The output follows this sequence, and rows within
         each theory follow JSON item order.
     jobs : int
-        Number of worker processes.  ``1`` checks in the current process.
+        Number of worker processes. Each theory is checked in a fresh process.
     check_level : int, optional
         Trust level passed to the kernel's proof checker.
+    z3_timeout : int, optional
+        Per-call Z3 time limit in seconds; ``0`` means no limit.
 
     Returns
     -------
@@ -328,13 +364,20 @@ def run_theories(theory_names: Sequence[str], jobs: int, check_level: int = 0) -
     if jobs < 1:
         raise ValueError("jobs must be at least 1")
 
-    if jobs == 1 or len(theory_names) <= 1:
-        results = [process_theory(name, check_level) for name in theory_names]
-    else:
-        with multiprocessing.Pool(min(jobs, len(theory_names))) as pool:
-            results = pool.starmap(
-                process_theory, [(name, check_level) for name in theory_names]
-            )
+    # Every theory is checked in a fresh process. Z3 answers can depend on what
+    # the same process solved earlier (``iterate.natseg_offset_image`` is
+    # decided in 0.2 s after other theories and times out when checked alone),
+    # so sharing a process would make the result depend on the job count and
+    # the order of the theories.
+    with multiprocessing.Pool(
+        min(jobs, len(theory_names)) or 1,
+        _set_z3_timeout,
+        (z3_timeout,),
+        maxtasksperchild=1,
+    ) as pool:
+        results = pool.starmap(
+            process_theory, [(name, check_level) for name in theory_names]
+        )
 
     # The pool preserves input order, but sorting by the requested theory order
     # also makes the invariant explicit and keeps explicit theory arguments in
@@ -368,6 +411,7 @@ def write_tsv(rows: Sequence[Row], out_path: Path) -> None:
                 str(row.steps),
                 row.macros_eval,
                 f"{row.time:.2f}",
+                row.message,
             )
             f.write("\t".join(_escape_field(value) for value in values) + "\n")
 
@@ -396,7 +440,7 @@ def read_tsv(path: Path) -> tuple[list[str], dict[tuple[str, str], dict[str, str
         raise ValueError(f"{path}: empty TSV file")
 
     header = lines[0].split("\t")
-    missing = [column for column in COLUMNS if column not in header]
+    missing = [column for column in REQUIRED_COLUMNS if column not in header]
     if missing:
         raise ValueError(f"{path}: missing columns: {', '.join(missing)}")
 
@@ -609,6 +653,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="trust level passed to the kernel proof checker (default: %(default)s)",
     )
     parser.add_argument(
+        "--z3-timeout",
+        type=int,
+        default=60,
+        metavar="SECONDS",
+        help="per-call Z3 time limit, 0 for none (default: %(default)s)",
+    )
+    parser.add_argument(
         "--compare",
         nargs=2,
         type=Path,
@@ -654,7 +705,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     basic.item_index.clear()
 
     theory_names = list(args.theory) if args.theory else _all_theories()
-    rows = run_theories(theory_names, args.jobs, args.check_level)
+    rows = run_theories(theory_names, args.jobs, args.check_level, args.z3_timeout)
     write_tsv(rows, args.out)
     _report_quarantine(rows)
     logger.info("Wrote %d rows to %s", len(rows), args.out)

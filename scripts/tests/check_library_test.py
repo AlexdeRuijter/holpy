@@ -133,3 +133,20 @@ class CheckLibraryTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Z3TimeoutOptionTest(unittest.TestCase):
+    """The checker bounds Z3 calls so that one undecided query cannot hang a run."""
+
+    def test_option_is_documented_with_a_finite_default(self):
+        result = subprocess.run(
+            [sys.executable, str(SCRIPT), "--help"],
+            cwd=REPO_ROOT,
+            env={**os.environ, "PYTHONPATH": str(REPO_ROOT)},
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("--z3-timeout", result.stdout)
+        self.assertIn("default: 60", result.stdout)
