@@ -98,6 +98,15 @@ def first_order_match(pat, t, inst=None):
         trace.append((pat, t))
         if pat.is_svar():
             if pat.head.name not in inst:
+                # A schematic variable can only be instantiated by a term of
+                # the same type. Without this check an ill-typed match (for
+                # example a real-valued variable against a boolean goal in
+                # rewr_conv) is accepted here and only rejected later by the
+                # kernel's substitution rule.
+                try:
+                    pat.T.match_incr(t.get_type(), inst.tyinst)
+                except TypeMatchException:
+                    raise MatchException(trace)
                 # If we are in an abstraction, check t does not contain any
                 # bound variables
                 if bd_vars and t.has_vars(bd_vars):
