@@ -461,6 +461,19 @@ class ParserTest(unittest.TestCase):
         for s, res in test_data:
             self.assertEqual(parser.parse_proof_rule(s), res)
 
+    def testParseProofRuleMissingTh(self):
+        # Missing th key must mean same as th == ""
+        res_empty = parser.parse_proof_rule({'id': "0", 'rule': "theorem", 'args': "conjD1", 'prevs': [], 'th': ""})
+        res_missing = parser.parse_proof_rule({'id': "0", 'rule': "theorem", 'args': "conjD1", 'prevs': []})
+        self.assertEqual(res_missing, res_empty)
+        # Real th
+        res_real = parser.parse_proof_rule({'id': "0", 'rule': "sorry", 'args': "", 'prevs': [], 'th': "A |- B"})
+        from holpy.kernel.term import Var
+        from holpy.kernel.type import BoolType
+        A = Var('A', BoolType)
+        B = Var('B', BoolType)
+        self.assertEqual(res_real.th, parser.parse_thm("A |- B"))
+
     def testParseTypeInd(self):
         test_data = [
             ("cons (x ::'a) (xs ::'a list)",

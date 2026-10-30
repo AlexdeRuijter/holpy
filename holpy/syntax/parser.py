@@ -536,10 +536,11 @@ def parse_proof_rule(data):
     if rule == "":
         return ProofItem(id, "")
 
-    if data['th'] == "":
+    th_str = data.get('th', '')
+    if th_str == "":
         th = None
     else:
-        th = parse_thm(data['th'])
+        th = parse_thm(th_str)
 
     sig = theory.thy.get_proof_rule_sig(rule)
     args = parse_args(sig, data['args'])
