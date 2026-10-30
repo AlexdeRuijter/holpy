@@ -1,15 +1,38 @@
 # Author: Bohua Zhan
 
+"""Linear proof objects and editing primitives.
+
+A proof is a list of :class:`ProofItem` entries. Each item stores a rule, its
+arguments, the identifiers of previous items it consumes, and optionally the
+statement it proves. Subproofs are attached to an item and share the same
+identifier space through :class:`ItemID`.
+
+The classes here are the mutable editing layer used by the proof-state
+server. Logical checking itself lives in :mod:`holpy.kernel.theory`.
+"""
+
+from __future__ import annotations
+
 import copy
-from typing import List, Optional, Tuple, Union
+from typing import Any, List, Optional, Sequence, Tuple, Union
 
 from holpy.kernel.term import Term, Inst
 from holpy.kernel.thm import Thm
 
-class ItemID():
-    """Represents id of an item as a tuple of integers."""
-    def __init__(self, id: Union[None, Tuple[int], int, str, "ItemID"] = None):
-        """Convert input id into tuple form."""
+
+class ItemID:
+    """Identifier of a proof item, stored as a tuple of integers.
+
+    Accepted input forms are ``None`` (the empty identifier), a tuple of
+    integers, a single integer, a dotted string such as ``"1.2.0"``, or
+    another :class:`ItemID`.
+    """
+
+    id: tuple[int, ...]
+
+    def __init__(self, id: Union[None, Tuple[int, ...], int, str, "ItemID"] = None):
+        """Convert ``id`` into tuple form."""
+        self.id: tuple[int, ...]
         if id is None:
             self.id = tuple()
         elif isinstance(id, tuple) and all(isinstance(i, int) for i in id):
@@ -23,22 +46,20 @@ class ItemID():
         else:
             raise TypeError
 
-    def __str__(self):
-        """Print id in n1.n2.n3 form."""
+    def __str__(self) -> str:
+        """Print the identifier in ``n1.n2.n3`` form."""
         return ".".join(str(i) for i in self.id)
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return isinstance(other, ItemID) and self.id == other.id
 
     def incr_id_after(self, start: "ItemID", n: int) -> "ItemID":
-        """Perform the id adjustment necessary for adding n lines before
-        start id. The exact logic is as follows:
-        
-        Suppose start has length k. Find all ids with length at least k,
-        where the first k-1 numbers agree with start, and the k'th number
-        is greater than or equal to start. Increment the k'th number by n
-        and leave the rest unchanged.
+        """Adjust this identifier after inserting ``n`` lines before ``start``.
 
+        Suppose ``start`` has length ``k``. Every identifier of length at least
+        ``k`` whose first ``k - 1`` components agree with ``start`` and whose
+        ``k``-th component is at least ``start``'s is shifted by ``n`` at that
+        component; the remaining components are unchanged.
         """
         k = len(start.id)
         if len(self.id) >= k and self.id[:k-1] == start.id[:k-1] and self.id[k-1] >= start.id[k-1]:
@@ -47,13 +68,15 @@ class ItemID():
             return self
 
     def incr_id(self, n: int) -> "ItemID":
-        """Increment the last number in id by n."""
+        """Increment the last component of the identifier by ``n``."""
         return ItemID(self.id[:-1] + (self.id[-1] + n,))
 
     def decr_id(self, id_remove: "ItemID") -> "ItemID":
-        """Decrement a single id, with the aim of closing the gap at
-        id_remove. The logic used is similar to that incr_id_after.
-        
+        """Close the gap left by removing ``id_remove``.
+
+        This is the inverse of :meth:`incr_id_after` for a one-line insertion
+        (``n = 1``): identifiers in the affected sibling range are shifted down
+        by one at the component where the removed item lived.
         """
         k = len(id_remove.id)
         if len(self.id) >= k and self.id[:k-1] == id_remove.id[:k-1] and self.id[k-1] > id_remove.id[k-1]:
@@ -62,11 +85,15 @@ class ItemID():
             return self
 
     def last(self) -> int:
-        """Return the last entry of the id."""
+        """Return the last component of the identifier."""
         return self.id[-1]
 
-    def can_depend_on(self, other: "ItemID") -> "ItemID":
-        """Return whether the current id can depend on another id."""
+    def can_depend_on(self, other: "ItemID") -> bool:
+        """Return whether this item may depend on ``other``.
+
+        A dependency is legal only when ``other`` is in the same proof or an
+        enclosing subproof and appears earlier in the linear order.
+        """
         l = len(other.id)
         if l > len(self.id):
             return False
@@ -76,21 +103,31 @@ class ItemID():
 
 
 class ProofStateException(Exception):
-    pass
+    """Raised when a requested proof item or subproof does not exist."""
 
 
-class ProofItem():
-    """An item in a proof, consisting of the following data:
+class ProofItem:
+    """One line of a proof.
 
-    - id: an identifier for reference by later proof items.
-    - rule: derivation rule used to derive the theorem.
-    - args: arguments to the rule.
-    - prevs: previous sequents used. Default to [].
-    - th: optional theorem statement (as a sequent).
-    - subproof: optional expanded proof of the statement.
-
+    Attributes
+    ----------
+    id : ItemID
+        Identifier used by later items.
+    rule : str
+        Primitive derivation or macro name.
+    args : object
+        Arguments to the rule.
+    prevs : list of ItemID
+        Previous items consumed by this rule.
+    th : Thm or None
+        Optional expected statement.
+    subproof : Proof or None
+        Optional expanded subproof.
     """
-    def __init__(self, id, rule, *, args=None, prevs=None, th=None):
+
+    def __init__(self, id, rule: str, *, args: Any = None,
+                 prevs: Sequence[ItemID | tuple[int, ...] | int | str] | None = None,
+                 th: Thm | None = None):
         self.id: ItemID = ItemID(id)
         self.rule: str = rule
         self.args = args
@@ -98,10 +135,11 @@ class ProofItem():
         self.th: Optional[Thm] = th
         self.subproof: Optional[Proof] = None
 
-    def print_str_args(self):
+    def print_str_args(self) -> str:
+        """Render this item's arguments for the textual proof view."""
         def str_val(val):
             if isinstance(val, Inst):
-                items = sorted(val.items(), key = lambda pair: pair[0])
+                items = sorted(val.items(), key=lambda pair: pair[0])
                 return "{" + ", ".join(key + ": " + str_val(val) for key, val in items) + "}"
             else:
                 return str(val)
@@ -113,8 +151,8 @@ class ProofItem():
         else:
             return ""
 
-    def __str__(self):
-        """Print the given proof item."""
+    def __str__(self) -> str:
+        """Print the proof item."""
         str_id = str(self.id)
         str_args = " " + self.print_str_args() if self.args else ""
         str_prevs = " from " + ", ".join(str(prev) for prev in self.prevs) if self.prevs else ""
@@ -125,32 +163,35 @@ class ProofItem():
         else:
             return cur_line
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return isinstance(other, ProofItem) and self.id == other.id and self.rule == other.rule and \
             self.args == other.args and self.prevs == other.prevs and self.th == other.th
 
-    def __copy__(self):
+    def __copy__(self) -> "ProofItem":
         res = ProofItem(self.id, self.rule, args=self.args, prevs=self.prevs, th=self.th)
         if self.subproof:
             res.subproof = copy.copy(self.subproof)
         return res
 
-    def get_sorrys(self) -> List[Thm]:
-        """Return the list of gaps in the item (including subproofs)."""
+    def get_sorrys(self) -> list[Thm | None]:
+        """Return the gaps in this item, including those in subproofs.
+
+        An entry is ``None`` when a ``sorry`` item has no statement.
+        """
         if self.rule == 'sorry':
             assert self.subproof is None
             return [self.th]
-        
+
         if self.subproof:
             return sum([item.get_sorrys() for item in self.subproof.items], [])
         else:
             return []
-            
+
     def incr_proof_item(self, start: ItemID, n: int):
-        """Increment all ids in the proof item (including subproofs)."""
+        """Shift all identifiers in this item and its subproofs."""
         self.id = self.id.incr_id_after(start, n)
         self.prevs = [id.incr_id_after(start, n) for id in self.prevs]
         if self.subproof:
@@ -158,7 +199,7 @@ class ProofItem():
                 subitem.incr_proof_item(start, n)
 
     def decr_proof_item(self, id_remove: ItemID):
-        """Decrement all ids in the proof item (including subproofs)."""
+        """Close the identifier gap left by ``id_remove`` in this item."""
         self.id = self.id.decr_id(id_remove)
         self.prevs = [id.decr_id(id_remove) for id in self.prevs]
         if self.subproof:
@@ -167,39 +208,49 @@ class ProofItem():
 
 
 class Proof:
-    """Proof objects represent proofs in the natural deduction format.
+    """A linear proof in natural-deduction form.
 
-    Each proof consists of a list of items, where each item contains a
-    theorem, which is derived from zero or more previous theorems using
-    one of the deduction rules.
-
+    Each item derives a theorem from zero or more previous items. Subproofs
+    own their own item lists but use the same :class:`ItemID` namespace.
     """
-    def __init__(self, *assums):
-        """Initialization can take a list of n assumptions, and generates
-        first n steps 0, ..., n-1 using Thm.assume on the assumptions.
 
+    def __init__(self, *assums: Term):
+        """Initialize with zero or more assumptions.
+
+        The first ``n`` items are ``0, ..., n - 1``, each introduced by
+        ``Thm.assume`` on the corresponding assumption.
         """
         self.items: List[ProofItem] = [ProofItem(i, "assume", args=assum)
                                        for i, assum in enumerate(assums)]
 
-    def add_item(self, id, rule, *, args=None, prevs=[], th=None):
-        """Add the given item to the end of the proof."""
+    def add_item(self, id, rule: str, *, args: Any = None,
+                 prevs: Sequence[ItemID | tuple[int, ...] | int | str] | None = None,
+                 th: Thm | None = None):
+        """Append an item to the proof."""
+        if prevs is None:
+            prevs = []
         self.items.append(ProofItem(id, rule, args=args, prevs=prevs, th=th))
 
-    def __str__(self):
-        """Print the given proof object."""
+    def __str__(self) -> str:
+        """Print the proof line by line."""
         return '\n'.join(str(item) for item in self.items)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)
 
-    def __copy__(self):
+    def __copy__(self) -> "Proof":
         res = Proof()
         res.items = [copy.copy(item) for item in self.items]
         return res
 
     def find_item(self, id: ItemID) -> ProofItem:
-        """Find item at the given id."""
+        """Find the item at ``id``.
+
+        Raises
+        ------
+        ProofStateException
+            If the path does not resolve to an item.
+        """
         try:
             item = self.items[id.id[0]]
             for i in id.id[1:]:
@@ -209,7 +260,13 @@ class Proof:
             raise ProofStateException
 
     def get_parent_proof(self, id: ItemID) -> "Proof":
-        """Traverse the proof to the subproof containing the given id."""
+        """Return the subproof containing ``id``.
+
+        Raises
+        ------
+        ProofStateException
+            If the subproof path does not exist.
+        """
         try:
             prf = self
             for i in id.id[:-1]:
@@ -221,9 +278,10 @@ class Proof:
             raise ProofStateException
 
     def insert_item(self, item: ProofItem):
-        """Insert the item using the id in the item. This item should
-        be placed exactly after the last position of its subproof.
-        
+        """Insert ``item`` at the end of the subproof selected by its id.
+
+        The item's id must point exactly one past the current last line of
+        that subproof.
         """
         try:
             prf = self
@@ -237,6 +295,9 @@ class Proof:
         except IndexError:
             raise ProofStateException
 
-    def get_sorrys(self) -> List[Thm]:
-        """Return the list of gaps in the proof."""
+    def get_sorrys(self) -> list[Thm | None]:
+        """Return all gaps in the proof.
+
+        An entry is ``None`` when a ``sorry`` item has no statement.
+        """
         return sum([item.get_sorrys() for item in self.items], [])

@@ -1,10 +1,19 @@
 # Author: Bohua Zhan
 
+"""Tree-shaped proof terms and their conversion to linear proofs.
+
+A :class:`ProofTerm` stores a derivation as a tree of rule applications. This
+is the convenient form for tactics and conversions; it can be exported to the
+linear :class:`holpy.kernel.proof.Proof` representation expected by the
+proof-state server and the theory checker.
+"""
+
 from __future__ import annotations
-from typing import List
+
+from typing import Any, List
 
 from holpy.kernel.term import Term, Var, Inst
-from holpy.kernel.type import TyInst
+from holpy.kernel.type import Type, TyInst
 from holpy.kernel.thm import Thm, primitive_deriv
 from holpy.kernel.proof import Proof, ItemID
 from holpy.kernel import theory
@@ -12,27 +21,34 @@ from holpy.util import typecheck
 
 
 class TacticException(Exception):
-    """Signals that a tactic is not applicable to the goal."""
-    def __init__(self, err=""):
+    """Raised when a tactic cannot be applied to the current goal."""
+
+    def __init__(self, err: str = ""):
         self.err = err
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.err
 
 
 class ProofTerm:
-    """A proof term contains the derivation tree of a theorem.
-    
-    Each proof term contains the following fields:
-    
-    - rule: name of the primitive derivation rule or macro.
-    - args: arguments to the rule.
-    - prevs: previous proof terms.
-    - th: sequent proved by the proof term.
-    - gaps: list of gaps (of type Thm) in the proof term.
+    """A derivation tree for a theorem.
 
+    Attributes
+    ----------
+    rule : str
+        Primitive derivation name or macro name.
+    args : Any
+        Arguments to the rule.
+    prevs : list of ProofTerm
+        Immediate subderivations.
+    th : Thm
+        Sequent proved by this node.
+    gaps : list of Thm
+        Statements still admitted as gaps below this node.
     """
-    def __init__(self, rule, args, prevs=None, th=None):
+
+    def __init__(self, rule: str, args: Any, prevs: list[ProofTerm] | None = None,
+                 th: Thm | None = None):
         typecheck.checkinstance('ProofTerm', rule, str)
 
         self.rule = rule
@@ -70,71 +86,79 @@ class ProofTerm:
         # Used for checking
         self.checked = False
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)
 
-    def __str__(self):
+    def __str__(self) -> str:
         res = "ProofTerm(%s)" % self.th
         if self.gaps:
             res += '\nGaps: ' + '\n      '.join(str(gap) for gap in self.gaps)
         return res
 
     @property
-    def hyps(self):
-        """Hypothesis of a proof term."""
+    def hyps(self) -> tuple[Term, ...]:
+        """Hypotheses of the proof term."""
         return self.th.hyps
 
     @property
     def prop(self) -> Term:
-        """Propositions of a proof term."""
+        """Proposition of the proof term."""
         return self.th.prop
 
     @property
-    def assums(self):
-        """Assumptions of the proposition of a proof term."""
+    def assums(self) -> list[Term]:
+        """Antecedents of the proposition of the proof term."""
         return self.th.assums
 
     @property
     def concl(self) -> Term:
-        """Conclusion of the proposition of a proof term."""
+        """Conclusion of the proposition of the proof term."""
         return self.th.concl
 
     @property
     def lhs(self) -> Term:
-        """Left side of the equality of a proof term."""
+        """Left side of an equality proof term."""
         return self.th.concl.lhs
 
     @property
     def rhs(self) -> Term:
-        """Right side of the equality of a proof term."""
+        """Right side of an equality proof term."""
         return self.th.concl.rhs
 
     def is_equals(self) -> bool:
+        """Return whether the proposition is an equality."""
         return self.prop.is_equals()
 
     def is_reflexive(self) -> bool:
+        """Return whether the proposition is a reflexive equality."""
         return self.prop.is_reflexive()
 
     @staticmethod
-    def atom(id, th):
+    def atom(id: ItemID, th: Thm) -> ProofTerm:
+        """Return a proof term referring to an existing proof item."""
         return ProofTerm('atom', id, [], th)
 
     @staticmethod
-    def variable(nm, T):
+    def variable(nm: str, T: Type) -> ProofTerm:
+        """Return the proof term for introducing a variable."""
         return ProofTerm("variable", (nm, T), [])
 
     @staticmethod
     def assume(A: Term) -> ProofTerm:
+        """Return the proof term for assuming ``A``."""
         return ProofTerm("assume", A, [])
 
     @staticmethod
     def reflexive(x: Term) -> ProofTerm:
+        """Return the proof term for ``x = x``."""
         return ProofTerm("reflexive", x, [])
 
     def symmetric(self) -> ProofTerm:
+        """Reverse an equality proof term."""
         return ProofTerm("symmetric", None, [self])
 
-    def transitive(self, *pts) -> ProofTerm:
+    def transitive(self, *pts: ProofTerm) -> ProofTerm:
+        """Chain this equality with one or more further equalities."""
         pt = self
         for eq_pt in pts:
             if pt.prop.is_reflexive():
@@ -146,26 +170,32 @@ class ProofTerm:
         return pt
 
     def combination(self, pt2: ProofTerm) -> ProofTerm:
+        """Apply congruence to two equality proof terms."""
         return ProofTerm("combination", None, [self, pt2])
 
     def equal_intr(self, pt2: ProofTerm) -> ProofTerm:
+        """Build an equality from two implications."""
         return ProofTerm("equal_intr", None, [self, pt2])
 
     def equal_elim(self, pt2: ProofTerm) -> ProofTerm:
+        """Rewrite ``pt2`` using this equality proof term."""
         if self.is_reflexive():
             return pt2
         return ProofTerm("equal_elim", None, [self, pt2])
 
     def implies_intr(self, A: Term) -> ProofTerm:
+        """Discharge assumption ``A``."""
         return ProofTerm("implies_intr", A, [self])
 
-    def implies_elim(self, *pts) -> ProofTerm:
+    def implies_elim(self, *pts: ProofTerm) -> ProofTerm:
+        """Apply modus ponens with one or more antecedent proofs."""
         pt = self
         for assum_pt in pts:
             pt = ProofTerm("implies_elim", None, [pt, assum_pt])
         return pt
 
-    def subst_type(self, tyinst=None, **kwargs) -> ProofTerm:
+    def subst_type(self, tyinst: TyInst | None = None, **kwargs: Type) -> ProofTerm:
+        """Instantiate type variables."""
         if tyinst is None:
             tyinst = TyInst(**kwargs)
         if tyinst:
@@ -173,7 +203,8 @@ class ProofTerm:
         else:
             return self
 
-    def substitution(self, inst=None, **kwargs) -> ProofTerm:
+    def substitution(self, inst: Inst | None = None, **kwargs: Term) -> ProofTerm:
+        """Instantiate term variables."""
         if inst is None:
             inst = Inst(**kwargs)
         if inst:
@@ -183,37 +214,45 @@ class ProofTerm:
 
     @staticmethod
     def beta_conv(x: Term) -> ProofTerm:
+        """Return the beta-conversion proof term for ``x``."""
         return ProofTerm("beta_conv", x, [])
 
     def abstraction(self, x: Term) -> ProofTerm:
+        """Abstract an equality over ``x``."""
         return ProofTerm("abstraction", x, [self])
 
     def forall_intr(self, x: Term) -> ProofTerm:
+        """Universally quantify over ``x``."""
         return ProofTerm("forall_intr", x, [self])
 
     def forall_elim(self, s: Term) -> ProofTerm:
+        """Instantiate a universal quantifier with ``s``."""
         return ProofTerm("forall_elim", s, [self])
 
     @staticmethod
     def theorem(th_name: str) -> ProofTerm:
+        """Return a proof term referring to a named theorem."""
         return ProofTerm("theorem", th_name, [])
 
     @staticmethod
     def sorry(th: Thm) -> ProofTerm:
+        """Return a proof term with an explicit gap."""
         typecheck.checkinstance('sorry', th, Thm)
         return ProofTerm("sorry", None, [], th)
 
-    def check(self, *, check_level=0, rpt=None):
-        """Check the given proof term by expanding macros.
-        
-        Returns the proof report.
-        
+    def check(self, *, check_level: int = 0, rpt: Any = None) -> None:
+        """Check the proof term by expanding macros.
+
+        ``rpt`` is a :class:`holpy.kernel.report.ProofReport` that receives
+        step counts and gaps. The method mutates the ``checked`` flags of the
+        nodes it visits and returns ``None``.
         """
         def rec(pt: ProofTerm):
             if pt.checked:
                 return
 
-            # First, check the prevs that self relies on.
+            # Check dependencies first so that macro expansion sees checked
+            # subderivations.
             for prev in pt.prevs:
                 rec(prev)
 
@@ -238,11 +277,26 @@ class ProofTerm:
             pt.checked = True
 
         rec(self)
-        return
 
-    def export(self, prefix=None, prf=None, subproof=True):
-        """Convert to proof object."""
+    def export(self, prefix: ItemID | None = None, prf: Proof | None = None,
+               subproof: bool = True) -> Proof:
+        """Convert this tree into a linear proof.
 
+        Parameters
+        ----------
+        prefix : ItemID, optional
+            Identifier prefix for generated items.
+        prf : Proof, optional
+            Existing proof to append to. A fresh proof is created when absent.
+        subproof : bool
+            If true, nested derivations are exported as subproofs; otherwise
+            they are flattened into the current proof.
+
+        Returns
+        -------
+        Proof
+            The exported linear proof.
+        """
         def rec(pt: ProofTerm):
             # Should not call _export when self is already in seq_to_id
             assert pt.th not in seq_to_id, "export: th already found."
@@ -259,7 +313,7 @@ class ProofTerm:
                 else:
                     rec(prev)
                     ids.append(prf.items[-1].id)
-            
+
             if subproof:
                 id = ItemID(prefix.id + (len(prf.items),))
             else:
@@ -281,16 +335,16 @@ class ProofTerm:
         rec(self)
         return prf
 
-    def on_prop(self, *cvs):
-        """Apply the given conversion to the proposition."""
+    def on_prop(self, *cvs: Any) -> ProofTerm:
+        """Rewrite the proposition using the given conversions."""
         pt = self
         for cv in cvs:
             eq_pt = cv.get_proof_term(pt.prop)
             pt = eq_pt.equal_elim(pt)
         return pt
 
-    def on_arg(self, *cvs):
-        """Apply the given conversion to the argument of the proposition."""
+    def on_arg(self, *cvs: Any) -> ProofTerm:
+        """Rewrite the argument of an application in the proposition."""
         pt = self
         for cv in cvs:
             eq_pt = cv.get_proof_term(pt.prop.arg)
@@ -298,8 +352,8 @@ class ProofTerm:
             pt = eq_pt.equal_elim(pt)
         return pt
 
-    def on_lhs(self, *cvs):
-        """Apply the given expression to the lhs of the proposition."""
+    def on_lhs(self, *cvs: Any) -> ProofTerm:
+        """Rewrite the left side of an equality proposition."""
         assert self.prop.is_equals(), "on_lhs: theorem is not an equality."
         pt = self
         for cv in cvs:
@@ -307,8 +361,8 @@ class ProofTerm:
             pt = eq_pt.symmetric().transitive(pt)
         return pt
 
-    def on_rhs(self, *cvs):
-        """Same as on_arg, except check the current theorem is an equality."""
+    def on_rhs(self, *cvs: Any) -> ProofTerm:
+        """Rewrite the right side of an equality proposition."""
         assert self.prop.is_equals(), "on_rhs: theorem is not an equality."
         pt = self
         for cv in cvs:
@@ -316,13 +370,11 @@ class ProofTerm:
             pt = pt.transitive(eq_pt)
         return pt
 
-    def tac(self, tac):
-        """Apply the given tactic to the proof term. Return the new
-        proof term.
-        
-        Each tactic is applied only to the subgoal. Use tac_all to apply a
-        tactic to all subgoals.
-        
+    def tac(self, tac: Any) -> ProofTerm:
+        """Apply a tactic to the first remaining subgoal.
+
+        Each tactic is applied to one subgoal; use :meth:`tacs` for a
+        sequence, or the tactic layer's all-subgoal combinator for a tree.
         """
         if self.rule == 'sorry':
             return tac.get_proof_term(self.th)
@@ -334,7 +386,7 @@ class ProofTerm:
 
         raise TacticException('tac: no remaining subgoals')
 
-    def tacs(self, *tacs):
+    def tacs(self, *tacs: Any) -> ProofTerm:
         """Apply the given tactics in sequence."""
         pt = self
         for tac in tacs:
@@ -343,5 +395,5 @@ class ProofTerm:
 
 
 def refl(t: Term) -> ProofTerm:
-    """Obtain the proof term for t = t."""
+    """Return the proof term for ``t = t``."""
     return ProofTerm.reflexive(t)
