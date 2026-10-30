@@ -144,6 +144,24 @@ class ConvTest(unittest.TestCase):
             t_res="(?a. ~(P a))"
         )
 
+    def testRewrConvBareVarTypeMismatch(self):
+        """A bare-variable rewrite must not match a term of another type."""
+        run_conv(
+            self, 'real', rewr_conv('real_inv_inv', sym=True),
+            vars={'x': 'real'},
+            t='x = 0',
+            failed=ConvException
+        )
+
+    def testTopSweepConvBareVarTypeMismatch(self):
+        """top_sweep rewrites only the type-compatible subterms."""
+        run_conv(
+            self, 'real', top_sweep_conv(rewr_conv('real_inv_inv', sym=True)),
+            vars={'x': 'real'},
+            t='x = 0',
+            t_res='real_inverse (real_inverse x) = real_inverse (real_inverse 0)'
+        )
+
     def testEtaConv(self):
         run_conv(
             self, 'logic_base', conv.eta_conv(),
