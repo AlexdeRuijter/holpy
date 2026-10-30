@@ -56,7 +56,7 @@ python -m unittest discover -s holpy -t . -p "*_test.py"
 * `holpy/syntax`: parsing, type inference, and printing.
 * `holpy/server`: proof states, tactics, and methods.
 * `holpy/prover`: proof reconstruction, SMT/SAT bridges, simplex, omega.
-* `holpy/integral`: symbolic integration.
+* `holpy/integral`: symbolic integration. **Status:** `holpy.integral` is experimental in 0.1.0, and some of its tests are marked expected failures (expr_test.py fails to collect alone due to global theory state).
 * `holpy/geometry`, `holpy/paraverifier`, `holpy/imperative`: additional
   application modules.
 * `holpy/library`: bundled JSON theory library.
