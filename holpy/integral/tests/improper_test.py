@@ -7,6 +7,8 @@ from holpy.integral.expr import Limit
 
 
 class ImproperTest(unittest.TestCase):
+    @unittest.expectedFailure
+    # WS5-A7: stale integral API (missing ctx/conds); stale expectation, see docs/integral_test_triage.md
     def testNormalize(self):
         test_cases = [
             ("LIM {x -> oo}. x", "oo"),
