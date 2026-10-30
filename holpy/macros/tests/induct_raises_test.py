@@ -3,7 +3,6 @@
 import unittest
 from holpy.logic import basic
 from holpy.kernel.proofterm import ProofTerm
-from holpy.macros.induct import InductMacro, InductException
 from holpy.kernel.theory import TheoryException
 from holpy.logic import matcher
 
@@ -16,7 +15,6 @@ class InductRaisesTest(unittest.TestCase):
 
     def test_match_exception_for_bad_match(self):
         basic.load_theory("nat")
-        from holpy.logic import matcher
         from holpy.kernel.term import Var
         from holpy.kernel.type import NatType
         v = Var("n", NatType)
