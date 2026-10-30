@@ -63,6 +63,50 @@ class Z3WrapperTest(unittest.TestCase):
             t = parser.parse_term(s)
             self.assertEqual(z3wrapper.solve(t), res)
 
+    def testProofModeIsNotGlobal(self):
+        if not z3wrapper.z3_loaded:
+            return
+
+        import z3
+        from holpy.prover import proofrec  # noqa: F401  (import must not enable proofs)
+
+        self.assertEqual(str(z3.get_param('proof')).lower(), 'false')
+
+    def testSolveSequence(self):
+        if not z3wrapper.z3_loaded:
+            return
+
+        import z3
+
+        context.set_context('nat', vars={
+            'p': 'nat', 'q': 'nat', 'm': 'nat', 'n': 'nat',
+            'x': 'nat', 'x1': 'nat'})
+        q1 = parser.parse_term(
+            'min n q < max m p <--> (n < p | q < m | n < m | q < p)')
+        q2 = parser.parse_term(
+            '!x. m + p <= x & x <= n + p <--> (?x1. x = x1 + p & m <= x1 & x1 <= n)')
+
+        old_seed = z3.get_param('smt.random_seed')
+        try:
+            for seed in range(8):
+                z3.set_param('smt.random_seed', seed)
+                self.assertTrue(z3wrapper.solve(q1))
+                self.assertTrue(z3wrapper.solve(q2))
+        finally:
+            z3.set_param('smt.random_seed', old_seed)
+
+    def testSolveAndProof(self):
+        if not z3wrapper.z3_loaded:
+            return
+
+        from holpy.prover import proofrec
+
+        context.set_context('smt', vars={"s": 'nat => nat', "A": 'nat', "B": 'nat'})
+        t = parser.parse_term('s 1 = s 0 * B & ~~s 0 = A --> s 1 = A * B')
+        proof, assertions = z3wrapper.solve_and_proof(t)
+        r = proofrec.proofrec(proof, assertions=assertions, trace=True)
+        self.assertNotEqual(r.rule, 'sorry')
+
     def testSolveSet(self):
         if not z3wrapper.z3_loaded:
             return

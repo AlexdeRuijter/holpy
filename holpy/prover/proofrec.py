@@ -37,7 +37,6 @@ import sys
 import multiprocessing
 # from z3 import Context, Solver, parse_smt2_file, set_param
 import z3
-z3.set_param(proof=True)
 sys.setrecursionlimit(10000000)
 
 basic.load_theory('smt')

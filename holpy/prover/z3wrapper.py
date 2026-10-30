@@ -5,7 +5,6 @@ import importlib
 if importlib.util.find_spec("z3"):
     import z3
     z3_loaded = True
-    z3.set_param(proof=True)
 else:
     z3_loaded = False
 
@@ -251,7 +250,7 @@ def solve(t, debug=False):
 
 def solve_and_proof(t, debug=False):
     """Solve the given goal using Z3 and get proof."""
-    s = solve_core(z3.Solver(ctx=z3.Context()) ,t, debug)
+    s = solve_core(z3.Solver(ctx=z3.Context(proof=True)) ,t, debug)
     assert str(s.check()) == 'unsat'
     return s.proof(), s.assertions()
 
