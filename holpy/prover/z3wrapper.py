@@ -149,6 +149,8 @@ def convert(t, var_names, assms, to_real, ctx):
                 return z3.ToReal(rec(t.arg))
             else:
                 raise Z3Exception("convert: unsupported of_nat " + repr(t))
+        elif t.is_comb('Suc', 1):
+            return rec(t.arg) + 1
         elif t.is_comb('max', 2):
             a, b = rec(t.arg1), rec(t.arg)
             return z3.If(a >= b, a, b, ctx)
