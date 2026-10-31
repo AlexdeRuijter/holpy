@@ -1,0 +1,10 @@
+# git bisect z3-5.3.2 (good) .. z3-5.3.3 (bad), VM aarch64, 2026-10-30/31; probe: warm proof-mode Q2 (docs/triage/z3_proof_seed_matrix.py logic), 4 builds of ~30 min
+bisect z3-5.3.2 (good) .. z3-5.3.3 (bad); 59 commits
+Bisecting: 14 revisions left to test after this (roughly 4 steps)
+Bisecting: 7 revisions left to test after this (roughly 3 steps)
+Bisecting: 3 revisions left to test after this (roughly 2 steps)
+Bisecting: 1 revision left to test after this (roughly 1 step)
+Bisecting: 0 revisions left to test after this (roughly 0 steps)
+88df9ce84648f318a3a4c96fbc01986167405752 is the first bad commit
+elapsed: 11587 s
+# first bad commit: Z3Prover/z3 88df9ce84 'F*: improve checker coverage, startup, and proof compilation (#11348)' (touches src/qe/qsat.cpp: QSAT now refuses proof-enabled goals)
