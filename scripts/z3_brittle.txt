@@ -3,5 +3,5 @@
 # (`check_library.py --compare ... --allow-degraded scripts/z3_brittle.txt`) does not fail
 # when one of these goes from ok to another status.  Add a theorem only with evidence (see
 # docs/z3.md and issue #33); the better fix is a more robust stored proof.
-set.nat_finite              # ok on aarch64, `unknown` at 60 s on x86_64 (z3 5.3.2.0 and 5.3.3.0)
+set.nat_finite              # `unknown` with z3 5.3.2.0 and 5.3.3.0 (always on x86_64, intermittent on aarch64), ok up to 5.3.1.0; Z3 commit e412c752b
 realderivative.lhospital    # `unknown` at 60 s once in a full run on aarch64 with z3 5.3.3.0, ok otherwise
