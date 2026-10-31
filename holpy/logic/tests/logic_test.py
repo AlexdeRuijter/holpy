@@ -140,6 +140,25 @@ class LogicTest(unittest.TestCase):
         prf = pt4.export()
         self.assertEqual(theory.check_proof(prf), Thm(C, ex_P))
 
+    def testIntroNestedExists(self):
+        basic.load_theory('logic_base')
+
+        Ta = TVar('a')
+        x = Var('x', Ta)
+        y = Var('y', Ta)
+        P = Var('P', TFun(Ta, TFun(Ta, BoolType)))
+        C = Var('C', BoolType)
+        ex_P = Exists(x, Exists(y, P(x)(y)))
+        pt1 = ProofTerm.assume(ex_P)
+        pt2 = ProofTerm.variable('x', Ta)
+        pt3 = ProofTerm.variable('y', Ta)
+        pt4 = ProofTerm.assume(P(x)(y))
+        pt5 = ProofTerm.sorry(Thm(C, P(x)(y)))
+        pt = ProofTerm('intros', args=[ex_P],
+                       prevs=[pt1, pt2, pt3, pt4, pt5])
+        prf = pt.export()
+        self.assertEqual(theory.check_proof(prf), Thm(C, ex_P))
+
     def testRewriteGoal(self):
         run_macro(
             self, 'nat', "rewrite_goal",

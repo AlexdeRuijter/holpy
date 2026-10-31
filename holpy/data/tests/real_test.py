@@ -168,6 +168,11 @@ class RealTest(unittest.TestCase):
             ("(0::real) ^ (6::nat)", "(0::real)"),
         ]
 
+        # Importing the module registers the inequality rules used by
+        # auto.solve, which combine_atom needs for powers with rational
+        # exponents.  The full suite imports it through another test.
+        from holpy.integral import inequality  # noqa: F401
+
         vars = {'x': 'real', 'y': 'real'}
         for expr, res in test_data:
             run_conv(self, 'transcendentals', auto.auto_conv(), vars=vars, t=expr, t_res=res)
