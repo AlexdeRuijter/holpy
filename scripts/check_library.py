@@ -480,7 +480,9 @@ def _total_time(rows: dict[tuple[str, str], dict[str, str]]) -> float:
     return total
 
 
-def compare_files(old_path: Path, new_path: Path) -> int:
+def compare_files(
+    old_path: Path, new_path: Path, allowed: frozenset[str] = frozenset()
+) -> int:
     """Compare two check-library TSV files.
 
     The comparison reports differences in ``status``, ``statement`` and
@@ -494,11 +496,17 @@ def compare_files(old_path: Path, new_path: Path) -> int:
         Baseline TSV file.
     new_path : pathlib.Path
         New TSV file.
+    allowed : frozenset of str, optional
+        Names (``theory.name``) of theorems that may go from ``ok`` to another
+        status without failing the comparison, because their Z3 queries are
+        known to be decided differently on different platforms or Z3 versions
+        (see ``scripts/z3_brittle.txt``).  They are still reported.
 
     Returns
     -------
     int
-        ``1`` if a theorem went from ``ok`` to another state, otherwise ``0``.
+        ``1`` if a theorem that is not in ``allowed`` went from ``ok`` to
+        another state, otherwise ``0``.
     """
     _, old_rows = read_tsv(old_path)
     _, new_rows = read_tsv(new_path)
@@ -545,6 +553,13 @@ def compare_files(old_path: Path, new_path: Path) -> int:
     else:
         logger.info("No differences in status, statement or steps.")
 
+    tolerated = [key for key in degraded if f"{key[0]}.{key[1]}" in allowed]
+    degraded = [key for key in degraded if f"{key[0]}.{key[1]}" not in allowed]
+    if tolerated:
+        logger.info(
+            "Z3-brittle theorems that are no longer ok (allowed): %s",
+            ", ".join(f"{theory_name}.{name}" for theory_name, name in tolerated),
+        )
     if degraded:
         logger.warning(
             "Theorems that went from ok to another status: %s",
@@ -552,6 +567,16 @@ def compare_files(old_path: Path, new_path: Path) -> int:
         )
         return 1
     return 0
+
+
+def read_allowed(path: Path) -> frozenset[str]:
+    """Read a list of ``theory.name`` entries, one per line (``#`` starts a comment)."""
+    names = set()
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.split("#", 1)[0].strip()
+        if line:
+            names.add(line)
+    return frozenset(names)
 
 
 def _report_quarantine(rows: Sequence[Row]) -> None:
@@ -666,6 +691,13 @@ def build_parser() -> argparse.ArgumentParser:
         metavar=("OLD", "NEW"),
         help="compare two TSV files instead of checking theorems",
     )
+    parser.add_argument(
+        "--allow-degraded",
+        type=Path,
+        metavar="FILE",
+        help="with --compare: file of theory.name entries (one per line) that "
+        "may go from ok to another status without failing the comparison",
+    )
     return parser
 
 
@@ -696,7 +728,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.compare:
         if args.theory:
             logger.warning("Ignoring theory arguments in --compare mode")
-        return compare_files(args.compare[0], args.compare[1])
+        allowed = read_allowed(args.allow_degraded) if args.allow_degraded else frozenset()
+        return compare_files(args.compare[0], args.compare[1], allowed)
 
     # The cache is keyed only by the master user, while HOLPY_LIBRARY_DIR can
     # change between calls in an embedding process. Start from the current
