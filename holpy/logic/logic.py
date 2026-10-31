@@ -5,7 +5,7 @@ from typing import List, Tuple
 from holpy.kernel.type import TVar, TFun, TyInst, BoolType
 from holpy.kernel import term
 from holpy.kernel.term import Term, SVar, Var, Const, Abs, Inst, Implies, Lambda, \
-    Not, And, Or, Eq, true, false
+    Not, And, Or, Eq, Exists, true, false
 from holpy.kernel.thm import Thm, InvalidDerivationException
 from holpy.kernel import term_ord
 from holpy.kernel import theory
@@ -194,6 +194,59 @@ class beta_norm_macro(Macro):
         assert args is None, "beta_norm_macro"
         return pts[0].on_prop(beta_norm_conv())
 
+def _make_exE_second_premise(pt: ProofTerm) -> ProofTerm:
+    """Build the second premise of exE for a chain of universal binders.
+
+    Given a proof of ``!x_1 ... x_n. A --> C`` with ``n >= 1``, return a
+    proof of ``!x_1. (?x_2 ... x_n. A) --> C``.  The inner existential
+    binders are moved into the antecedent of the implication using exE.
+    This lets intros_macro eliminate an existential whose body itself
+    starts with further existential quantifiers in one step.
+
+    Parameters
+    ----------
+    pt : ProofTerm
+        Proof whose proposition has the form ``!x_1 ... x_n. A --> C``.
+
+    Returns
+    -------
+    ProofTerm
+        Proof of ``!x_1. (?x_2 ... x_n. A) --> C``.
+    """
+    assert pt.prop.is_forall(), "_make_exE_second_premise"
+    abs = pt.prop.arg
+    v = Var(abs.var_name, abs.var_T)
+    body_pt = pt.forall_elim(v)
+    if body_pt.prop.is_forall():
+        inner_imp = _make_exists_imp(body_pt)
+    else:
+        inner_imp = body_pt
+    return inner_imp.forall_intr(v)
+
+
+def _make_exists_imp(pt: ProofTerm) -> ProofTerm:
+    """Move leading universal binders of an implication into an existential.
+
+    Given a proof of ``!x_1 ... x_n. A --> C`` with ``n >= 1``, return a
+    proof of ``(?x_1 ... x_n. A) --> C``.
+
+    Parameters
+    ----------
+    pt : ProofTerm
+        Proof whose proposition has the form ``!x_1 ... x_n. A --> C``.
+
+    Returns
+    -------
+    ProofTerm
+        Proof of ``(?x_1 ... x_n. A) --> C``.
+    """
+    second = _make_exE_second_premise(pt)
+    v, body = second.prop.arg.dest_abs()
+    A = Exists(v, body.arg1)
+    pt_c = apply_theorem('exE', ProofTerm.assume(A), second)
+    return pt_c.implies_intr(A)
+
+
 class intros_macro(Macro):
     """Introduce assumptions and variables."""
     def __init__(self):
@@ -214,7 +267,10 @@ class intros_macro(Macro):
                 pt = pt.forall_intr(intro.prop.arg)
             elif len(args) > 0 and intro.th.prop == args[0]:  # exists case
                 assert intro.prop.is_exists(), "intros_macro"
-                pt = apply_theorem('exE', intro, pt)
+                if intro.prop.arg.body.is_exists():
+                    pt = apply_theorem('exE', intro, _make_exE_second_premise(pt))
+                else:
+                    pt = apply_theorem('exE', intro, pt)
                 args = args[1:]
             else:  # assume case
                 assert len(intro.th.hyps) == 1 and intro.th.hyps[0] == intro.th.prop, \
