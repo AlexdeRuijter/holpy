@@ -30,6 +30,22 @@ to the platform data directory (for example `~/.local/share/holpy` on Linux),
 or to `$HOLPY_USER_DIR` when that variable is set. Set `$HOLPY_LIBRARY_DIR` to
 a writable checkout if you need to rewrite the bundled theories.
 
+## Your own theories
+
+Keep your JSON theory files in a directory and add it to the search path; it is
+searched before the bundled library, and `$HOLPY_THEORY_PATH`
+(`os.pathsep`-separated directories) does the same from the environment:
+
+```python
+import holpy
+holpy.add_theory_path("~/my-theories")
+from holpy.logic import basic; basic.load_theory("mythy")
+```
+
+The first file with a given theory name wins, so an earlier directory shadows
+the same name later on the path. A theory that needs extra macros must import
+their Python module first, as before.
+
 ## Development
 
 ```bash

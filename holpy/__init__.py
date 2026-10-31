@@ -5,6 +5,8 @@ from __future__ import annotations
 from importlib import import_module
 from importlib.metadata import PackageNotFoundError, version
 
+from holpy._paths import add_theory_path, find_theory, theory_path
+
 try:
     __version__ = version("holpy")
 except PackageNotFoundError:  # running from a source checkout
@@ -23,6 +25,9 @@ __all__ = [
     "server",
     "syntax",
     "util",
+    "add_theory_path",
+    "find_theory",
+    "theory_path",
 ]
 
 
