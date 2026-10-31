@@ -130,6 +130,14 @@ class CheckLibraryTest(unittest.TestCase):
             self.assertEqual(worse.returncode, 1, output)
             self.assertIn("logic.conj_comm", output)
 
+            allow = Path(tmp) / "allow.txt"
+            allow.write_text("# brittle\nlogic.conj_comm  # reason\n", encoding="utf-8")
+            tolerated = self.run_script(
+                "--compare", str(old), str(new), "--allow-degraded", str(allow)
+            )
+            self.assertEqual(tolerated.returncode, 0, tolerated.stdout + tolerated.stderr)
+            self.assertIn("allowed", tolerated.stdout + tolerated.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()
