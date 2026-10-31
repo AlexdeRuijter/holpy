@@ -1,0 +1,12 @@
+(declare-fun e () Real)
+(declare-fun g (Real) Real)
+(declare-fun c () Real)
+(declare-fun d () Real)
+(assert (and (> d 0.0)
+ (forall ((x Real)) (let ((ax (ite (>= (- x c) 0.0) (- x c) (- (- x c)))))
+   (=> (and (> ax 0.0) (< ax d)) (< (ite (>= (g x) 0.0) (g x) (- (g x))) e))))))
+; negated goal, instantiated at the witness d1 := d
+(assert (not (and (> d 0.0)
+ (forall ((x1 Real)) (let ((ax (ite (>= (- x1 c) 0.0) (- x1 c) (- (- x1 c)))) (gx (ite (= x1 c) 0.0 (g x1))))
+   (=> (and (> ax 0.0) (< ax d)) (< (ite (>= gx 0.0) gx (- gx)) e)))))))
+(check-sat)

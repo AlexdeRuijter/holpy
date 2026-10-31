@@ -49,3 +49,8 @@ On x86_64, in a normal run of the `realderivative` theory (fresh process), 5.3.2
 So `lhospital` fails or passes depending on how Z3's seed-dependent instantiation happens to go.
 A robust proof gives the witness explicitly (an `exists`-introduction step with `d`), so that
 no `exists d1` has to be found by Z3.
+
+With the witness given (`realderivative.lhospital.witness.smt2`: the negated goal is instantiated at
+`d1 := d`, where `d` is the premise's witness), Z3 answers `unsat` for seeds 0..15 on 4.15.4.0,
+5.3.1.0, 5.3.2.0 and 5.3.3.0. So the fix for the stored proof of `lhospital` is to introduce the
+`exists d1` by an explicit witness step instead of leaving it to Z3.
