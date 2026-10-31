@@ -1,39 +1,54 @@
 # Author: Bohua Zhan
 
-from holpy.kernel.type import Type
+"""Proof-checking and theory-extension reports.
+
+These objects are diagnostics: they count primitive steps, record which
+theorems and macros were used, and collect gaps or axioms. They never
+participate in the logical derivation itself.
+"""
+
+from __future__ import annotations
+
 from holpy.kernel.thm import Thm
+from holpy.kernel.type import Type
 
-class ProofReport():
-    """A report of proof checking. This contains:
 
-    steps -- number of primitive steps taken to check the proof.
-    Each primitive derivation and each unexpanded macro counts as one step.
+class ProofReport:
+    """Accumulated statistics for checking one proof.
 
-    thm_steps -- number of invocation of existing theorems (counting
-    multiplicity).
-
-    primitive_steps -- number of invocations of primitive derivations.
-
-    macro_steps -- number of invocations of macros.
-
-    th_names -- name of set of theorems used.
-
-    macros_eval -- name of set of macros evaluated.
-
-    macros_expand -- name of set of macros expanded.
-
+    Attributes
+    ----------
+    steps : int
+        Total checked steps: theorem applications, primitive derivations, and
+        evaluated macro invocations each count as one step. Expanded macros are
+        counted through their expansion, not as an extra step.
+    thm_steps : int
+        Number of invocations of existing theorems.
+    prim_steps : int
+        Number of primitive-derivation invocations.
+    macro_steps : int
+        Number of evaluated macro invocations.
+    th_names : set of str
+        Names of theorems used.
+    macros_eval : set of str
+        Names of macros evaluated directly.
+    macros_expand : set of str
+        Names of macros expanded into primitive steps.
+    gaps : list of Thm
+        Statements accepted as gaps (``sorry``).
     """
+
     def __init__(self):
         self.steps = 0
         self.thm_steps = 0
         self.prim_steps = 0
         self.macro_steps = 0
-        self.th_names = set()
-        self.macros_eval = set()
-        self.macros_expand = set()
-        self.gaps = []
+        self.th_names: set[str] = set()
+        self.macros_eval: set[str] = set()
+        self.macros_expand: set[str] = set()
+        self.gaps: list[Thm] = []
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "\n".join([
             "Steps: " + str(self.steps),
             "  Theorems:  " + str(self.thm_steps),
@@ -44,11 +59,11 @@ class ProofReport():
             "Macros expanded: " + ", ".join(self.macros_expand),
             "Gaps: " + str(self.gaps)])
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)
 
-    def json_data(self):
-        """Export report to json format."""
+    def json_data(self) -> dict:
+        """Return the report as a JSON-serializable dictionary."""
         return {
             "steps": self.steps,
             "thm_steps": self.thm_steps,
@@ -61,49 +76,58 @@ class ProofReport():
         }
 
     def apply_theorem(self, th_name: str):
+        """Record an application of an existing theorem."""
         self.steps += 1
         self.thm_steps += 1
         self.th_names.add(th_name)
 
     def apply_primitive_deriv(self):
+        """Record an application of a primitive derivation."""
         self.steps += 1
         self.prim_steps += 1
 
     def eval_macro(self, macro_name: str):
+        """Record a macro that was evaluated without expansion."""
         self.steps += 1
         self.macro_steps += 1
         self.macros_eval.add(macro_name)
 
     def expand_macro(self, macro_name: str):
+        """Record a macro that was expanded into primitive steps."""
         self.macros_expand.add(macro_name)
 
     def add_gap(self, th: Thm):
-        """Register a gap with conclusion theorem t."""
+        """Register a gap with statement ``th``."""
         self.gaps.append(th)
 
-    def steps_stat(self):
-        """Return the triple of thm_steps, prim_steps, macro_steps."""
+    def steps_stat(self) -> tuple[int, int, int]:
+        """Return ``(thm_steps, prim_steps, macro_steps)``."""
         return (self.thm_steps, self.prim_steps, self.macro_steps)
 
-class ExtensionReport():
-    """A report of a theory extension. This contains:
 
-    axioms -- list of axioms added. Each axiom is given by a pair,
-    the first entry is the name of the constant or theorem. The second
-    entry is type of the term or statement of the theorem.
+class ExtensionReport:
+    """Report of the axioms introduced by a checked theory extension.
 
+    Attributes
+    ----------
+    axioms : list of tuple
+        Each entry is ``(name, info)`` where ``info`` is an arity, a type, or
+        a theorem statement.
     """
-    def __init__(self):
-        self.axioms = []
 
-    def add_axiom(self, name, info):
+    def __init__(self):
+        self.axioms: list[tuple[str, int | Type | Thm]] = []
+
+    def add_axiom(self, name: str, info: int | Type | Thm):
+        """Record an axiomatic extension."""
         self.axioms.append((name, info))
 
-    def get_axioms(self):
+    def get_axioms(self) -> list[tuple[str, int | Type | Thm]]:
+        """Return the recorded axioms."""
         return self.axioms
 
-    def __str__(self):
-        def print_axiom(axiom):
+    def __str__(self) -> str:
+        def print_axiom(axiom: tuple[str, int | Type | Thm]) -> str:
             (name, info) = axiom
             if isinstance(info, int):
                 return "Type " + name + " with arity " + str(info)
