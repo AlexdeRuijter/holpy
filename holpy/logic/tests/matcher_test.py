@@ -165,6 +165,12 @@ class MatcherTest(unittest.TestCase):
         for pat, t, tyinst, inst in test_data:
             self.run_test('nat', pat, t, vars=vars, svars=svars, tyinst=tyinst, inst=inst)
 
+    def testFirstOrderMatchTypeMismatch(self):
+        """A bare schematic variable only matches a term of its own type."""
+        self.run_test(
+            'nat', '?x', 'P', vars={'P': 'bool'},
+            svars={'x': 'nat'}, failed=MatchException)
+
 
 if __name__ == "__main__":
     unittest.main()
