@@ -70,13 +70,26 @@ jobs:
           cd $RUNNER_TEMP
           python -c "import holpy; print(holpy.__version__); from holpy.logic import basic; basic.load_theory('real')"
 
-  # library job commented out: docs/library_check.tsv does not exist yet.
-  # library:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: actions/setup-python@v5
-  #       with: { python-version: "3.12" }
-  #     - run: pip install -e ".[dev]"
-  #     - run: python scripts/check_library.py --jobs 2 --out docs/library_check.tsv
-  #     - run: python scripts/check_library.py --compare docs/library_check.tsv docs/library_check.tsv || true
+  # Library check at both ends of the supported z3-solver range.  docs/library_check.tsv was
+  # generated with 5.3.2.0; theorems in scripts/z3_brittle.txt may differ (see docs/z3.md).
+  library:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        z3-solver: ["5.3.2.0", "latest"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev]"
+      - run: |
+          if [ "${{ matrix.z3-solver }}" = latest ]; then
+            pip install --upgrade z3-solver
+          else
+            pip install "z3-solver==${{ matrix.z3-solver }}"
+          fi
+          python -c "import z3; print('z3', z3.get_version_string())"
+      - run: python scripts/check_library.py --jobs 2 --out library_check.tsv
+      - run: python scripts/check_library.py --compare docs/library_check.tsv library_check.tsv --allow-degraded scripts/z3_brittle.txt
