@@ -1,15 +1,33 @@
-"""Type checking at runtime."""
+"""Runtime type checking for the untyped kernel APIs."""
+
+from __future__ import annotations
 
 from collections.abc import Iterable
+from typing import Any
 
-check = True
+check: bool = True
 
-def checkinstance(*args):
-    """Performs type checking.
 
-    The first argument is the name of the function. The remaining
-    arguments come in pairs v, T, and it is checked that v has type T.
+def checkinstance(*args: Any) -> None:
+    """Check a sequence of ``(value, type)`` pairs at runtime.
 
+    The first argument is the caller name used in error messages. The
+    remaining arguments are consumed in pairs ``value, type``; a type may be
+    a list ``[T]`` to require an iterable whose elements all have type ``T``.
+
+    Parameters
+    ----------
+    *args
+        Caller name followed by alternating values and expected types.
+
+    Raises
+    ------
+    TypeError
+        If a value does not have the expected type.
+
+    Note
+    ----
+    The module flag ``check = False`` disables all checking.
     """
     if not check:
         return
