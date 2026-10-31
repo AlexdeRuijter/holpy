@@ -6,8 +6,8 @@
 ## set.nat_finite (`set.nat_finite.smt2`)
 
 The last, hard Z3 step of the stored proof of `set.nat_finite` as `Solver.to_smt2()` writes it
-(`!`-free: an `exists a. forall x. (s x --> x <= a)` fact, and the negation of the same statement
-for `s` extended by `x`). The goal is `unsat`. Seeds 0..15 per z3-solver release (x86_64):
+(assertions: `exists a. forall x. (s x --> x <= a)`, and the negation of the same statement
+for the set extended by `x`). The goal is `unsat`. Seeds 0..15 per z3-solver release (x86_64):
 
 | z3-solver | seeds 0..15 | unknown |
 |---|---|---|
