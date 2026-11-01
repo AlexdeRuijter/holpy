@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 
 #: Macros that have no expansion and are kept as-is at every proof level.
 ORACLES = frozenset({
+    "const_inequality",  # level 0 like the others; missing from the plan's list
     "int_const_ineq",
     "int_eval",
     "integer_simplex",
