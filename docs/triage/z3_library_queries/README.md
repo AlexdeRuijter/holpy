@@ -34,5 +34,4 @@ still have their old proofs here (the rewrite is PR #43).
   `iterate.natseg_offset_image` (unknown in proof mode on 5.3.3.0 only).
 - `set.nat_finite` and `realderivative.lhospital` are the two known seed-fragile
   queries; both are rewritten in PR #43.
-- The second 5.3.3.0 pass matches the first except for one extra seed-dependent
-  `real_bounded_subset` variant, so results are stable up to seed noise.
+- The second 5.3.3.0 pass gives the same fragile list and the same 4 qsat/proof-mode failures (distinct query count differs slightly, 1928 vs 1923, because query text varies between runs).
