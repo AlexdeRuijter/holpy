@@ -10,6 +10,7 @@ from typing import Any, Iterator
 from holpy.kernel import report as proof_report
 from holpy.kernel import theory
 from holpy.kernel.proof import ItemID
+from holpy.kernel.thm import primitive_deriv
 from holpy.logic import basic, context
 from holpy.server import items, server
 from holpy.syntax import printer
@@ -57,7 +58,8 @@ class Level(enum.IntEnum):
     ANNOTATED : int
         Macro-level lines, with ``th`` on every line.
     PRIMITIVE : int
-        Fully expanded lines.  This level is implemented by WS1-B.
+        Every non-oracle macro line replaced by its expansion, with the
+        original line recorded under ``expanded_from``.
     """
 
     MACRO = 1
@@ -104,12 +106,6 @@ def _as_level(value: Level | int) -> Level:
         return Level(value)
     except ValueError:
         raise ValueError(f"unknown proof level: {value!r}") from None
-
-
-def _check_level(to: Level) -> None:
-    """Reject targets that WS1-A does not implement."""
-    if to == Level.PRIMITIVE:
-        raise NotImplementedError("PRIMITIVE is implemented by WS1-B")
 
 
 def _check_steps(steps: str) -> None:
@@ -165,6 +161,187 @@ def _printed_th(item: Any) -> str:
         return printer.print_thm(item.th)
 
 
+#: Rules that are structural rather than derivations.  They are never
+#: expanded, even if a macro of the same name happens to be registered.
+_STRUCTURAL_RULES = frozenset({"", "theorem", "variable", "sorry", "subproof"})
+
+
+def _is_expandable_macro(rule: str) -> bool:
+    """Return whether *rule* is a macro with an expansion to inline."""
+    if rule in ORACLES or rule in primitive_deriv or rule in _STRUCTURAL_RULES:
+        return False
+    macro = theory.global_macros.get(rule)
+    if macro is None:
+        return False
+    return macro.level is None or macro.level != 0
+
+
+def _id_path(value: Any) -> tuple[int, ...]:
+    """Return a proof line's id as a tuple of integers."""
+    return ItemID(str(value)).id
+
+
+def _is_descendant(path: tuple[int, ...], parent: tuple[int, ...]) -> bool:
+    """Return whether *path* names a line below *parent*."""
+    return len(path) > len(parent) and path[: len(parent)] == parent
+
+
+def _print_item_base(item: Any) -> dict:
+    """Print one proof item without recursively printing its subproof."""
+    subproof = item.subproof
+    item.subproof = None
+    try:
+        return printer.export_proof_item(item)[0]
+    finally:
+        item.subproof = subproof
+
+
+def _printed_item(item: Any, original: dict | None) -> dict:
+    """Print *item*, preserving the original line where one exists."""
+    result = _print_item_base(item)
+    if original is not None:
+        for key in ("id", "rule", "args", "prevs"):
+            if key in original:
+                result[key] = copy.deepcopy(original[key])
+        if _has_th(original):
+            result["th"] = original["th"]
+        if "expanded_from" in original:
+            result["expanded_from"] = copy.deepcopy(original["expanded_from"])
+    return result
+
+
+def _wrapper(item: Any, original: dict | None) -> dict:
+    """Return the ``subproof`` line that replaces an expanded macro line."""
+    printed = _print_item_base(item)
+    if original is not None:
+        source = original
+        th = original["th"] if _has_th(original) else printed["th"]
+    else:
+        source = printed
+        th = printed["th"]
+    return {
+        "id": str(item.id),
+        "rule": "subproof",
+        "args": "",
+        "prevs": [],
+        "th": th,
+        "expanded_from": {
+            "rule": source["rule"],
+            "args": source.get("args", ""),
+            "prevs": list(source.get("prevs", [])),
+        },
+    }
+
+
+def _collect_known(prf: Any, known: dict[tuple[int, ...], Any]) -> None:
+    """Record every item statement in *prf* for macro expansion."""
+    for item in prf.items:
+        known[item.id.id] = item.th
+        if item.subproof is not None:
+            _collect_known(item.subproof, known)
+
+
+def _expand_proof(
+    prf: Any,
+    known: dict[tuple[int, ...], Any],
+    original: dict[str, dict],
+    *,
+    from_expansion: bool,
+) -> list[dict]:
+    """Return *prf* with every expandable macro line replaced by its proof.
+
+    The output is the flat line list used by theory JSON: a macro's expansion
+    follows its ``subproof`` wrapper in id order.  ``known`` is updated as new
+    expansion lines appear, so later macros can use them as ``prevs``.
+    """
+    result: list[dict] = []
+    for item in prf.items:
+        known[item.id.id] = item.th
+        source = None if from_expansion else original.get(str(item.id))
+
+        if item.subproof is not None:
+            result.append(_printed_item(item, source))
+            result.extend(
+                _expand_proof(
+                    item.subproof,
+                    known,
+                    original,
+                    from_expansion=from_expansion,
+                )
+            )
+        elif _is_expandable_macro(item.rule):
+            prevs = []
+            for prev in item.prevs:
+                prev_th = known.get(prev.id)
+                if prev_th is None:
+                    raise ValueError(
+                        f"no statement for previous item {prev} of {item.id}"
+                    )
+                prevs.append((prev, prev_th))
+            expansion = theory.get_macro(item.rule).expand(
+                item.id, item.args, prevs
+            )
+            result.append(_wrapper(item, source))
+            result.extend(
+                _expand_proof(
+                    expansion,
+                    known,
+                    original,
+                    from_expansion=True,
+                )
+            )
+        else:
+            result.append(_printed_item(item, source))
+    return result
+
+
+def _expand_primitive(proof: list[dict], ctx: ProofContext) -> list[dict]:
+    """Return *proof* with every non-oracle macro line inlined."""
+    if not proof:
+        return []
+    if all(_has_th(line) for line in proof) and not any(
+        _is_expandable_macro(str(line.get("rule", ""))) for line in proof
+    ):
+        # Already primitive.  Copy without re-checking: an expansion whose
+        # printed statements do not all parse back must still be idempotent.
+        return copy.deepcopy(proof)
+    state = _check_state(proof, ctx)
+    known: dict[tuple[int, ...], Any] = {}
+    _collect_known(state.prf, known)
+    original = {str(line.get("id", "")): line for line in proof}
+    with global_setting(unicode=True, highlight=False):
+        return _expand_proof(
+            state.prf, known, original, from_expansion=False
+        )
+
+
+def _collapse_expanded(proof: list[dict]) -> list[dict]:
+    """Replace every ``expanded_from`` subproof by its original macro line."""
+    result: list[dict] = []
+    index = 0
+    while index < len(proof):
+        line = proof[index]
+        index += 1
+        if "expanded_from" not in line:
+            result.append(copy.deepcopy(line))
+            continue
+
+        collapsed = copy.deepcopy(line)
+        source = collapsed.pop("expanded_from")
+        collapsed["rule"] = source["rule"]
+        collapsed["args"] = source.get("args", "")
+        collapsed["prevs"] = list(source.get("prevs", []))
+        collapsed.pop("subproof", None)
+        result.append(collapsed)
+
+        parent = _id_path(line.get("id", ""))
+        while index < len(proof) and _is_descendant(
+            _id_path(proof[index].get("id", "")), parent
+        ):
+            index += 1
+    return result
+
+
 def _fill_missing_th(proof: list[dict], ctx: ProofContext) -> list[dict]:
     """Return a copy of *proof* with missing ``th`` values checked and filled."""
     result = copy.deepcopy(proof)
@@ -203,17 +380,16 @@ def expand(
     -------
     list of dict
         A new proof.  At ``ANNOTATED`` every missing ``th`` is filled by
-        checking the proof.  At ``MACRO`` the proof is copied unchanged.
-
-    Raises
-    ------
-    NotImplementedError
-        If *to* is ``PRIMITIVE``.
+        checking the proof.  At ``PRIMITIVE`` every non-oracle macro line is
+        replaced by a ``subproof`` line holding its expansion; the original
+        rule, arguments and ``prevs`` are kept in ``expanded_from``.  At
+        ``MACRO`` the proof is copied unchanged.
     """
     level = _as_level(to)
-    _check_level(level)
     if level == Level.MACRO:
         return copy.deepcopy(proof)
+    if level == Level.PRIMITIVE:
+        return _expand_primitive(proof, ctx)
     return _fill_missing_th(proof, ctx)
 
 
@@ -237,22 +413,22 @@ def condense(
     Returns
     -------
     list of dict
-        At ``MACRO``, ``th`` is removed from every line except the last
-        top-level line, every ``sorry`` line, and lines whose ``th`` is not
-        reproduced by checking the proof without it.  If the proof cannot be
-        checked after dropping ``th``, it is returned fully annotated.  At
-        ``ANNOTATED`` the proof is copied unchanged.
-
-    Raises
-    ------
-    NotImplementedError
-        If *to* is ``PRIMITIVE``.
+        At ``PRIMITIVE`` the proof is copied unchanged, since condensing never
+        adds expansion lines.  At ``ANNOTATED`` every ``expanded_from``
+        subproof is collapsed back to its macro line and the rest is copied
+        unchanged.  At ``MACRO``, ``th`` is also removed from every line
+        except the last top-level line, every ``sorry`` line, and lines whose
+        ``th`` is not reproduced by checking the proof without it.  If the
+        proof cannot be checked after dropping ``th``, it is returned fully
+        annotated.
     """
     level = _as_level(to)
-    _check_level(level)
-    if level == Level.ANNOTATED:
+    if level == Level.PRIMITIVE:
         return copy.deepcopy(proof)
-    result, _, _ = _condense_macro(proof, ctx)
+    collapsed = _collapse_expanded(proof)
+    if level == Level.ANNOTATED:
+        return collapsed
+    result, _, _ = _condense_macro(collapsed, ctx)
     return result
 
 
@@ -327,12 +503,19 @@ def level_of(proof: list[dict], *, ctx: ProofContext) -> Level:
     Returns
     -------
     Level
-        ``ANNOTATED`` when every line has a non-empty ``th``, otherwise
-        ``MACRO``.
+        ``PRIMITIVE`` when no non-oracle macro line remains and every line
+        has a non-empty ``th``; ``ANNOTATED`` when a macro line remains and
+        every line has a statement; otherwise ``MACRO``.
     """
     del ctx
+    if any(_is_expandable_macro(str(line.get("rule", ""))) for line in proof):
+        return (
+            Level.ANNOTATED
+            if all(_has_th(line) for line in proof)
+            else Level.MACRO
+        )
     if all(_has_th(line) for line in proof):
-        return Level.ANNOTATED
+        return Level.PRIMITIVE
     return Level.MACRO
 
 
@@ -401,7 +584,7 @@ def expand_theory(
     data : dict
         Theory JSON data.  The input is not modified.
     to : Level
-        Requested proof level.  ``PRIMITIVE`` is not implemented yet.
+        Requested proof level.
     steps : {'keep', 'drop'}, optional
         Whether theorem items keep their ``steps`` key.
 
@@ -409,14 +592,8 @@ def expand_theory(
     -------
     dict
         Expanded theory with top-level ``proof_level`` set to the level name.
-
-    Raises
-    ------
-    NotImplementedError
-        If *to* is ``PRIMITIVE``.
     """
     level = _as_level(to)
-    _check_level(level)
     _check_steps(steps)
 
     result = copy.deepcopy(data)
@@ -490,7 +667,7 @@ def condense_theory(
     data : dict
         Theory JSON data.  The input is not modified.
     to : Level
-        Requested proof level.  ``PRIMITIVE`` is not implemented yet.
+        Requested proof level.
     steps : {'keep', 'drop'}, optional
         Whether theorem items keep their ``steps`` key.
 
@@ -500,14 +677,8 @@ def condense_theory(
         Condensed theory with top-level ``proof_level`` set to the level name.
         The concrete return value is a ``dict`` subclass with a ``guard``
         attribute listing theorem names kept at ``ANNOTATED``.
-
-    Raises
-    ------
-    NotImplementedError
-        If *to* is ``PRIMITIVE``.
     """
     level = _as_level(to)
-    _check_level(level)
     _check_steps(steps)
 
     result = copy.deepcopy(data)

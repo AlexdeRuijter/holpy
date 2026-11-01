@@ -380,15 +380,18 @@ class LevelsTest(unittest.TestCase):
         }
         self.assertEqual(zero_level, set(ORACLES))
 
-    def test_primitive_is_not_implemented(self) -> None:
+    def test_primitive_on_empty_proof(self) -> None:
         ctx = ProofContext()
-        for function in (expand, condense):
-            with self.assertRaises(NotImplementedError):
-                function([], Level.PRIMITIVE, ctx=ctx)
-        with self.assertRaises(NotImplementedError):
-            expand_theory({"content": []}, Level.PRIMITIVE)
-        with self.assertRaises(NotImplementedError):
-            condense_theory({"content": []}, Level.PRIMITIVE)
+        self.assertEqual(expand([], Level.PRIMITIVE, ctx=ctx), [])
+        self.assertEqual(condense([], Level.PRIMITIVE, ctx=ctx), [])
+        self.assertEqual(
+            expand_theory({"content": []}, Level.PRIMITIVE)["proof_level"],
+            "primitive",
+        )
+        self.assertEqual(
+            condense_theory({"content": []}, Level.PRIMITIVE)["proof_level"],
+            "primitive",
+        )
 
     def test_proof_level_key_and_input_unchanged(self) -> None:
         data = {"name": "levels_empty", "imports": [], "content": []}
