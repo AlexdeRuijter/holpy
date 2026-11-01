@@ -22453,21 +22453,75 @@
                     "th": "tendsto_real g 0 (atreal c), 0 < e ⊢ ∃d. 0 < d ∧ (∀x. 0 < abs (x - c) ⟶ abs (x - c) < d ⟶ abs (g x - 0) < e)"
                 },
                 {
-                    "args": "∃d. 0 < d ∧ (∀x. 0 < abs (x - c) ⟶ abs (x - c) < d ⟶ abs ((if x = c then 0 else g x) - 0) < e)",
+                    "args": "d1, real",
                     "id": "14.3",
-                    "prevs": [
-                        "14.2"
-                    ],
-                    "rule": "z3",
-                    "th": "tendsto_real g 0 (atreal c), 0 < e ⊢ ∃d. 0 < d ∧ (∀x. 0 < abs (x - c) ⟶ abs (x - c) < d ⟶ abs ((if x = c then 0 else g x) - 0) < e)"
+                    "prevs": [],
+                    "rule": "variable",
+                    "th": "⊢ _VAR d1"
                 },
                 {
-                    "args": "",
+                    "args": "0 < d1 ∧ (∀x. 0 < abs (x - c) ⟶ abs (x - c) < d1 ⟶ abs (g x - 0) < e)",
                     "id": "14.4",
+                    "prevs": [],
+                    "rule": "assume",
+                    "th": "0 < d1 ∧ (∀x. 0 < abs (x - c) ⟶ abs (x - c) < d1 ⟶ abs (g x - 0) < e) ⊢ 0 < d1 ∧ (∀x. 0 < abs (x - c) ⟶ abs (x - c) < d1 ⟶ abs (g x - 0) < e)"
+                },
+                {
+                    "args": "conjD1",
+                    "id": "14.5",
+                    "prevs": [
+                        "14.4"
+                    ],
+                    "rule": "apply_theorem",
+                    "th": "0 < d1 ∧ (∀x. 0 < abs (x - c) ⟶ abs (x - c) < d1 ⟶ abs (g x - 0) < e) ⊢ 0 < d1"
+                },
+                {
+                    "args": "conjD2, {A: 0 < d1, B: ∀x. 0 < abs (x - c) ⟶ abs (x - c) < d1 ⟶ abs (g x - 0) < e}",
+                    "id": "14.6",
+                    "prevs": [
+                        "14.4"
+                    ],
+                    "rule": "apply_theorem_for",
+                    "th": "0 < d1 ∧ (∀x. 0 < abs (x - c) ⟶ abs (x - c) < d1 ⟶ abs (g x - 0) < e) ⊢ ∀x. 0 < abs (x - c) ⟶ abs (x - c) < d1 ⟶ abs (g x - 0) < e"
+                },
+                {
+                    "args": "∀x. 0 < abs (x - c) ⟶ abs (x - c) < d1 ⟶ abs ((if x = c then 0 else g x) - 0) < e",
+                    "id": "14.7",
+                    "prevs": [
+                        "14.6"
+                    ],
+                    "rule": "z3",
+                    "th": "0 < d1 ∧ (∀x. 0 < abs (x - c) ⟶ abs (x - c) < d1 ⟶ abs (g x - 0) < e) ⊢ ∀x. 0 < abs (x - c) ⟶ abs (x - c) < d1 ⟶ abs ((if x = c then 0 else g x) - 0) < e"
+                },
+                {
+                    "args": "conjI",
+                    "id": "14.8",
+                    "prevs": [
+                        "14.5",
+                        "14.7"
+                    ],
+                    "rule": "apply_theorem",
+                    "th": "0 < d, ∀x. 0 < abs (x - c) ⟶ abs (x - c) < d ⟶ has_real_derivative f (f1 x) (atreal x) ∧ has_real_derivative g (g1 x) (atreal x) ∧ ¬(g1 x = 0), tendsto_real f 0 (atreal c), tendsto_real g 0 (atreal c), tendsto_real (λx. f1 x / g1 x) l (atreal c), 0 < e, 0 < d1 ∧ (∀x. 0 < abs (x - c) ⟶ abs (x - c) < d1 ⟶ abs (g x - 0) < e) ⊢ 0 < d1 ∧ (∀x. 0 < abs (x - c) ⟶ abs (x - c) < d1 ⟶ abs ((if x = c then 0 else g x) - 0) < e)"
+                },
+                {
+                    "args": "exI, {P: λd. 0 < d ∧ (∀x. 0 < abs (x - c) ⟶ abs (x - c) < d ⟶ abs ((if x = c then 0 else g x) - 0) < e), a: d1}",
+                    "id": "14.9",
+                    "prevs": [
+                        "14.8"
+                    ],
+                    "rule": "apply_theorem_for",
+                    "th": "0 < d, ∀x. 0 < abs (x - c) ⟶ abs (x - c) < d ⟶ has_real_derivative f (f1 x) (atreal x) ∧ has_real_derivative g (g1 x) (atreal x) ∧ ¬(g1 x = 0), tendsto_real f 0 (atreal c), tendsto_real g 0 (atreal c), tendsto_real (λx. f1 x / g1 x) l (atreal c), 0 < e, 0 < d1 ∧ (∀x. 0 < abs (x - c) ⟶ abs (x - c) < d1 ⟶ abs (g x - 0) < e) ⊢ ∃a1. 0 < a1 ∧ (∀x. 0 < abs (x - c) ⟶ abs (x - c) < a1 ⟶ abs ((if x = c then 0 else g x) - 0) < e)"
+                },
+                {
+                    "args": "∃d. 0 < d ∧ (∀x. 0 < abs (x - c) ⟶ abs (x - c) < d ⟶ abs (g x - 0) < e)",
+                    "id": "14.10",
                     "prevs": [
                         "14.0",
                         "14.1",
-                        "14.3"
+                        "14.2",
+                        "14.3",
+                        "14.4",
+                        "14.9"
                     ],
                     "rule": "intros",
                     "th": "0 < d, ∀x. 0 < abs (x - c) ⟶ abs (x - c) < d ⟶ has_real_derivative f (f1 x) (atreal x) ∧ has_real_derivative g (g1 x) (atreal x) ∧ ¬(g1 x = 0), tendsto_real f 0 (atreal c), tendsto_real g 0 (atreal c), tendsto_real (λx. f1 x / g1 x) l (atreal c) ⊢ ∀e. 0 < e ⟶ (∃d. 0 < d ∧ (∀x. 0 < abs (x - c) ⟶ abs (x - c) < d ⟶ abs ((if x = c then 0 else g x) - 0) < e))"

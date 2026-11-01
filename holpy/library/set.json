@@ -17041,24 +17041,94 @@
                     "th": "finite s1 ⊢ finite s1"
                 },
                 {
-                    "args": "∃a. ∀x1. x1 ∈ insert x s1 ⟶ x1 ≤ a",
                     "id": "0.2.5",
+                    "rule": "variable",
+                    "args": "n, nat",
+                    "prevs": [],
+                    "th": "⊢ _VAR n"
+                },
+                {
+                    "id": "0.2.6",
+                    "rule": "assume",
+                    "args": "∀x1. x1 ∈ s1 ⟶ x1 ≤ n",
+                    "prevs": [],
+                    "th": "∀x1. x1 ∈ s1 ⟶ x1 ≤ n ⊢ ∀x1. x1 ∈ s1 ⟶ x1 ≤ n"
+                },
+                {
+                    "id": "0.2.7",
+                    "rule": "variable",
+                    "args": "x1, nat",
+                    "prevs": [],
+                    "th": "⊢ _VAR x1"
+                },
+                {
+                    "id": "0.2.8",
+                    "rule": "assume",
+                    "args": "x1 ∈ insert x s1",
+                    "prevs": [],
+                    "th": "x1 ∈ insert x s1 ⊢ x1 ∈ insert x s1"
+                },
+                {
+                    "id": "0.2.9",
+                    "rule": "forall_elim_gen",
+                    "args": "x1",
                     "prevs": [
-                        "0.2.2"
+                        "0.2.6"
                     ],
+                    "th": "∀x1. x1 ∈ s1 ⟶ x1 ≤ n ⊢ x1 ∈ s1 ⟶ x1 ≤ n"
+                },
+                {
+                    "id": "0.2.10",
                     "rule": "z3",
-                    "th": "∃a. ∀x. x ∈ s1 ⟶ x ≤ a ⊢ ∃a. ∀x1. x1 ∈ insert x s1 ⟶ x1 ≤ a"
+                    "args": "x1 ≤ n + x",
+                    "prevs": [
+                        "0.2.8",
+                        "0.2.9"
+                    ],
+                    "th": "x1 ∈ insert x s1, ∀x1. x1 ∈ s1 ⟶ x1 ≤ n ⊢ x1 ≤ n + x"
+                },
+                {
+                    "id": "0.2.11",
+                    "rule": "intros",
+                    "args": "",
+                    "prevs": [
+                        "0.2.7",
+                        "0.2.8",
+                        "0.2.10"
+                    ],
+                    "th": "∀x1. x1 ∈ s1 ⟶ x1 ≤ n ⊢ ∀x1. x1 ∈ insert x s1 ⟶ x1 ≤ n + x"
+                },
+                {
+                    "id": "0.2.12",
+                    "rule": "apply_theorem_for",
+                    "args": "exI, {P: λa. ∀x1. x1 ∈ insert x s1 ⟶ x1 ≤ a, a: n + x}",
+                    "prevs": [
+                        "0.2.11"
+                    ],
+                    "th": "∀x1. x1 ∈ s1 ⟶ x1 ≤ n ⊢ ∃a1. ∀x1. x1 ∈ insert x s1 ⟶ x1 ≤ a1"
+                },
+                {
+                    "id": "0.2.13",
+                    "rule": "intros",
+                    "args": "∃a. ∀x. x ∈ s1 ⟶ x ≤ a",
+                    "prevs": [
+                        "0.2.2",
+                        "0.2.5",
+                        "0.2.6",
+                        "0.2.12"
+                    ],
+                    "th": "∃a. ∀x. x ∈ s1 ⟶ x ≤ a ⊢ ∃a1. ∀x1. x1 ∈ insert x s1 ⟶ x1 ≤ a1"
                 },
                 {
                     "args": "",
-                    "id": "0.2.6",
+                    "id": "0.2.14",
                     "prevs": [
                         "0.2.0",
                         "0.2.1",
                         "0.2.2",
                         "0.2.3",
                         "0.2.4",
-                        "0.2.5"
+                        "0.2.13"
                     ],
                     "rule": "intros",
                     "th": "finite s ⊢ ∀x::nat. ∀s1. (∃a. ∀x1. x1 ∈ s1 ⟶ x1 ≤ a) ⟶ ¬(x ∈ s1) ⟶ finite s1 ⟶ (∃a. ∀x1. x1 ∈ insert x s1 ⟶ x1 ≤ a)"
