@@ -63,6 +63,21 @@ class Z3WrapperTest(unittest.TestCase):
             t = parser.parse_term(s)
             self.assertEqual(z3wrapper.solve(t), res)
 
+    def testSolveSuc(self):
+        if not z3wrapper.z3_loaded:
+            return
+
+        context.set_context('nat', vars={'x': 'nat', 'y': 'nat'})
+        test_data = [
+            ('Suc x = x + 1', True),
+            ('Suc (Suc x) = x + 2', True),
+            ('x <= y --> Suc x <= Suc y', True),
+            ('Suc x = x', False),
+        ]
+        for s, res in test_data:
+            t = parser.parse_term(s)
+            self.assertEqual(z3wrapper.solve(t), res)
+
     def testProofModeIsNotGlobal(self):
         if not z3wrapper.z3_loaded:
             return
