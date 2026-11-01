@@ -1,0 +1,10 @@
+theories: set
+z3 5.3.3
+queries: 83 calls, 72 distinct
+calls: 83; unsat 82; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+distinct: 72; unsat 71; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+not unsat in proof mode (distinct): 
+distinct queries answered unsat in the run: 71
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 2
+  of which unknown in the run itself: 1
+  of which seed-dependent (k for some but not all seeds): 1

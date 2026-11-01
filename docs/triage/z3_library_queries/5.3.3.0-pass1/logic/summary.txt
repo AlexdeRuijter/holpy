@@ -1,0 +1,10 @@
+theories: logic
+z3 5.3.3
+queries: 14 calls, 13 distinct
+calls: 14; unsat 14; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+distinct: 13; unsat 13; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+not unsat in proof mode (distinct): 
+distinct queries answered unsat in the run: 13
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 0
+  of which unknown in the run itself: 0
+  of which seed-dependent (k for some but not all seeds): 0

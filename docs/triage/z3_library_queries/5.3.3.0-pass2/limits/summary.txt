@@ -1,0 +1,10 @@
+theories: limits
+z3 5.3.3
+queries: 0 calls, 0 distinct
+calls: 0; unsat 0; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+distinct: 0; unsat 0; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+not unsat in proof mode (distinct): 
+distinct queries answered unsat in the run: 0
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 0
+  of which unknown in the run itself: 0
+  of which seed-dependent (k for some but not all seeds): 0

@@ -1,0 +1,10 @@
+theories: transcendentals
+z3 5.3.2
+queries: 387 calls, 280 distinct
+calls: 387; unsat 387; of those qsat ran 0; not unsat in proof mode 72 (qsat ran 0)
+distinct: 280; unsat 280; of those qsat ran 0; not unsat in proof mode 3 (qsat ran 0)
+not unsat in proof mode (distinct): transcendentals.rpow_one, transcendentals.tan_add
+distinct queries answered unsat in the run: 280
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 3
+  of which unknown in the run itself: 0
+  of which seed-dependent (k for some but not all seeds): 0

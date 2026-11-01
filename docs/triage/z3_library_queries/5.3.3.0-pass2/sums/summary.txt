@@ -1,0 +1,10 @@
+theories: sums
+z3 5.3.3
+queries: 129 calls, 113 distinct
+calls: 129; unsat 129; of those qsat ran 4; not unsat in proof mode 2 (qsat ran 0)
+distinct: 113; unsat 113; of those qsat ran 4; not unsat in proof mode 1 (qsat ran 0)
+not unsat in proof mode (distinct): sums.sum_0
+distinct queries answered unsat in the run: 113
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 1
+  of which unknown in the run itself: 0
+  of which seed-dependent (k for some but not all seeds): 0
