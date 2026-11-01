@@ -4871,7 +4871,7 @@
             "num_gaps": 0,
             "proof": [
                 {
-                    "args": "finite_empty, {}",
+                    "args": "finite_empty, {'a: 'a}",
                     "id": "0",
                     "prevs": [],
                     "rule": "apply_theorem_for",
@@ -21997,7 +21997,7 @@
             "num_gaps": 0,
             "proof": [
                 {
-                    "args": "finite_empty, {}",
+                    "args": "finite_empty, {'a: 'a}",
                     "id": "0",
                     "prevs": [],
                     "rule": "apply_theorem_for",
