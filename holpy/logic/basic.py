@@ -55,7 +55,6 @@ def load_json_data(filename, username="master"):
 
 def load_metadata(username="master"):
     """For the given user, load metadata for all theory files."""
-    from holpy._paths import theory_path
     theory_cache[username] = dict()
     item_index[username] = dict()
     found = {}
