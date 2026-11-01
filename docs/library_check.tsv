@@ -447,7 +447,7 @@ set	natseg_clauses_le_2	ok		{i. i ≤ Suc k} = insert (Suc k) ({i. i ≤ k})	76	
 set	has_size_natseg_le	ok		has_size ({m. m ≤ n}) (n + 1)	31		0.01	
 set	finite_natseg_le	ok		finite ({m. m ≤ n})	11		0.01	
 set	card_natseg_le	ok		card ({m. m ≤ n}) = n + 1	11		0.01	
-set	nat_finite	ok		finite s ⟷ (∃a. ∀x. x ∈ s ⟶ x ≤ a)	138	z3	0.20	
+set	nat_finite	ok		finite s ⟷ (∃a. ∀x. x ∈ s ⟶ x ≤ a)	154	z3	0.26	
 set	nat_finite_avoid	ok		finite s ⟶ (∃a. ¬(a ∈ s))	6	z3	0.03	
 set	nat_infinite_eq	ok		infinite s ⟷ (∀N. ∃n. N ≤ n ∧ n ∈ s)	223		0.12	
 set	nat_infinite	ok		infinite (univ::nat set)	16	z3	0.02	
@@ -2609,7 +2609,7 @@ realderivative	real_mvt_very_simple	ok		a ≤ b ⟶ (∀x. x ∈ real_closed_int
 realderivative	real_rolle_simple	ok		a < b ⟶ f a = f b ⟶ (∀x. x ∈ real_closed_interval a b ⟶ has_real_derivative f (f1 x) (within (atreal x) (real_closed_interval a b))) ⟶ (∃x. x ∈ real_open_interval a b ∧ f1 x = 0)	89	z3	0.14	
 realderivative	real_mvt_cauchy	ok		a < b ⟶ real_continuous_on f (real_closed_interval a b) ⟶ real_continuous_on g (real_closed_interval a b) ⟶ (∀x. x ∈ real_open_interval a b ⟶ has_real_derivative f (f1 x) (atreal x) ∧ has_real_derivative g (g1 x) (atreal x)) ⟶ (∃x. x ∈ real_open_interval a b ∧ (f b - f a) * g1 x = (g b - g a) * f1 x)	227	z3	0.43	
 realderivative	lhospital_lemma	ok		0 < d ⟶ (∀x. 0 < abs (x - c) ⟶ abs (x - c) < d ⟶ has_real_derivative f (f1 x) (atreal x) ∧ has_real_derivative g (g1 x) (atreal x) ∧ ¬(g1 x = 0)) ⟶ f c = 0 ⟶ g c = 0 ⟶ tendsto_real f 0 (atreal c) ⟶ tendsto_real g 0 (atreal c) ⟶ tendsto_real (λx. f1 x / g1 x) l (atreal c) ⟶ tendsto_real (λx. f x / g x) l (atreal c)	1451	z3	3.56	
-realderivative	lhospital	ok		0 < d ⟶ (∀x. 0 < abs (x - c) ⟶ abs (x - c) < d ⟶ has_real_derivative f (f1 x) (atreal x) ∧ has_real_derivative g (g1 x) (atreal x) ∧ ¬(g1 x = 0)) ⟶ tendsto_real f 0 (atreal c) ⟶ tendsto_real g 0 (atreal c) ⟶ tendsto_real (λx. f1 x / g1 x) l (atreal c) ⟶ tendsto_real (λx. f x / g x) l (atreal c)	684	z3	0.94	
+realderivative	lhospital	ok		0 < d ⟶ (∀x. 0 < abs (x - c) ⟶ abs (x - c) < d ⟶ has_real_derivative f (f1 x) (atreal x) ∧ has_real_derivative g (g1 x) (atreal x) ∧ ¬(g1 x = 0)) ⟶ tendsto_real f 0 (atreal c) ⟶ tendsto_real g 0 (atreal c) ⟶ tendsto_real (λx. f1 x / g1 x) l (atreal c) ⟶ tendsto_real (λx. f x / g x) l (atreal c)	674	z3	1.44	
 realderivative	real_derivative_ivt_increasing	fail	InvalidDerivationException	a ≤ b ⟶ (∀x. x ∈ real_closed_interval a b ⟶ has_real_derivative f (f1 x) (within (atreal x) (real_closed_interval a b))) ⟶ (∀t. f1 a ≤ t ⟶ t ≤ f1 b ⟶ (∃x. x ∈ real_closed_interval a b ∧ f1 x = t))	0		1.02	abstraction: variable occurs in assmptions
 realderivative	real_derivative_ivt_decreasing	ok		a ≤ b ⟶ (∀x. x ∈ real_closed_interval a b ⟶ has_real_derivative f (f1 x) (within (atreal x) (real_closed_interval a b))) ⟶ (∀t. f1 b ≤ t ⟶ t ≤ f1 a ⟶ (∃x. x ∈ real_closed_interval a b ∧ f1 x = t))	128		0.07	
 realderivative	has_real_derivative_inverse_basic	gaps		has_real_derivative f f1 (atreal (g y)) ⟶ ¬(f1 = 0) ⟶ real_continuous g (atreal y) ⟶ real_open t ⟶ y ∈ t ⟶ (∀z. z ∈ t ⟶ f (g z) = z) ⟶ has_real_derivative g (real_inverse f1) (atreal y)	19		0.02	
