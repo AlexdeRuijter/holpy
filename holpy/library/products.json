@@ -1802,14 +1802,14 @@
             "num_gaps": 0,
             "proof": [
                 {
-                    "args": "nproduct_insert, {f: f, s: (∅::'a set), x: x}",
+                    "args": "nproduct_insert, {'a: 'a, f: f, s: (∅::'a set), x: x}",
                     "id": "0",
                     "prevs": [],
                     "rule": "apply_theorem_for",
                     "th": "⊢ finite (∅::'a set) ⟶ nproduct ({x}) f = (if x ∈ ∅ then nproduct ∅ f else f x * nproduct ∅ f)"
                 },
                 {
-                    "args": "finite_empty, {}",
+                    "args": "finite_empty, {'a: 'a}",
                     "id": "1",
                     "prevs": [],
                     "rule": "apply_theorem_for",

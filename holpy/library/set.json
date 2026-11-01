@@ -6525,14 +6525,14 @@
                     "th": "⊢ _VAR s"
                 },
                 {
-                    "args": "finite_induct, {a: s, finite1: λs. finite s ∧ P s}",
+                    "args": "finite_induct, {'a: 'a, a: s, finite1: λs. finite s ∧ P s}",
                     "id": "3.1",
                     "prevs": [],
                     "rule": "apply_theorem_for",
                     "th": "⊢ finite (∅::'a set) ∧ P ∅ ⟶ (∀x. ∀s1. finite s1 ∧ P s1 ⟶ finite (insert x s1) ∧ P (insert x s1)) ⟶ finite s ⟶ finite s ∧ P s"
                 },
                 {
-                    "args": "finite_empty, {}",
+                    "args": "finite_empty, {'a: 'a}",
                     "id": "3.2",
                     "prevs": [],
                     "rule": "apply_theorem_for",
@@ -6595,7 +6595,7 @@
                     "th": "finite s1 ∧ P s1 ⊢ P s1"
                 },
                 {
-                    "args": "finite_insert, {A: s1, x: x}",
+                    "args": "finite_insert, {'a: 'a, A: s1, x: x}",
                     "id": "3.4.5",
                     "prevs": [
                         "3.4.3"
@@ -6922,7 +6922,7 @@
                     "th": "s ⊆ t ⊢ s ⊆ t"
                 },
                 {
-                    "args": "finite_induct, {a: t, finite1: λt::'a set. ∀s. s ⊆ t ⟶ finite s}",
+                    "args": "finite_induct, {'a: 'a, a: t, finite1: λt::'a set. ∀s. s ⊆ t ⟶ finite s}",
                     "id": "2",
                     "prevs": [],
                     "rule": "apply_theorem_for",
@@ -6950,7 +6950,7 @@
                     "th": "s1 ⊆ ∅ ⊢ s1 ⊆ ∅"
                 },
                 {
-                    "args": "subset_empty, {A: s1}",
+                    "args": "subset_empty, {'a: 'a, A: s1}",
                     "id": "3.2",
                     "prevs": [],
                     "rule": "apply_theorem_for",
@@ -6967,7 +6967,7 @@
                     "th": "finite t, s ⊆ t, s1 ⊆ ∅ ⊢ s1 = ∅"
                 },
                 {
-                    "args": "finite_empty, {}",
+                    "args": "finite_empty, {'a: 'a}",
                     "id": "3.4",
                     "prevs": [],
                     "rule": "apply_theorem_for",
@@ -7091,7 +7091,7 @@
                     "th": "finite t, s ⊆ t, t1 ⊆ insert x u, ∀s1. s1 ⊆ u ⟶ finite s1 ⊢ finite (delete t1 x)"
                 },
                 {
-                    "args": "finite_insert, {A: delete t1 x, x: x}",
+                    "args": "finite_insert, {'a: 'a, A: delete t1 x, x: x}",
                     "id": "5.3.6",
                     "prevs": [
                         "5.3.5"
@@ -8110,14 +8110,14 @@
             "num_gaps": 0,
             "proof": [
                 {
-                    "args": "finite_empty, {}",
+                    "args": "finite_empty, {'a: 'a}",
                     "id": "0",
                     "prevs": [],
                     "rule": "apply_theorem_for",
                     "th": "⊢ finite (∅::'a set)"
                 },
                 {
-                    "args": "finite_insert, {A: (∅::'a set), x: a}",
+                    "args": "finite_insert, {'a: 'a, A: (∅::'a set), x: a}",
                     "id": "1",
                     "prevs": [
                         "0"
@@ -8646,7 +8646,7 @@
                     "th": "⊢ {y. ∃x. x ∈ ∅ ∧ y = f x} = ∅"
                 },
                 {
-                    "args": "finite_empty, {}",
+                    "args": "finite_empty, {'a: 'a}",
                     "id": "2",
                     "prevs": [],
                     "rule": "apply_theorem_for",
@@ -8705,7 +8705,7 @@
                     "th": "⊢ {y. ∃x1. x1 ∈ insert x s ∧ y = f x1} = {y. ∃x1. x1 ∈ s ∧ y = f x1} ∪ {f x}"
                 },
                 {
-                    "args": "finite_sing, {a: f x}",
+                    "args": "finite_sing, {'a: 'b, a: f x}",
                     "id": "4.5",
                     "prevs": [],
                     "rule": "apply_theorem_for",
@@ -9105,7 +9105,7 @@
                     "th": "s = ∅ ⊢ s = ∅"
                 },
                 {
-                    "args": "finite_empty, {}",
+                    "args": "finite_empty, {'a: 'a}",
                     "id": "2.1",
                     "prevs": [],
                     "rule": "apply_theorem_for",
@@ -11585,14 +11585,14 @@
             "num_gaps": 0,
             "proof": [
                 {
-                    "args": "finite_empty, {}",
+                    "args": "finite_empty, {'a: 'a}",
                     "id": "0",
                     "prevs": [],
                     "rule": "apply_theorem_for",
                     "th": "⊢ finite (∅::'a set)"
                 },
                 {
-                    "args": "card_insert, {x: a}",
+                    "args": "card_insert, {'a: 'a, x: a}",
                     "id": "1",
                     "prevs": [
                         "0"
@@ -11601,7 +11601,7 @@
                     "th": "⊢ card ({a}) = (if a ∈ ∅ then card (∅::'a set) else Suc (card (∅::'a set)))"
                 },
                 {
-                    "args": "member_empty, {x: a}",
+                    "args": "member_empty, {'a: 'a, x: a}",
                     "id": "2",
                     "prevs": [],
                     "rule": "apply_theorem_for",
@@ -14842,7 +14842,7 @@
                     "th": "finite s, ¬(a ∈ s), ∀x. ∀y. x ∈ insert a s ⟶ y ∈ insert a s ⟶ f x = f y ⟶ x = y, (∀x. ∀y. x ∈ s ⟶ y ∈ s ⟶ f x = f y ⟶ x = y) ⟶ card (image f s) = card s ⊢ card (insert (f a) (image f s)) = (if f a ∈ image f s then card (image f s) else Suc (card (image f s)))"
                 },
                 {
-                    "args": "card_insert, {x: a}",
+                    "args": "card_insert, {'a: 'a, x: a}",
                     "id": "2.7",
                     "prevs": [
                         "0"
@@ -16146,7 +16146,7 @@
             "num_gaps": 0,
             "proof": [
                 {
-                    "args": "finite_empty, {}",
+                    "args": "finite_empty, {'a: 'a}",
                     "id": "0",
                     "prevs": [],
                     "rule": "apply_theorem_for",
@@ -16209,7 +16209,7 @@
                     "th": "finite ({m. m < n}) ∧ card ({m. m < n}) = n ⊢ finite ({m. m < n})"
                 },
                 {
-                    "args": "finite_insert, {A: {i. i < n}, x: n}",
+                    "args": "finite_insert, {'a: nat, A: {i. i < n}, x: n}",
                     "id": "4.3",
                     "prevs": [
                         "4.2"
@@ -16218,7 +16218,7 @@
                     "th": "finite ({m. m < n}) ∧ card ({m. m < n}) = n ⊢ finite (insert n ({i. i < n}))"
                 },
                 {
-                    "args": "card_insert, {s: {m. m < n}, x: n}",
+                    "args": "card_insert, {'a: nat, s: {m. m < n}, x: n}",
                     "id": "4.4",
                     "prevs": [
                         "4.2"
@@ -16234,7 +16234,7 @@
                     "th": "⊢ ¬(n ∈ {m. m < n})"
                 },
                 {
-                    "args": "conjD2, {A: finite ({m. m < n}), B: card ({m. m < n}) = n}",
+                    "args": "conjD2, {'a: nat, A: finite ({m. m < n}), B: card ({m. m < n}) = n}",
                     "id": "4.6",
                     "prevs": [
                         "4.1"

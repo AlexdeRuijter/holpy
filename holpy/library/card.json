@@ -626,14 +626,14 @@
             "num_gaps": 0,
             "proof": [
                 {
-                    "args": "finite_empty, {}",
+                    "args": "finite_empty, {'a: 'a}",
                     "id": "0",
                     "prevs": [],
                     "rule": "apply_theorem_for",
                     "th": "⊢ finite (∅::'a set)"
                 },
                 {
-                    "args": "finite_insert, {A: (∅::'a set), x: x}",
+                    "args": "finite_insert, {'a: 'a, A: (∅::'a set), x: x}",
                     "id": "1",
                     "prevs": [
                         "0"

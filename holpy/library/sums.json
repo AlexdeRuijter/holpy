@@ -2278,7 +2278,7 @@
                     "th": "∀x1. x1 ∈ insert x s ⟶ f x1 ≤ g x1 ⊢ ∀x1. x1 ∈ insert x s ⟶ f x1 ≤ g x1"
                 },
                 {
-                    "args": "nsum_insert, {f: f, x: x}",
+                    "args": "nsum_insert, {'a: 'a, f: f, x: x}",
                     "id": "3.5",
                     "prevs": [
                         "0"
@@ -4871,14 +4871,14 @@
             "num_gaps": 0,
             "proof": [
                 {
-                    "args": "finite_empty, {}",
+                    "args": "finite_empty, {'a: 'a}",
                     "id": "0",
                     "prevs": [],
                     "rule": "apply_theorem_for",
                     "th": "⊢ finite (∅::'a set)"
                 },
                 {
-                    "args": "nsum_insert, {f: f, x: x}",
+                    "args": "nsum_insert, {'a: 'a, f: f, x: x}",
                     "id": "1",
                     "prevs": [
                         "0"
@@ -14959,7 +14959,7 @@
                     "th": "finite s, ¬(x ∈ s) ⊢ nsum (insert x s) (λi. f i MOD n) = f x MOD n + nsum s (λi. f i MOD n)"
                 },
                 {
-                    "args": "nsum_insert, {f: f, x: x}",
+                    "args": "nsum_insert, {'a: 'a, f: f, x: x}",
                     "id": "2.2.6",
                     "prevs": [
                         "0"
@@ -18136,7 +18136,7 @@
                     "th": "∀x1. x1 ∈ insert x s ⟶ f x1 ≤ g x1 ⊢ ∀x1. x1 ∈ insert x s ⟶ f x1 ≤ g x1"
                 },
                 {
-                    "args": "sum_insert, {f: f, x: x}",
+                    "args": "sum_insert, {'a: 'a, f: f, x: x}",
                     "id": "2.5",
                     "prevs": [
                         "0"
@@ -19541,7 +19541,7 @@
                     "th": "¬(x ∈ s) ⊢ ¬(x ∈ s)"
                 },
                 {
-                    "args": "sum_insert, {f: f, x: x}",
+                    "args": "sum_insert, {'a: 'a, f: f, x: x}",
                     "id": "4.4",
                     "prevs": [
                         "0"
@@ -20731,7 +20731,7 @@
                     "th": "x1 ∈ insert x s ⊢ x1 = x ∨ x1 ∈ s"
                 },
                 {
-                    "args": "sum_insert, {f: f, x: x}",
+                    "args": "sum_insert, {'a: 'a, f: f, x: x}",
                     "id": "2.6.3",
                     "prevs": [
                         "0"
@@ -21997,14 +21997,14 @@
             "num_gaps": 0,
             "proof": [
                 {
-                    "args": "finite_empty, {}",
+                    "args": "finite_empty, {'a: 'a}",
                     "id": "0",
                     "prevs": [],
                     "rule": "apply_theorem_for",
                     "th": "⊢ finite (∅::'a set)"
                 },
                 {
-                    "args": "sum_insert, {f: f, x: x}",
+                    "args": "sum_insert, {'a: 'a, f: f, x: x}",
                     "id": "1",
                     "prevs": [
                         "0"
@@ -26949,7 +26949,7 @@
                     "th": "of_nat (nsum s f) = sum s (λx. of_nat (f x)) ⊢ sum s (λx. of_nat (f x)) = of_nat (nsum s f)"
                 },
                 {
-                    "args": "nsum_insert, {f: f, x: x}",
+                    "args": "nsum_insert, {'a: 'a, f: f, x: x}",
                     "id": "4.7",
                     "prevs": [
                         "0"

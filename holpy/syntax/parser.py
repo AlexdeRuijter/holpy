@@ -447,11 +447,57 @@ def parse_thm(s: str) -> Thm:
     return th
 
 def parse_inst(s):
-    """Parse a term instantiation."""
-    inst = inst_parser.parse(s)
-    for k in inst:
-        inst[k] = infertype.type_infer(inst[k])
-    return Inst(inst)
+    """Parse a term instantiation, possibly with combined type variables."""
+    s = s.strip()
+    if s == "{}":
+        return Inst()
+    # Try standard form first
+    try:
+        inst_dict = inst_parser.parse(s)
+        for k in inst_dict:
+            inst_dict[k] = infertype.type_infer(inst_dict[k])
+        return Inst(inst_dict)
+    except (exceptions.UnexpectedToken, exceptions.UnexpectedCharacters,
+            infertype.TypeInferenceException):
+        pass
+    # Manual combined parsing: split pairs by commas (not inside braces)
+    # For simplicity, assume pairs don't contain commas inside terms.
+    inner = s[1:-1].strip()
+    if not inner:
+        return Inst()
+    pairs = []
+    current = ""
+    depth = 0
+    for char in inner:
+        if char == "{" or char == "(":
+            depth += 1
+        elif char == "}" or char == ")":
+            depth -= 1
+        if char == "," and depth == 0:
+            pairs.append(current.strip())
+            current = ""
+        else:
+            current += char
+    pairs.append(current.strip())
+    inst_dict = {}
+    tyinst_dict = {}
+    for pair_str in pairs:
+        key, val_str = pair_str.split(":", 1)
+        key = key.strip()
+        val_str = val_str.strip()
+        # Try type first; combined form uses quoted keys for type vars
+        try:
+            T = parse_type(val_str)
+            if key.startswith("'") or key.startswith("?"):
+                tyinst_dict[key.lstrip("'?")] = T
+                continue
+        except Exception:
+            pass
+        # Term value (including constants that match type names)
+        inst_dict[key] = parse_term(val_str)
+    res = Inst(inst_dict)
+    res.tyinst = TyInst(tyinst_dict)
+    return res
 
 def parse_tyinst(s):
     """Parse a type instantiation."""
