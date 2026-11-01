@@ -1,0 +1,10 @@
+theories: prime
+z3 5.3.2
+queries: 134 calls, 121 distinct
+calls: 134; unsat 134; of those qsat ran 8; not unsat in proof mode 4 (qsat ran 0)
+distinct: 121; unsat 121; of those qsat ran 8; not unsat in proof mode 1 (qsat ran 0)
+not unsat in proof mode (distinct): prime.induct_coprime
+distinct queries answered unsat in the run: 121
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 1
+  of which unknown in the run itself: 0
+  of which seed-dependent (k for some but not all seeds): 0

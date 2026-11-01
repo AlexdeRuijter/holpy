@@ -1,0 +1,430 @@
+theories: card
+z3 5.3.3
+queries: 2 calls, 2 distinct
+calls: 2; unsat 2; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+distinct: 2; unsat 2; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+not unsat in proof mode (distinct): 
+distinct queries answered unsat in the run: 2
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 0
+  of which unknown in the run itself: 0
+  of which seed-dependent (k for some but not all seeds): 0
+theories: class
+z3 5.3.3
+queries: 0 calls, 0 distinct
+calls: 0; unsat 0; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+distinct: 0; unsat 0; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+not unsat in proof mode (distinct): 
+distinct queries answered unsat in the run: 0
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 0
+  of which unknown in the run itself: 0
+  of which seed-dependent (k for some but not all seeds): 0
+theories: expr
+z3 5.3.3
+queries: 0 calls, 0 distinct
+calls: 0; unsat 0; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+distinct: 0; unsat 0; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+not unsat in proof mode (distinct): 
+distinct queries answered unsat in the run: 0
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 0
+  of which unknown in the run itself: 0
+  of which seed-dependent (k for some but not all seeds): 0
+theories: floor
+z3 5.3.3
+queries: 0 calls, 0 distinct
+calls: 0; unsat 0; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+distinct: 0; unsat 0; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+not unsat in proof mode (distinct): 
+distinct queries answered unsat in the run: 0
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 0
+  of which unknown in the run itself: 0
+  of which seed-dependent (k for some but not all seeds): 0
+theories: function
+z3 5.3.3
+queries: 0 calls, 0 distinct
+calls: 0; unsat 0; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+distinct: 0; unsat 0; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+not unsat in proof mode (distinct): 
+distinct queries answered unsat in the run: 0
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 0
+  of which unknown in the run itself: 0
+  of which seed-dependent (k for some but not all seeds): 0
+theories: gcd
+z3 5.3.3
+queries: 41 calls, 40 distinct
+calls: 41; unsat 41; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+distinct: 40; unsat 40; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+not unsat in proof mode (distinct): 
+distinct queries answered unsat in the run: 40
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 0
+  of which unknown in the run itself: 0
+  of which seed-dependent (k for some but not all seeds): 0
+theories: gcl
+z3 5.3.3
+queries: 0 calls, 0 distinct
+calls: 0; unsat 0; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+distinct: 0; unsat 0; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+not unsat in proof mode (distinct): 
+distinct queries answered unsat in the run: 0
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 0
+  of which unknown in the run itself: 0
+  of which seed-dependent (k for some but not all seeds): 0
+theories: hoare
+z3 5.3.3
+queries: 4 calls, 2 distinct
+calls: 4; unsat 4; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+distinct: 2; unsat 2; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+not unsat in proof mode (distinct): 
+distinct queries answered unsat in the run: 2
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 0
+  of which unknown in the run itself: 0
+  of which seed-dependent (k for some but not all seeds): 0
+theories: hoare_test_output
+z3 5.3.3
+queries: 10 calls, 8 distinct
+calls: 10; unsat 10; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+distinct: 8; unsat 8; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+not unsat in proof mode (distinct): 
+distinct queries answered unsat in the run: 8
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 0
+  of which unknown in the run itself: 0
+  of which seed-dependent (k for some but not all seeds): 0
+theories: int
+z3 5.3.3
+queries: 6 calls, 5 distinct
+calls: 6; unsat 6; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+distinct: 5; unsat 5; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+not unsat in proof mode (distinct): 
+distinct queries answered unsat in the run: 5
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 0
+  of which unknown in the run itself: 0
+  of which seed-dependent (k for some but not all seeds): 0
+theories: integral
+z3 5.3.3
+queries: 0 calls, 0 distinct
+calls: 0; unsat 0; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+distinct: 0; unsat 0; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+not unsat in proof mode (distinct): 
+distinct queries answered unsat in the run: 0
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 0
+  of which unknown in the run itself: 0
+  of which seed-dependent (k for some but not all seeds): 0
+theories: interval_arith
+z3 5.3.3
+queries: 0 calls, 0 distinct
+calls: 0; unsat 0; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+distinct: 0; unsat 0; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+not unsat in proof mode (distinct): 
+distinct queries answered unsat in the run: 0
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 0
+  of which unknown in the run itself: 0
+  of which seed-dependent (k for some but not all seeds): 0
+theories: iterate
+z3 5.3.3
+queries: 84 calls, 72 distinct
+calls: 84; unsat 84; of those qsat ran 16; not unsat in proof mode 2 (qsat ran 0)
+distinct: 72; unsat 72; of those qsat ran 16; not unsat in proof mode 2 (qsat ran 0)
+not unsat in proof mode (distinct): iterate.natseg_offset_image
+distinct queries answered unsat in the run: 72
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 2
+  of which unknown in the run itself: 0
+  of which seed-dependent (k for some but not all seeds): 0
+theories: lcm
+z3 5.3.3
+queries: 36 calls, 36 distinct
+calls: 36; unsat 36; of those qsat ran 2; not unsat in proof mode 0 (qsat ran 0)
+distinct: 36; unsat 36; of those qsat ran 2; not unsat in proof mode 0 (qsat ran 0)
+not unsat in proof mode (distinct): 
+distinct queries answered unsat in the run: 36
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 0
+  of which unknown in the run itself: 0
+  of which seed-dependent (k for some but not all seeds): 0
+theories: limits
+z3 5.3.3
+queries: 0 calls, 0 distinct
+calls: 0; unsat 0; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+distinct: 0; unsat 0; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+not unsat in proof mode (distinct): 
+distinct queries answered unsat in the run: 0
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 0
+  of which unknown in the run itself: 0
+  of which seed-dependent (k for some but not all seeds): 0
+theories: list
+z3 5.3.3
+queries: 0 calls, 0 distinct
+calls: 0; unsat 0; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+distinct: 0; unsat 0; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+not unsat in proof mode (distinct): 
+distinct queries answered unsat in the run: 0
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 0
+  of which unknown in the run itself: 0
+  of which seed-dependent (k for some but not all seeds): 0
+theories: logic
+z3 5.3.3
+queries: 14 calls, 13 distinct
+calls: 14; unsat 14; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+distinct: 13; unsat 13; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+not unsat in proof mode (distinct): 
+distinct queries answered unsat in the run: 13
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 0
+  of which unknown in the run itself: 0
+  of which seed-dependent (k for some but not all seeds): 0
+theories: logic_base
+z3 5.3.3
+queries: 0 calls, 0 distinct
+calls: 0; unsat 0; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+distinct: 0; unsat 0; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+not unsat in proof mode (distinct): 
+distinct queries answered unsat in the run: 0
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 0
+  of which unknown in the run itself: 0
+  of which seed-dependent (k for some but not all seeds): 0
+theories: metric
+z3 5.3.3
+queries: 82 calls, 76 distinct
+calls: 82; unsat 82; of those qsat ran 4; not unsat in proof mode 0 (qsat ran 0)
+distinct: 76; unsat 76; of those qsat ran 4; not unsat in proof mode 0 (qsat ran 0)
+not unsat in proof mode (distinct): 
+distinct queries answered unsat in the run: 76
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 0
+  of which unknown in the run itself: 0
+  of which seed-dependent (k for some but not all seeds): 0
+theories: misc
+z3 5.3.3
+queries: 38 calls, 34 distinct
+calls: 38; unsat 38; of those qsat ran 6; not unsat in proof mode 2 (qsat ran 2)
+distinct: 34; unsat 34; of those qsat ran 6; not unsat in proof mode 2 (qsat ran 2)
+not unsat in proof mode (distinct): misc. real_open_interval_eq_empty
+distinct queries answered unsat in the run: 34
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 2
+  of which unknown in the run itself: 0
+  of which seed-dependent (k for some but not all seeds): 0
+theories: nat
+z3 5.3.3
+queries: 98 calls, 77 distinct
+calls: 98; unsat 98; of those qsat ran 10; not unsat in proof mode 0 (qsat ran 0)
+distinct: 77; unsat 77; of those qsat ran 9; not unsat in proof mode 0 (qsat ran 0)
+not unsat in proof mode (distinct): 
+distinct queries answered unsat in the run: 77
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 0
+  of which unknown in the run itself: 0
+  of which seed-dependent (k for some but not all seeds): 0
+theories: prime
+z3 5.3.3
+queries: 134 calls, 122 distinct
+calls: 134; unsat 134; of those qsat ran 8; not unsat in proof mode 4 (qsat ran 0)
+distinct: 122; unsat 122; of those qsat ran 8; not unsat in proof mode 1 (qsat ran 0)
+not unsat in proof mode (distinct): prime.induct_coprime
+distinct queries answered unsat in the run: 122
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 1
+  of which unknown in the run itself: 0
+  of which seed-dependent (k for some but not all seeds): 0
+theories: products
+z3 5.3.3
+queries: 48 calls, 35 distinct
+calls: 48; unsat 48; of those qsat ran 0; not unsat in proof mode 8 (qsat ran 0)
+distinct: 35; unsat 35; of those qsat ran 0; not unsat in proof mode 2 (qsat ran 0)
+not unsat in proof mode (distinct): products.nproduct_one, products.product_pos_lt
+distinct queries answered unsat in the run: 35
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 2
+  of which unknown in the run itself: 0
+  of which seed-dependent (k for some but not all seeds): 0
+theories: rat
+z3 5.3.3
+queries: 0 calls, 0 distinct
+calls: 0; unsat 0; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+distinct: 0; unsat 0; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+not unsat in proof mode (distinct): 
+distinct queries answered unsat in the run: 0
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 0
+  of which unknown in the run itself: 0
+  of which seed-dependent (k for some but not all seeds): 0
+theories: real
+z3 5.3.3
+queries: 264 calls, 182 distinct
+calls: 264; unsat 264; of those qsat ran 4; not unsat in proof mode 34 (qsat ran 2)
+distinct: 182; unsat 182; of those qsat ran 4; not unsat in proof mode 3 (qsat ran 2)
+not unsat in proof mode (distinct): real.real_down, real.sqrt_1
+distinct queries answered unsat in the run: 182
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 3
+  of which unknown in the run itself: 0
+  of which seed-dependent (k for some but not all seeds): 0
+theories: realanalysis
+z3 5.3.3
+queries: 43 calls, 40 distinct
+calls: 43; unsat 43; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+distinct: 40; unsat 40; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+not unsat in proof mode (distinct): 
+distinct queries answered unsat in the run: 40
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 2
+  of which unknown in the run itself: 0
+  of which seed-dependent (k for some but not all seeds): 2
+theories: realderivative
+z3 5.3.3
+queries: 119 calls, 110 distinct
+calls: 119; unsat 118; of those qsat ran 0; not unsat in proof mode 4 (qsat ran 0)
+distinct: 110; unsat 109; of those qsat ran 0; not unsat in proof mode 1 (qsat ran 0)
+not unsat in proof mode (distinct): realderivative.real_derivative_ivt_increasing
+distinct queries answered unsat in the run: 109
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 2
+  of which unknown in the run itself: 1
+  of which seed-dependent (k for some but not all seeds): 1
+theories: realgamma
+z3 5.3.3
+queries: 8 calls, 6 distinct
+calls: 8; unsat 8; of those qsat ran 0; not unsat in proof mode 2 (qsat ran 0)
+distinct: 6; unsat 6; of those qsat ran 0; not unsat in proof mode 1 (qsat ran 0)
+not unsat in proof mode (distinct): realgamma.gaussian_has_real_integral
+distinct queries answered unsat in the run: 6
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 1
+  of which unknown in the run itself: 0
+  of which seed-dependent (k for some but not all seeds): 0
+theories: realintegral
+z3 5.3.3
+queries: 100 calls, 81 distinct
+calls: 100; unsat 100; of those qsat ran 6; not unsat in proof mode 4 (qsat ran 0)
+distinct: 81; unsat 81; of those qsat ran 6; not unsat in proof mode 2 (qsat ran 0)
+not unsat in proof mode (distinct): realintegral.has_real_measure_pos_le, realintegral.has_real_measure_subset
+distinct queries answered unsat in the run: 81
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 2
+  of which unknown in the run itself: 0
+  of which seed-dependent (k for some but not all seeds): 0
+theories: realseries
+z3 5.3.3
+queries: 190 calls, 181 distinct
+calls: 190; unsat 190; of those qsat ran 0; not unsat in proof mode 4 (qsat ran 0)
+distinct: 181; unsat 181; of those qsat ran 0; not unsat in proof mode 1 (qsat ran 0)
+not unsat in proof mode (distinct): realseries.reallim_imp_has_liminf
+distinct queries answered unsat in the run: 181
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 1
+  of which unknown in the run itself: 0
+  of which seed-dependent (k for some but not all seeds): 0
+theories: realset
+z3 5.3.3
+queries: 18 calls, 17 distinct
+calls: 18; unsat 18; of those qsat ran 2; not unsat in proof mode 0 (qsat ran 0)
+distinct: 17; unsat 17; of those qsat ran 2; not unsat in proof mode 0 (qsat ran 0)
+not unsat in proof mode (distinct): 
+distinct queries answered unsat in the run: 17
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 1
+  of which unknown in the run itself: 0
+  of which seed-dependent (k for some but not all seeds): 1
+theories: sat
+z3 5.3.3
+queries: 0 calls, 0 distinct
+calls: 0; unsat 0; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+distinct: 0; unsat 0; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+not unsat in proof mode (distinct): 
+distinct queries answered unsat in the run: 0
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 0
+  of which unknown in the run itself: 0
+  of which seed-dependent (k for some but not all seeds): 0
+theories: set
+z3 5.3.3
+queries: 84 calls, 73 distinct
+calls: 84; unsat 84; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+distinct: 73; unsat 73; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+not unsat in proof mode (distinct): 
+distinct queries answered unsat in the run: 73
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 2
+  of which unknown in the run itself: 0
+  of which seed-dependent (k for some but not all seeds): 2
+theories: smt
+z3 5.3.3
+queries: 0 calls, 0 distinct
+calls: 0; unsat 0; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+distinct: 0; unsat 0; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+not unsat in proof mode (distinct): 
+distinct queries answered unsat in the run: 0
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 0
+  of which unknown in the run itself: 0
+  of which seed-dependent (k for some but not all seeds): 0
+theories: string
+z3 5.3.3
+queries: 0 calls, 0 distinct
+calls: 0; unsat 0; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+distinct: 0; unsat 0; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+not unsat in proof mode (distinct): 
+distinct queries answered unsat in the run: 0
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 0
+  of which unknown in the run itself: 0
+  of which seed-dependent (k for some but not all seeds): 0
+theories: sums
+z3 5.3.3
+queries: 129 calls, 112 distinct
+calls: 129; unsat 129; of those qsat ran 4; not unsat in proof mode 2 (qsat ran 0)
+distinct: 112; unsat 112; of those qsat ran 4; not unsat in proof mode 1 (qsat ran 0)
+not unsat in proof mode (distinct): sums.sum_0
+distinct queries answered unsat in the run: 112
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 1
+  of which unknown in the run itself: 0
+  of which seed-dependent (k for some but not all seeds): 0
+theories: topology
+z3 5.3.3
+queries: 0 calls, 0 distinct
+calls: 0; unsat 0; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+distinct: 0; unsat 0; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+not unsat in proof mode (distinct): 
+distinct queries answered unsat in the run: 0
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 0
+  of which unknown in the run itself: 0
+  of which seed-dependent (k for some but not all seeds): 0
+theories: transcendentals
+z3 5.3.3
+queries: 387 calls, 280 distinct
+calls: 387; unsat 387; of those qsat ran 0; not unsat in proof mode 72 (qsat ran 0)
+distinct: 280; unsat 280; of those qsat ran 0; not unsat in proof mode 3 (qsat ran 0)
+not unsat in proof mode (distinct): transcendentals.rpow_one, transcendentals.tan_add
+distinct queries answered unsat in the run: 280
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 3
+  of which unknown in the run itself: 0
+  of which seed-dependent (k for some but not all seeds): 0
+theories: trig_atn
+z3 5.3.3
+queries: 84 calls, 77 distinct
+calls: 84; unsat 84; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+distinct: 77; unsat 77; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+not unsat in proof mode (distinct): 
+distinct queries answered unsat in the run: 77
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 0
+  of which unknown in the run itself: 0
+  of which seed-dependent (k for some but not all seeds): 0
+theories: trig_exp_log
+z3 5.3.3
+queries: 74 calls, 60 distinct
+calls: 74; unsat 74; of those qsat ran 0; not unsat in proof mode 8 (qsat ran 0)
+distinct: 60; unsat 60; of those qsat ran 0; not unsat in proof mode 1 (qsat ran 0)
+not unsat in proof mode (distinct): trig_exp_log.log_reduce_neg_pow
+distinct queries answered unsat in the run: 60
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 1
+  of which unknown in the run itself: 0
+  of which seed-dependent (k for some but not all seeds): 0
+theories: trig_series
+z3 5.3.3
+queries: 170 calls, 161 distinct
+calls: 170; unsat 170; of those qsat ran 4; not unsat in proof mode 0 (qsat ran 0)
+distinct: 161; unsat 161; of those qsat ran 4; not unsat in proof mode 0 (qsat ran 0)
+not unsat in proof mode (distinct): 
+distinct queries answered unsat in the run: 161
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 0
+  of which unknown in the run itself: 0
+  of which seed-dependent (k for some but not all seeds): 0
+theories: trig_sin_cos
+z3 5.3.3
+queries: 24 calls, 21 distinct
+calls: 24; unsat 24; of those qsat ran 0; not unsat in proof mode 4 (qsat ran 0)
+distinct: 21; unsat 21; of those qsat ran 0; not unsat in proof mode 1 (qsat ran 0)
+not unsat in proof mode (distinct): trig_sin_cos.taylor_sin
+distinct queries answered unsat in the run: 21
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 1
+  of which unknown in the run itself: 0
+  of which seed-dependent (k for some but not all seeds): 0
+theories: verit
+z3 5.3.3
+queries: 0 calls, 0 distinct
+calls: 0; unsat 0; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+distinct: 0; unsat 0; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+not unsat in proof mode (distinct): 
+distinct queries answered unsat in the run: 0
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 0
+  of which unknown in the run itself: 0
+  of which seed-dependent (k for some but not all seeds): 0

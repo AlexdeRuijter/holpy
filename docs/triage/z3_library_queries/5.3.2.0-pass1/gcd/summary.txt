@@ -1,0 +1,10 @@
+theories: gcd
+z3 5.3.2
+queries: 41 calls, 39 distinct
+calls: 41; unsat 41; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+distinct: 39; unsat 39; of those qsat ran 0; not unsat in proof mode 0 (qsat ran 0)
+not unsat in proof mode (distinct): 
+distinct queries answered unsat in the run: 39
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 0
+  of which unknown in the run itself: 0
+  of which seed-dependent (k for some but not all seeds): 0

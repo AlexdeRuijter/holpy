@@ -1,0 +1,4 @@
+sha	theory	theorem	result	seconds	qsat	proof_result	seeds
+8fd437b4dccc	transcendentals	rpow_one	unsat	0.0	False	error: Value cannot be converted into a Z3 Boolean value	UUUUUUUU
+17b3b6d666de	transcendentals	tan_add	unsat	0.003	False	unknown	UUUUUUUU
+e68b660310aa	transcendentals	tan_add	unsat	0.003	False	unknown	UUUUUUUU

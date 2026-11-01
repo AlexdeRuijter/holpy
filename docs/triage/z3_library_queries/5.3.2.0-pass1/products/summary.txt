@@ -1,0 +1,10 @@
+theories: products
+z3 5.3.2
+queries: 48 calls, 35 distinct
+calls: 48; unsat 48; of those qsat ran 0; not unsat in proof mode 8 (qsat ran 0)
+distinct: 35; unsat 35; of those qsat ran 0; not unsat in proof mode 2 (qsat ran 0)
+not unsat in proof mode (distinct): products.nproduct_one, products.product_pos_lt
+distinct queries answered unsat in the run: 35
+fragile distinct queries (not unsat in the run, or in proof mode, or for some seed): 2
+  of which unknown in the run itself: 0
+  of which seed-dependent (k for some but not all seeds): 0
