@@ -15,7 +15,7 @@
                 "hint_backward1"
             ],
             "name": "countable_subset",
-            "prop": "countable t ⟶ s ⊆ t ⟶ countable s",
+            "prop": "countable t \u27f6 s \u2286 t \u27f6 countable s",
             "ty": "thm",
             "vars": {
                 "s": "'a set",
@@ -34,14 +34,14 @@
                     "id": "0",
                     "prevs": [],
                     "rule": "assume",
-                    "th": "countable s ⊢ countable s"
+                    "th": "countable s \u22a2 countable s"
                 },
                 {
-                    "args": "{x. x ∈ s ∧ P x} ⊆ s",
+                    "args": "{x. x \u2208 s \u2227 P x} \u2286 s",
                     "id": "1",
                     "prevs": [],
                     "rule": "z3",
-                    "th": "⊢ {x. x ∈ s ∧ P x} ⊆ s"
+                    "th": "\u22a2 {x. x \u2208 s \u2227 P x} \u2286 s"
                 },
                 {
                     "args": "countable_subset",
@@ -51,7 +51,7 @@
                         "1"
                     ],
                     "rule": "apply_theorem",
-                    "th": "countable s ⊢ countable ({x. x ∈ s ∧ P x})"
+                    "th": "countable s \u22a2 countable ({x. x \u2208 s \u2227 P x})"
                 },
                 {
                     "args": "",
@@ -61,10 +61,10 @@
                         "2"
                     ],
                     "rule": "intros",
-                    "th": "⊢ countable s ⟶ countable ({x. x ∈ s ∧ P x})"
+                    "th": "\u22a2 countable s \u27f6 countable ({x. x \u2208 s \u2227 P x})"
                 }
             ],
-            "prop": "countable s ⟶ countable ({x. x ∈ s ∧ P x})",
+            "prop": "countable s \u27f6 countable ({x. x \u2208 s \u2227 P x})",
             "steps": [
                 {
                     "fact_ids": [
@@ -81,7 +81,7 @@
             ],
             "ty": "thm",
             "vars": {
-                "P": "'a ⇒ bool",
+                "P": "'a \u21d2 bool",
                 "s": "'a set"
             }
         },
@@ -97,14 +97,14 @@
                     "id": "0",
                     "prevs": [],
                     "rule": "apply_theorem",
-                    "th": "⊢ countable (univ::nat set)"
+                    "th": "\u22a2 countable (univ::nat set)"
                 },
                 {
                     "args": "subset_univ, {A: s}",
                     "id": "1",
                     "prevs": [],
                     "rule": "apply_theorem_for",
-                    "th": "⊢ s ⊆ univ"
+                    "th": "\u22a2 s \u2286 univ"
                 },
                 {
                     "args": "countable_subset",
@@ -114,7 +114,7 @@
                         "1"
                     ],
                     "rule": "apply_theorem",
-                    "th": "⊢ countable s"
+                    "th": "\u22a2 countable s"
                 },
                 {
                     "args": "",
@@ -123,7 +123,7 @@
                         "2"
                     ],
                     "rule": "intros",
-                    "th": "⊢ countable s"
+                    "th": "\u22a2 countable s"
                 }
             ],
             "prop": "countable s",
@@ -155,7 +155,7 @@
                 "hint_backward"
             ],
             "name": "finite_imp_countable",
-            "prop": "finite s ⟶ countable s",
+            "prop": "finite s \u27f6 countable s",
             "ty": "thm",
             "vars": {
                 "s": "'a set"
@@ -166,10 +166,10 @@
                 "hint_backward"
             ],
             "name": "countable_image",
-            "prop": "countable s ⟶ countable (image f s)",
+            "prop": "countable s \u27f6 countable (image f s)",
             "ty": "thm",
             "vars": {
-                "f": "'a ⇒ 'b",
+                "f": "'a \u21d2 'b",
                 "s": "'a set"
             }
         },
@@ -178,7 +178,7 @@
                 "hint_backward"
             ],
             "name": "countable_empty",
-            "prop": "countable (∅::'a set)",
+            "prop": "countable (\u2205::'a set)",
             "ty": "thm",
             "vars": {}
         },
@@ -190,32 +190,32 @@
             "num_gaps": 0,
             "proof": [
                 {
-                    "args": "countable s ∨ countable t",
+                    "args": "countable s \u2228 countable t",
                     "id": "0",
                     "prevs": [],
                     "rule": "assume",
-                    "th": "countable s ∨ countable t ⊢ countable s ∨ countable t"
+                    "th": "countable s \u2228 countable t \u22a2 countable s \u2228 countable t"
                 },
                 {
                     "args": "",
                     "id": "1",
                     "prevs": [],
                     "rule": "subproof",
-                    "th": "countable s ∨ countable t ⊢ countable s ⟶ countable (s ∩ t)"
+                    "th": "countable s \u2228 countable t \u22a2 countable s \u27f6 countable (s \u2229 t)"
                 },
                 {
                     "args": "countable s",
                     "id": "1.0",
                     "prevs": [],
                     "rule": "assume",
-                    "th": "countable s ⊢ countable s"
+                    "th": "countable s \u22a2 countable s"
                 },
                 {
                     "args": "inter_subset_id, {A: s, B: t}",
                     "id": "1.1",
                     "prevs": [],
                     "rule": "apply_theorem_for",
-                    "th": "⊢ s ∩ t ⊆ s"
+                    "th": "\u22a2 s \u2229 t \u2286 s"
                 },
                 {
                     "args": "countable_subset",
@@ -225,7 +225,7 @@
                         "1.1"
                     ],
                     "rule": "apply_theorem",
-                    "th": "countable s, countable s ∨ countable t ⊢ countable (s ∩ t)"
+                    "th": "countable s, countable s \u2228 countable t \u22a2 countable (s \u2229 t)"
                 },
                 {
                     "args": "",
@@ -235,37 +235,37 @@
                         "1.2"
                     ],
                     "rule": "intros",
-                    "th": "countable s ∨ countable t ⊢ countable s ⟶ countable (s ∩ t)"
+                    "th": "countable s \u2228 countable t \u22a2 countable s \u27f6 countable (s \u2229 t)"
                 },
                 {
                     "args": "",
                     "id": "2",
                     "prevs": [],
                     "rule": "subproof",
-                    "th": "countable s ∨ countable t ⊢ countable t ⟶ countable (s ∩ t)"
+                    "th": "countable s \u2228 countable t \u22a2 countable t \u27f6 countable (s \u2229 t)"
                 },
                 {
                     "args": "countable t",
                     "id": "2.0",
                     "prevs": [],
                     "rule": "assume",
-                    "th": "countable t ⊢ countable t"
+                    "th": "countable t \u22a2 countable t"
                 },
                 {
                     "args": "inter_subset_id, {A: t, B: s}",
                     "id": "2.1",
                     "prevs": [],
                     "rule": "apply_theorem_for",
-                    "th": "⊢ t ∩ s ⊆ t"
+                    "th": "\u22a2 t \u2229 s \u2286 t"
                 },
                 {
-                    "args": "inter_comm, s ∩ t ⊆ t",
+                    "args": "inter_comm, s \u2229 t \u2286 t",
                     "id": "2.2",
                     "prevs": [
                         "2.1"
                     ],
                     "rule": "rewrite_goal",
-                    "th": "countable s ∨ countable t, countable t ⊢ s ∩ t ⊆ t"
+                    "th": "countable s \u2228 countable t, countable t \u22a2 s \u2229 t \u2286 t"
                 },
                 {
                     "args": "countable_subset",
@@ -275,7 +275,7 @@
                         "2.2"
                     ],
                     "rule": "apply_theorem",
-                    "th": "countable t, countable s ∨ countable t ⊢ countable (s ∩ t)"
+                    "th": "countable t, countable s \u2228 countable t \u22a2 countable (s \u2229 t)"
                 },
                 {
                     "args": "",
@@ -285,7 +285,7 @@
                         "2.3"
                     ],
                     "rule": "intros",
-                    "th": "countable s ∨ countable t ⊢ countable t ⟶ countable (s ∩ t)"
+                    "th": "countable s \u2228 countable t \u22a2 countable t \u27f6 countable (s \u2229 t)"
                 },
                 {
                     "args": "disjE",
@@ -296,7 +296,7 @@
                         "2"
                     ],
                     "rule": "apply_theorem",
-                    "th": "countable s ∨ countable t ⊢ countable (s ∩ t)"
+                    "th": "countable s \u2228 countable t \u22a2 countable (s \u2229 t)"
                 },
                 {
                     "args": "",
@@ -306,10 +306,10 @@
                         "3"
                     ],
                     "rule": "intros",
-                    "th": "⊢ countable s ∨ countable t ⟶ countable (s ∩ t)"
+                    "th": "\u22a2 countable s \u2228 countable t \u27f6 countable (s \u2229 t)"
                 }
             ],
-            "prop": "countable s ∨ countable t ⟶ countable (s ∩ t)",
+            "prop": "countable s \u2228 countable t \u27f6 countable (s \u2229 t)",
             "steps": [
                 {
                     "fact_ids": [
@@ -371,7 +371,7 @@
                 "hint_backward"
             ],
             "name": "countable_union_imp",
-            "prop": "countable s ⟶ countable t ⟶ countable (s ∪ t)",
+            "prop": "countable s \u27f6 countable t \u27f6 countable (s \u222a t)",
             "ty": "thm",
             "vars": {
                 "s": "'a set",
@@ -390,21 +390,21 @@
                     "id": "0",
                     "prevs": [],
                     "rule": "subproof",
-                    "th": "⊢ countable (s ∪ t) ⟶ countable s ∧ countable t"
+                    "th": "\u22a2 countable (s \u222a t) \u27f6 countable s \u2227 countable t"
                 },
                 {
-                    "args": "countable (s ∪ t)",
+                    "args": "countable (s \u222a t)",
                     "id": "0.0",
                     "prevs": [],
                     "rule": "assume",
-                    "th": "countable (s ∪ t) ⊢ countable (s ∪ t)"
+                    "th": "countable (s \u222a t) \u22a2 countable (s \u222a t)"
                 },
                 {
                     "args": "subset_union_id, {A: s, B: t}",
                     "id": "0.1",
                     "prevs": [],
                     "rule": "apply_theorem_for",
-                    "th": "⊢ s ⊆ s ∪ t"
+                    "th": "\u22a2 s \u2286 s \u222a t"
                 },
                 {
                     "args": "countable_subset",
@@ -414,23 +414,23 @@
                         "0.1"
                     ],
                     "rule": "apply_theorem",
-                    "th": "countable (s ∪ t) ⊢ countable s"
+                    "th": "countable (s \u222a t) \u22a2 countable s"
                 },
                 {
                     "args": "subset_union_id, {A: t, B: s}",
                     "id": "0.3",
                     "prevs": [],
                     "rule": "apply_theorem_for",
-                    "th": "⊢ t ⊆ t ∪ s"
+                    "th": "\u22a2 t \u2286 t \u222a s"
                 },
                 {
-                    "args": "union_comm, t ⊆ s ∪ t",
+                    "args": "union_comm, t \u2286 s \u222a t",
                     "id": "0.4",
                     "prevs": [
                         "0.3"
                     ],
                     "rule": "rewrite_goal",
-                    "th": "countable (s ∪ t) ⊢ t ⊆ s ∪ t"
+                    "th": "countable (s \u222a t) \u22a2 t \u2286 s \u222a t"
                 },
                 {
                     "args": "countable_subset",
@@ -440,7 +440,7 @@
                         "0.4"
                     ],
                     "rule": "apply_theorem",
-                    "th": "countable (s ∪ t) ⊢ countable t"
+                    "th": "countable (s \u222a t) \u22a2 countable t"
                 },
                 {
                     "args": "conjI",
@@ -450,7 +450,7 @@
                         "0.5"
                     ],
                     "rule": "apply_theorem",
-                    "th": "countable (s ∪ t) ⊢ countable s ∧ countable t"
+                    "th": "countable (s \u222a t) \u22a2 countable s \u2227 countable t"
                 },
                 {
                     "args": "",
@@ -460,21 +460,21 @@
                         "0.6"
                     ],
                     "rule": "intros",
-                    "th": "⊢ countable (s ∪ t) ⟶ countable s ∧ countable t"
+                    "th": "\u22a2 countable (s \u222a t) \u27f6 countable s \u2227 countable t"
                 },
                 {
                     "args": "",
                     "id": "1",
                     "prevs": [],
                     "rule": "subproof",
-                    "th": "⊢ countable s ∧ countable t ⟶ countable (s ∪ t)"
+                    "th": "\u22a2 countable s \u2227 countable t \u27f6 countable (s \u222a t)"
                 },
                 {
-                    "args": "countable s ∧ countable t",
+                    "args": "countable s \u2227 countable t",
                     "id": "1.0",
                     "prevs": [],
                     "rule": "assume",
-                    "th": "countable s ∧ countable t ⊢ countable s ∧ countable t"
+                    "th": "countable s \u2227 countable t \u22a2 countable s \u2227 countable t"
                 },
                 {
                     "args": "conjD1, {A: countable s, B: countable t}",
@@ -483,7 +483,7 @@
                         "1.0"
                     ],
                     "rule": "apply_theorem_for",
-                    "th": "countable s ∧ countable t ⊢ countable s"
+                    "th": "countable s \u2227 countable t \u22a2 countable s"
                 },
                 {
                     "args": "conjD2, {A: countable s, B: countable t}",
@@ -492,7 +492,7 @@
                         "1.0"
                     ],
                     "rule": "apply_theorem_for",
-                    "th": "countable s ∧ countable t ⊢ countable t"
+                    "th": "countable s \u2227 countable t \u22a2 countable t"
                 },
                 {
                     "args": "countable_union_imp",
@@ -502,7 +502,7 @@
                         "1.2"
                     ],
                     "rule": "apply_theorem",
-                    "th": "countable s ∧ countable t ⊢ countable (s ∪ t)"
+                    "th": "countable s \u2227 countable t \u22a2 countable (s \u222a t)"
                 },
                 {
                     "args": "",
@@ -512,7 +512,7 @@
                         "1.3"
                     ],
                     "rule": "intros",
-                    "th": "⊢ countable s ∧ countable t ⟶ countable (s ∪ t)"
+                    "th": "\u22a2 countable s \u2227 countable t \u27f6 countable (s \u222a t)"
                 },
                 {
                     "args": "iffI",
@@ -522,7 +522,7 @@
                         "1"
                     ],
                     "rule": "apply_theorem",
-                    "th": "⊢ countable (s ∪ t) ⟷ countable s ∧ countable t"
+                    "th": "\u22a2 countable (s \u222a t) \u27f7 countable s \u2227 countable t"
                 },
                 {
                     "args": "",
@@ -531,10 +531,10 @@
                         "2"
                     ],
                     "rule": "intros",
-                    "th": "⊢ countable (s ∪ t) ⟷ countable s ∧ countable t"
+                    "th": "\u22a2 countable (s \u222a t) \u27f7 countable s \u2227 countable t"
                 }
             ],
-            "prop": "countable (s ∪ t) ⟷ countable s ∧ countable t",
+            "prop": "countable (s \u222a t) \u27f7 countable s \u2227 countable t",
             "steps": [
                 {
                     "goal_id": "0",
@@ -626,20 +626,20 @@
             "num_gaps": 0,
             "proof": [
                 {
-                    "args": "finite_empty, {}",
+                    "args": "finite_empty, {'a: 'a}",
                     "id": "0",
                     "prevs": [],
                     "rule": "apply_theorem_for",
-                    "th": "⊢ finite (∅::'a set)"
+                    "th": "\u22a2 finite (\u2205::'a set)"
                 },
                 {
-                    "args": "finite_insert, {A: (∅::'a set), x: x}",
+                    "args": "finite_insert, {A: (\u2205::'a set), x: x}",
                     "id": "1",
                     "prevs": [
                         "0"
                     ],
                     "rule": "apply_theorem_for",
-                    "th": "⊢ finite ({x})"
+                    "th": "\u22a2 finite ({x})"
                 },
                 {
                     "args": "finite_imp_countable",
@@ -648,7 +648,7 @@
                         "1"
                     ],
                     "rule": "apply_theorem",
-                    "th": "⊢ countable ({x})"
+                    "th": "\u22a2 countable ({x})"
                 },
                 {
                     "args": "",
@@ -657,7 +657,7 @@
                         "2"
                     ],
                     "rule": "intros",
-                    "th": "⊢ countable ({x})"
+                    "th": "\u22a2 countable ({x})"
                 }
             ],
             "prop": "countable ({x})",
