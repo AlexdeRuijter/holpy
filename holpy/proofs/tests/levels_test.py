@@ -371,6 +371,7 @@ class LevelsTest(unittest.TestCase):
         )
 
         from holpy.data import expr, integer, nat, real  # noqa: F401
+        from holpy.integral import inequality  # noqa: F401
         from holpy.macros import linarith  # noqa: F401
         from holpy.prover import simplex, sympywrapper, z3wrapper  # noqa: F401
 
