@@ -280,31 +280,99 @@
                     "th": "real_bounded t ⊢ ∃B. ∀x. x ∈ t ⟶ abs x ≤ B"
                 },
                 {
-                    "args": "∃B. ∀x. x ∈ s ⟶ abs x ≤ B",
+                    "args": "B, real",
                     "id": "3",
-                    "prevs": [
-                        "1",
-                        "2"
-                    ],
-                    "rule": "z3",
-                    "th": "s ⊆ t, real_bounded t ⊢ ∃B. ∀x. x ∈ s ⟶ abs x ≤ B"
+                    "prevs": [],
+                    "rule": "variable",
+                    "th": "⊢ _VAR B"
                 },
                 {
-                    "args": "real_bounded_def, real_bounded s",
+                    "args": "∀x. x ∈ t ⟶ abs x ≤ B",
                     "id": "4",
-                    "prevs": [
-                        "3"
-                    ],
-                    "rule": "rewrite_goal",
-                    "th": "real_bounded t, s ⊆ t ⊢ real_bounded s"
+                    "prevs": [],
+                    "rule": "assume",
+                    "th": "∀x. x ∈ t ⟶ abs x ≤ B ⊢ ∀x. x ∈ t ⟶ abs x ≤ B"
                 },
                 {
                     "args": "",
                     "id": "5",
+                    "prevs": [],
+                    "rule": "subproof",
+                    "th": "real_bounded t, s ⊆ t, ∀x. x ∈ t ⟶ abs x ≤ B ⊢ ∀x. x ∈ s ⟶ abs x ≤ B"
+                },
+                {
+                    "args": "y, real",
+                    "id": "5.0",
+                    "prevs": [],
+                    "rule": "variable",
+                    "th": "⊢ _VAR y"
+                },
+                {
+                    "args": "y ∈ s",
+                    "id": "5.1",
+                    "prevs": [],
+                    "rule": "assume",
+                    "th": "y ∈ s ⊢ y ∈ s"
+                },
+                {
+                    "args": "y",
+                    "id": "5.2",
+                    "prevs": [
+                        "4"
+                    ],
+                    "rule": "forall_elim_gen",
+                    "th": "∀x. x ∈ t ⟶ abs x ≤ B ⊢ y ∈ t ⟶ abs y ≤ B"
+                },
+                {
+                    "args": "abs y ≤ B",
+                    "id": "5.3",
+                    "prevs": [
+                        "1",
+                        "5.1",
+                        "5.2"
+                    ],
+                    "rule": "z3",
+                    "th": "s ⊆ t, y ∈ s, ∀x. x ∈ t ⟶ abs x ≤ B ⊢ abs y ≤ B"
+                },
+                {
+                    "args": "",
+                    "id": "5.4",
+                    "prevs": [
+                        "5.0",
+                        "5.1",
+                        "5.3"
+                    ],
+                    "rule": "intros",
+                    "th": "real_bounded t, s ⊆ t, ∀x. x ∈ t ⟶ abs x ≤ B ⊢ ∀y. y ∈ s ⟶ abs y ≤ B"
+                },
+                {
+                    "args": "exI, {P: λB. ∀x. x ∈ s ⟶ abs x ≤ B, a: B}",
+                    "id": "6",
+                    "prevs": [
+                        "5"
+                    ],
+                    "rule": "apply_theorem_for",
+                    "th": "real_bounded t, s ⊆ t, ∀x. x ∈ t ⟶ abs x ≤ B ⊢ ∃B. ∀x. x ∈ s ⟶ abs x ≤ B"
+                },
+                {
+                    "args": "real_bounded_def, real_bounded s",
+                    "id": "7",
+                    "prevs": [
+                        "6"
+                    ],
+                    "rule": "rewrite_goal",
+                    "th": "real_bounded t, s ⊆ t, ∀x. x ∈ t ⟶ abs x ≤ B ⊢ real_bounded s"
+                },
+                {
+                    "args": "∃B. ∀x. x ∈ t ⟶ abs x ≤ B",
+                    "id": "8",
                     "prevs": [
                         "0",
                         "1",
-                        "4"
+                        "2",
+                        "3",
+                        "4",
+                        "7"
                     ],
                     "rule": "intros",
                     "th": "⊢ real_bounded t ⟶ s ⊆ t ⟶ real_bounded s"
@@ -329,10 +397,37 @@
                 },
                 {
                     "fact_ids": [
-                        "1",
                         "2"
                     ],
                     "goal_id": "3",
+                    "method_name": "exists_elim",
+                    "names": "B"
+                },
+                {
+                    "goal_id": "5",
+                    "method_name": "inst_exists_goal",
+                    "s": "B"
+                },
+                {
+                    "goal_id": "5",
+                    "method_name": "introduction",
+                    "names": "y"
+                },
+                {
+                    "fact_ids": [
+                        "4"
+                    ],
+                    "goal_id": "5.2",
+                    "method_name": "forall_elim",
+                    "s": "y"
+                },
+                {
+                    "fact_ids": [
+                        "1",
+                        "5.1",
+                        "5.2"
+                    ],
+                    "goal_id": "5.3",
                     "method_name": "z3"
                 }
             ],

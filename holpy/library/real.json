@@ -13005,20 +13005,29 @@
                     "th": "0 < d ⊢ 0 < d"
                 },
                 {
-                    "args": "∃e. 0 < e ∧ e < d",
+                    "args": "0 < d / 2 ∧ d / 2 < d",
                     "id": "1",
                     "prevs": [
                         "0"
                     ],
                     "rule": "z3",
+                    "th": "0 < d ⊢ 0 < d / 2 ∧ d / 2 < d"
+                },
+                {
+                    "args": "exI, {P: λe. 0 < e ∧ e < d, a: d / 2}",
+                    "id": "2",
+                    "prevs": [
+                        "1"
+                    ],
+                    "rule": "apply_theorem_for",
                     "th": "0 < d ⊢ ∃e. 0 < e ∧ e < d"
                 },
                 {
                     "args": "",
-                    "id": "2",
+                    "id": "3",
                     "prevs": [
                         "0",
-                        "1"
+                        "2"
                     ],
                     "rule": "intros",
                     "th": "⊢ 0 < d ⟶ (∃e. 0 < e ∧ e < d)"
@@ -13026,6 +13035,11 @@
             ],
             "prop": "0 < d ⟶ (∃e. 0 < e ∧ e < d)",
             "steps": [
+                {
+                    "goal_id": "1",
+                    "method_name": "inst_exists_goal",
+                    "s": "d / 2"
+                },
                 {
                     "fact_ids": [
                         "0"

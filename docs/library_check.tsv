@@ -809,7 +809,7 @@ real	real_lt_inv2	ok		0 < x ⟶ x < y ⟶ real_inverse y < real_inverse x	5	z3	0
 real	real_le_inv2	ok		0 < x ⟶ x ≤ y ⟶ real_inverse y ≤ real_inverse x	5	z3	0.06	
 real	real_inv_le_1	ok		1 ≤ x ⟶ real_inverse x ≤ 1	17	z3	0.01	
 real	real_inv_1_le	ok		0 < x ⟶ x ≤ 1 ⟶ 1 ≤ real_inverse x	5	z3	0.05	
-real	real_down	ok		0 < d ⟶ (∃e. 0 < e ∧ e < d)	3	z3	0.03	
+real	real_down	ok		0 < d ⟶ (∃e. 0 < e ∧ e < d)	16	z3	0.09	
 real	real_down2	ok		0 < d1 ⟶ 0 < d2 ⟶ (∃e. 0 < e ∧ e < d1 ∧ e < d2)	11	z3	0.07	
 real	real_pow_le2	ok		0 ≤ x ⟶ x ≤ y ⟶ x ^ n ≤ y ^ n	52		0.03	
 real	real_pow_le_1	ok		1 ≤ x ⟶ 1 ≤ x ^ n	29	z3	0.02	
@@ -1005,7 +1005,7 @@ iterate	natseg_Suc	ok		{m..Suc n} = (if m ≤ Suc n then insert (Suc n) ({m..n})
 iterate	inter_natseg	ok		{m..n} ∩ {p..q} = {max m p..min n q}	16	z3	0.13	
 iterate	disjoint_natseg	ok		disjoint ({m..n}) ({p..q}) ⟷ n < p ∨ q < m ∨ n < m ∨ q < p	83	z3	0.08	
 iterate	natseg_add_split	ok		m ≤ n + 1 ⟶ {m..n + p} = {m..n} ∪ {n + 1..n + p}	45	z3	0.11	
-iterate	natseg_offset_image	ok		{m + p..n + p} = image (λi. i + p) ({m..n})	82	z3	0.09	
+iterate	natseg_offset_image	ok		{m + p..n + p} = image (λi. i + p) ({m..n})	145	z3	0.23	
 iterate	subset_natseg	ok		{m..n} ⊆ {p..q} ⟷ n < m ∨ p ≤ m ∧ n ≤ q	61	z3	0.09	
 iterate	natseg_le	ok		{x. x ≤ n} = {0..n}	53		0.02	
 iterate	natseg_lt	ok		{x. x < n} = (if n = 0 then ∅ else {0..n - 1})	122	z3	0.13	
@@ -1356,7 +1356,7 @@ realset	inf_le_element	ok		(∃b. ∀x. x ∈ s ⟶ b ≤ x) ⟶ a ∈ s ⟶ inf
 realset	inf_approach	ok		¬(s = ∅) ⟶ (∃b. ∀x. x ∈ s ⟶ b ≤ x) ⟶ inf s < c ⟶ (∃x. x ∈ s ∧ x < c)	76	z3	0.09	
 realset	has_inf_lbound	ok		has_inf s b ⟶ x ∈ s ⟶ b ≤ x	11	z3	0.05	
 realset	has_sup_ubound	ok		has_sup s b ⟶ x ∈ s ⟶ x ≤ b	14	z3	0.02	
-realset	has_inf_inf	gaps		has_inf s l ⟷ ¬(s = ∅) ∧ (∃b. ∀x. x ∈ s ⟶ b ≤ x) ∧ inf s = l	87	z3	1.61	
+realset	has_inf_inf	gaps		has_inf s l ⟷ ¬(s = ∅) ∧ (∃b. ∀x. x ∈ s ⟶ b ≤ x) ∧ inf s = l	89	z3	0.29	
 realset	has_sup_sup	noproof		has_sup s l ⟷ ¬(s = ∅) ∧ (∃b. ∀x. x ∈ s ⟶ x ≤ b) ∧ sup s = l	0		0.00	
 realset	inf_exists	gaps		(∃l. has_inf s l) ⟷ ¬(s = ∅) ∧ (∃b. ∀x. x ∈ s ⟶ b ≤ x)	126		0.10	
 realset	sup_exists	noproof		(∃l. has_sup s l) ⟷ ¬(s = ∅) ∧ (∃b. ∀x. x ∈ s ⟶ x ≤ b)	0		0.00	
@@ -1530,7 +1530,7 @@ misc	in_real_lopen_interval	ok		x ∈ real_lopen_interval a b ⟷ a < x ∧ x �
 misc	in_real_ropen_interval	ok		x ∈ real_ropen_interval a b ⟷ a ≤ x ∧ x < b	54		0.02	
 misc	real_interval_open_subset_closed	ok		real_open_interval a b ⊆ real_closed_interval a b	57	z3	0.06	
 misc	real_closed_interval_eq_empty	ok		real_closed_interval a b = ∅ ⟷ b < a	62	z3	0.10	
-misc	 real_open_interval_eq_empty	ok		real_open_interval a b = ∅ ⟷ b ≤ a	20	z3	0.08	
+misc	 real_open_interval_eq_empty	ok		real_open_interval a b = ∅ ⟷ b ≤ a	59	z3	0.27	
 misc	real_closed_interval_ne_empty	ok		¬(real_closed_interval a b = ∅) ⟷ a ≤ b	29		0.01	
 misc	real_open_interval_ne_empty	ok		¬(real_open_interval a b = ∅) ⟷ a < b	31		0.01	
 misc	is_realinterval_open_interval	ok		is_realinterval (real_open_interval a b)	38	z3	0.11	
@@ -2081,7 +2081,7 @@ transcendentals	test1	ok		0 < x ⟶ x < pi / 4 ⟶ -(sin x) + cos x ≥ 0	67	rea
 transcendentals	test2	ok		-3 * pi / 4 ≤ x ⟶ x ≤ pi / 4 ⟶ -(sin x) + cos x ≥ 0	85	real_norm,z3	0.47	
 transcendentals	test3	ok		1 < x ⟶ x < 2 ⟶ x ^ (4::nat) > 0	64	z3	0.07	
 realanalysis	real_bounded_pos_lt	ok		real_bounded s ⟷ (∃b. 0 < b ∧ (∀x. x ∈ s ⟶ abs x < b))	104	z3	0.21	
-realanalysis	real_bounded_subset	ok		real_bounded t ⟶ s ⊆ t ⟶ real_bounded s	12	z3	0.15	
+realanalysis	real_bounded_subset	ok		real_bounded t ⟶ s ⊆ t ⟶ real_bounded s	55	z3	0.26	
 realanalysis	real_bounded_union	ok		real_bounded (s ∪ t) ⟷ real_bounded s ∧ real_bounded t	169	z3	0.44	
 realanalysis	real_bounded_subset_open_interval_symetric	ok		real_bounded s ⟶ (∃a. s ⊆ real_open_interval (-a) a)	94	z3	0.12	
 realanalysis	real_bounded_subset_open_interval	ok		real_bounded s ⟶ (∃a. ∃b. s ⊆ real_open_interval a b)	56		0.03	
