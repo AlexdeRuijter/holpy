@@ -1,6 +1,7 @@
 # Author: Bohua Zhan
 import os
 import json
+from pathlib import Path
 
 from holpy.kernel import term
 from holpy.kernel.term import Var
@@ -9,7 +10,7 @@ from holpy.kernel.theory import Theory, TheoryException
 from holpy.kernel.thm import Thm
 from holpy.kernel import extension
 from holpy.server import items
-from holpy._paths import user_dir as _user_dir, user_file as _user_file
+from holpy._paths import user_dir as _user_dir, user_file as _user_file, theory_path, find_theory, _path_listeners
 
 """
 Cache of parsed theories.
@@ -34,13 +35,18 @@ mapping from (ty, name) to (theory_name, timestamp, index).
 """
 item_index = dict()
 
+_path_listeners.append(lambda: (theory_cache.clear(), item_index.clear()))
+
 def user_dir(username="master"):
     """Returns directory for the user."""
     return str(_user_dir(username))
 
 def user_file(filename, username="master"):
     """Return json file for the user and given filename."""
-    return str(_user_file(filename, username))
+    try:
+        return str(find_theory(filename, username))
+    except FileNotFoundError:
+        return str(_user_file(filename, username))
 
 def load_json_data(filename, username="master"):
     """Load json data for the given theory name and user."""
@@ -51,21 +57,28 @@ def load_metadata(username="master"):
     """For the given user, load metadata for all theory files."""
     theory_cache[username] = dict()
     item_index[username] = dict()
-    directory = user_dir(username)
-    if not os.path.isdir(directory):
-        return
-    for f in os.listdir(directory):
-        if f.endswith('.json'):
-            filename = f[:-5]
-            data = load_json_data(filename, username)
-            timestamp = os.path.getmtime(user_file(filename, username))
-            theory_cache[username][filename] = {
-                'imports': data['imports'],
-                'description': data['description']
-            }
-
+    found = {}
+    for directory in theory_path(username):
+        if not directory.is_dir():
+            continue
+        try:
+            for entry in os.listdir(directory):
+                if entry.endswith('.json'):
+                    filename = entry[:-5]
+                    if filename not in found:
+                        file_path = Path(user_file(filename, username))
+                        data = load_json_data(filename, username)
+                        timestamp = os.path.getmtime(str(file_path))
+                        found[filename] = file_path
+                        theory_cache[username][filename] = {
+                            'imports': data['imports'],
+                            'description': data['description'],
+                            'timestamp': timestamp,
+                        }
+        except OSError:
+            continue
     # Immediately check for topological order.
-    check_topological_sort()
+    check_topological_sort(username)
 
 def check_topological_sort(username="master"):
     """For the given user, check the import relations have no cycles."""
@@ -134,7 +147,7 @@ def load_theory_cache(filename, username="master"):
     cache = theory_cache[username][filename]
     timestamp = os.path.getmtime(user_file(filename, username))
 
-    if 'timestamp' in cache and timestamp == cache['timestamp']:
+    if 'timestamp' in cache and timestamp == cache['timestamp'] and 'content' in cache:
         # No need to update cache
         return cache
 
