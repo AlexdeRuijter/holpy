@@ -9465,7 +9465,7 @@
                     "th": "a ∈ s ⊢ a ∈ s"
                 },
                 {
-                    "args": "finite_empty, {}",
+                    "args": "finite_empty, {'a: 'b}",
                     "id": "0.1",
                     "prevs": [],
                     "rule": "apply_theorem_for",
@@ -9524,7 +9524,7 @@
                     "th": "¬(a ∈ s) ⊢ ¬(a ∈ s)"
                 },
                 {
-                    "args": "finite_empty, {}",
+                    "args": "finite_empty, {'a: 'b}",
                     "id": "1.1",
                     "prevs": [],
                     "rule": "apply_theorem_for",
@@ -10031,7 +10031,7 @@
                     "th": "monoidal op ⊢ itset (λx. λa. op (f x) a) ∅ (neutral op) = neutral op ∧ (∀x. ∀s. finite s ⟶ itset (λx1. λa. op (f x1) a) (insert x s) (neutral op) = (if x ∈ s then itset (λx1. λa. op (f x1) a) s (neutral op) else op (f x) (itset (λx1. λa. op (f x1) a) s (neutral op))))"
                 },
                 {
-                    "args": "finite_empty, {}",
+                    "args": "finite_empty, {'a: 'b}",
                     "id": "4",
                     "prevs": [],
                     "rule": "apply_theorem_for",
@@ -13961,7 +13961,7 @@
                     "th": "monoidal op ⊢ finite (∅::'b set) ⟶ iterate op ({x}) f = (if x ∈ ∅ then iterate op ∅ f else op (f x) (iterate op ∅ f))"
                 },
                 {
-                    "args": "finite_empty, {}",
+                    "args": "finite_empty, {'a: 'b}",
                     "id": "2",
                     "prevs": [],
                     "rule": "apply_theorem_for",
@@ -28895,7 +28895,7 @@
                     "th": "monoidal op ⊢ finite ({(0::nat)}) ⟶ iterate op ({Suc 0, 0}) f = (if Suc 0 ∈ {0} then iterate op ({0}) f else op (f (Suc 0)) (iterate op ({0}) f))"
                 },
                 {
-                    "args": "finite_empty, {}",
+                    "args": "finite_empty, {'a: nat}",
                     "id": "1.4",
                     "prevs": [],
                     "rule": "apply_theorem_for",

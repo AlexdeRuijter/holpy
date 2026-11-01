@@ -93,9 +93,15 @@ def print_type_constr(constr):
 def print_str_args(rule, args, th):
     def str_val(val):
         if isinstance(val, Inst):
-            items = sorted(val.items(), key = lambda pair: pair[0])
-            return pprint.N('{') + commas_join(pprint.N(key + ': ') + str_val(val)
-                                               for key, val in items) + pprint.N('}')
+            # Print combined form: type variables first (with leading quote), sorted, then term variables, sorted
+            pairs = []
+            if val.tyinst:
+                for k in sorted(val.tyinst):
+                    key_str = "'" + k
+                    pairs.append(pprint.N(key_str + ': ') + str_val(val.tyinst[k]))
+            for key, v in sorted(val.items(), key=lambda pair: pair[0]):
+                pairs.append(pprint.N(key + ': ') + str_val(v))
+            return pprint.N('{') + commas_join(pairs) + pprint.N('}')
         elif isinstance(val, Term):
             if th and val == th.prop and rule != 'assume' and settings.highlight:
                 return pprint.Gray("⟨goal⟩")
