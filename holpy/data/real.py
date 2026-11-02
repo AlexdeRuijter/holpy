@@ -27,9 +27,10 @@ from holpy.util import poly
 import functools
 
 # Nothing here loads interval_arith: the theory loader imports this module
-# itself, so a module-level load would re-enter the loader.  Code that needs
-# the interval arithmetic lemmas loads interval_arith itself (see
-# holpy/integral/run_integral.py and holpy/integral/proof.py).
+# itself, so a module-level load would re-enter the loader.  This module only
+# needs its own definitions; code that needs the interval arithmetic lemmas
+# loads interval_arith itself (basic.load_theory, or context.set_context as in
+# holpy/integral).
 
 # Basic definitions
 
