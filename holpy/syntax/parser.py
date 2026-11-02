@@ -61,6 +61,7 @@ grammar = r"""
         | "{" term ".." term "}"   -> nat_interval
         | "(" term ")"                    // Parenthesis
         | "(" term "::" type ")"   -> typed_term    // Term with specified type
+        | "(" "?" CNAME "::" type ")" -> typed_svar // Schematic variable with specified type
 
     ?comb: comb atom | atom
 
@@ -169,6 +170,9 @@ class HOLTransformer(Transformer):
     def sname(self, s):
         s = str(s)
         return SVar(s, None)
+
+    def typed_svar(self, s, T):
+        return SVar(str(s), T)
 
     def vname(self, s):
         s = str(s)
