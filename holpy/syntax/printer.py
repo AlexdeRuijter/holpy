@@ -6,6 +6,7 @@ from holpy.kernel import type as hol_type
 from holpy.kernel.type import Type
 from holpy.kernel import term
 from holpy.kernel.term import Term, Inst
+from holpy.kernel.type import TyInst
 from holpy.kernel.thm import Thm
 from holpy.kernel import extension
 from holpy.kernel import proof
@@ -43,23 +44,29 @@ def print_type(T):
     with global_setting(line_length=None):
         return pprint.print_ast(ast)
 
-def print_term(t):
-    """Pretty-printing for terms."""
+def print_term(t, *, proof: bool = False):
+    """Pretty-printing for terms.
+
+    With ``proof=True``, free and schematic variables are annotated when
+    their type cannot be recovered by inference, so that the result parses
+    back in a proof item's context.
+    """
     typecheck.checkinstance('print_term', t, Term)
 
-    ast = pprint.get_ast_term(t)
+    ast = pprint.get_ast_term(t, annotate_vars=proof)
     return pprint.print_ast(ast)
 
-def print_thm(th):
+def print_thm(th, *, proof: bool = False):
     """Print the given theorem with highlight."""
     typecheck.checkinstance('print_thm', th, Thm)
 
     turnstile = pprint.N("⊢") if settings.unicode else pprint.N("|-")
     if th.hyps:
-        str_hyps = commas_join(print_term(hyp) for hyp in th.hyps)
-        return str_hyps + pprint.N(" ") + turnstile + pprint.N(" ") + print_term(th.prop)
+        str_hyps = commas_join(print_term(hyp, proof=proof) for hyp in th.hyps)
+        return str_hyps + pprint.N(" ") + turnstile + pprint.N(" ") + \
+            print_term(th.prop, proof=proof)
     else:
-        return turnstile + pprint.N(" ") + print_term(th.prop)
+        return turnstile + pprint.N(" ") + print_term(th.prop, proof=proof)
 
 def print_extension(ext):
     typecheck.checkinstance('print_extension', ext, extension.Extension)
@@ -90,7 +97,7 @@ def print_type_constr(constr):
         res += pprint.N(' (' + arg + ' :: ') + print_type(argsT[i]) + pprint.N(')')
     return res
 
-def print_str_args(rule, args, th):
+def print_str_args(rule, args, th, *, proof: bool = False):
     def str_val(val):
         if isinstance(val, Inst):
             items = sorted(val.items(), key = lambda pair: pair[0])
@@ -100,9 +107,13 @@ def print_str_args(rule, args, th):
             if th and val == th.prop and rule != 'assume' and settings.highlight:
                 return pprint.Gray("⟨goal⟩")
             else:
-                return print_term(val)
+                return print_term(val, proof=proof)
         elif isinstance(val, Type):
             return print_type(val)
+        elif isinstance(val, TyInst):
+            items = sorted(val.items(), key=lambda pair: pair[0])
+            return pprint.N('{') + commas_join(pprint.N(key + ': ') + print_type(T)
+                                               for key, T in items) + pprint.N('}')
         else:
             return pprint.N(str(val))
 
@@ -120,13 +131,13 @@ def print_str_args(rule, args, th):
 def export_proof_item(item):
     """Export the given proof item as a dictionary."""
     with global_setting(highlight=False):
-        str_th = print_thm(item.th) if item.th else ""
-        str_args = print_str_args(item.rule, item.args, item.th)
+        str_th = print_thm(item.th, proof=True) if item.th else ""
+        str_args = print_str_args(item.rule, item.args, item.th, proof=True)
     res = {'id': str(item.id), 'th': str_th, 'rule': item.rule,
            'args': str_args, 'prevs': [str(prev) for prev in item.prevs]}
     if settings.highlight:
-        res['th_hl'] = print_term(item.th.prop) if item.th else ""
-        res['args_hl'] = print_str_args(item.rule, item.args, item.th)
+        res['th_hl'] = print_term(item.th.prop, proof=True) if item.th else ""
+        res['args_hl'] = print_str_args(item.rule, item.args, item.th, proof=True)
     if item.subproof:
         return [res] + sum([export_proof_item(i) for i in item.subproof.items], [])
     else:

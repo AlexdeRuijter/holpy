@@ -257,10 +257,27 @@ term_ast = dict()
 
 ATOM, FUN_APPL, UNARY, BINARY, BINDER = range(5)
 
-def get_ast_term(t):
-    """Obtain the abstract syntax tree for a term."""
-    key = [t, settings.unicode]
+def get_ast_term(t, *, annotate_vars: bool = False):
+    """Obtain the abstract syntax tree for a term.
+
+    When *annotate_vars* is true, free and schematic variables are printed
+    with a type annotation whenever type inference cannot recover it from
+    the term itself or the ambient context.  Proof export uses this so that
+    an expanded proof line parses back to the same term.
+    """
+    key = [t, settings.unicode, annotate_vars]
     key = key + t.get_absBindVar()
+    if annotate_vars:
+        # Type inference looks up free variables, schematic variables and
+        # definitions in the ambient context.  Without that part of the key,
+        # a term printed once while a variable is declared can later be
+        # reused without the annotation it needs in an undeclared context.
+        from holpy.logic import context
+        key.append((
+            tuple(sorted(context.ctxt.vars.items())),
+            tuple(sorted(context.ctxt.svars.items())),
+            tuple(sorted(context.ctxt.defs.items())),
+        ))
     key = tuple(key)
     if key in term_ast:
         return term_ast[key]
@@ -367,10 +384,16 @@ def get_ast_term(t):
             return ITE(helper(P, bd_vars), helper(x, bd_vars), helper(y, bd_vars), t.get_type())
 
         elif t.is_svar():
-            return SVarName(t.name, t.T)
+            res = SVarName(t.name, t.T)
+            if hasattr(t, "print_type"):
+                res = Bracket(ShowType(res, get_ast_type(res.T)))
+            return res
 
         elif t.is_var():
-            return VarName(t.name, t.T)
+            res = VarName(t.name, t.T)
+            if hasattr(t, "print_type"):
+                res = Bracket(ShowType(res, get_ast_type(res.T)))
+            return res
 
         elif t.is_const():
             link_name = theory.thy.get_overload_const_name(t.name, t.T)
@@ -479,7 +502,7 @@ def get_ast_term(t):
             raise TypeError
 
     copy_t = copy(t)  # make copy here, because infer_printed_type may change t.
-    infertype.infer_printed_type(copy_t)
+    infertype.infer_printed_type(copy_t, annotate_vars=annotate_vars)
 
     ast = helper(copy_t, [])
     term_ast[key] = ast
