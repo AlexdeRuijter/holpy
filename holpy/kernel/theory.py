@@ -501,11 +501,25 @@ class Theory:
         Constants that enter through the arguments of primitive rules are
         validated against the theory before the rule is applied (issue #6).
         Terms that come from ``theorem`` lines (the theory's own theorems) and
-        from macro evaluation are trusted and are not re-checked.
+        from macro evaluation are trusted while the rule is applied; as a
+        second line of defence, the proposition and every hypothesis of the
+        final theorem are validated once at the end of the check.
         """
         assert isinstance(prf, Proof), "check_proof"
         for seq in prf.items:
             self._check_proof_item(prf, seq, rpt, no_gaps, compute_only, check_level)
+
+        if not compute_only and prf.items[-1].th is not None:
+            # Second line of defence (issue #6): the per-rule checks in
+            # _check_proof_item trust terms introduced by theorem lines,
+            # macro evaluation and earlier results, so validate the final
+            # theorem's proposition and hypotheses against the theory here.
+            try:
+                self.check_term(prf.items[-1].th.prop)
+                for hyp in prf.items[-1].th.hyps:
+                    self.check_term(hyp)
+            except TheoryException:
+                raise CheckProofException("check term")
 
         return prf.items[-1].th
 
