@@ -195,6 +195,27 @@ class Issue6CheckTermTest(unittest.TestCase):
         th = theory.thy.check_proof(prf, no_gaps=True)
         self.assertEqual(th.prop, Eq(n, n))
 
+    def test_issue6_still_accepted_final_theorem_line(self):
+        # A proof whose last line cites a well-typed theory theorem is
+        # accepted; the final-theorem guard validates it successfully.
+        x = Var('x', BoolType)
+        theory.thy.add_theorem('refl', Thm(Eq(x, x)))
+        prf = Proof()
+        prf.add_item(0, 'theorem', args='refl')
+        th = theory.thy.check_proof(prf, no_gaps=True)
+        self.assertEqual(th, theory.thy.get_theorem('refl'))
+
+    def test_issue6_final_ill_typed_proposition_rejected(self):
+        # Theorem lines are trusted by the per-rule checks; the final
+        # theorem guard rejects a final proposition that uses an undeclared
+        # constant.
+        bad = Thm(Const('bad_const', BoolType))
+        theory.thy.add_theorem('bad', bad)
+        prf = Proof()
+        prf.add_item(0, 'theorem', args='bad')
+        with self.assertRaises(theory.CheckProofException):
+            theory.thy.check_proof(prf, no_gaps=True)
+
 
 if __name__ == '__main__':
     unittest.main()
