@@ -17,7 +17,7 @@ from typing import Any, Callable, Iterator, Tuple
 import contextlib
 
 from holpy.kernel.type import Type, TVar, TFun, BoolType, TypeMatchException
-from holpy.kernel.term import Term, Var, TypeCheckException
+from holpy.kernel.term import Inst, Term, Var, TypeCheckException
 from holpy.kernel.thm import Thm, primitive_deriv, InvalidDerivationException
 from holpy.kernel.proof import Proof, ProofItem, ProofStateException
 from holpy.kernel import extension
@@ -296,9 +296,11 @@ class Theory:
         """Check that ``t`` is well formed in this theory.
 
         Constants must exist and have types compatible with their registered
-        signatures.
+        signatures. Schematic variables are accepted without a signature check.
+        Bound variables are accepted as they are; their de Bruijn indices are
+        not checked here.
         """
-        if t.is_var():
+        if t.is_svar() or t.is_var():
             return None
         elif t.is_const():
             try:
@@ -389,6 +391,24 @@ class Theory:
                     raise CheckProofException("previous theorem %s is None" % prev)
 
             if seq.rule in primitive_deriv:
+                # Validate terms that enter the proof through this primitive
+                # rule's arguments (issue #6). Terms from theorem lines and
+                # macro evaluation are trusted and are not re-checked here.
+                # subst_type only substitutes types, so it introduces no terms.
+                try:
+                    if seq.rule in ("assume", "implies_intr", "reflexive",
+                                    "beta_conv", "abstraction",
+                                    "forall_intr", "forall_elim"):
+                        if isinstance(seq.args, Term):
+                            self.check_term(seq.args)
+                    elif seq.rule == "substitution" and isinstance(seq.args, Inst):
+                        for value in seq.args.values():
+                            self.check_term(value)
+                        for value in seq.args.var_inst.values():
+                            self.check_term(value)
+                except TheoryException:
+                    raise CheckProofException("check term")
+
                 # If the method is one of the primitive derivations, obtain and
                 # apply that primitive derivation.
                 rule_fun, _ = primitive_deriv[seq.rule]
@@ -479,8 +499,9 @@ class Theory:
         Notes
         -----
         Constants that enter through the arguments of primitive rules are
-        currently not validated against the theory (issue #6), so a proof may
-        use an undeclared constant or a constant at the wrong type.
+        validated against the theory before the rule is applied (issue #6).
+        Terms that come from ``theorem`` lines (the theory's own theorems) and
+        from macro evaluation are trusted and are not re-checked.
         """
         assert isinstance(prf, Proof), "check_proof"
         for seq in prf.items:
