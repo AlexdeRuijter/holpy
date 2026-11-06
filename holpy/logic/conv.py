@@ -1,5 +1,13 @@
 # Author: Bohua Zhan
 
+"""Term conversions.
+
+A conversion rewrites a term and returns a proof term for the resulting
+equality. Composite conversions apply a converter at the head, in an
+argument, repeatedly, or top-down/bottom-up. The classes here are the
+structural building blocks used by tactics and macros.
+"""
+
 from typing import Union
 from holpy.kernel.proof import Proof
 from holpy.kernel.type import TyInst
@@ -13,6 +21,8 @@ from holpy.util import typecheck
 
 
 class ConvException(Exception):
+    """Raised when a conversion is not applicable to a term."""
+
     def __init__(self, str=""):
         self.str = str
 
@@ -25,9 +35,11 @@ class Conv():
 
     """
     def eval(self, t: Term) -> Thm:
+        """Evaluate the conversion and return the resulting equality."""
         return self.get_proof_term(t).th
 
     def get_proof_term(self, t: Term) -> ProofTerm:
+        """Return the proof term for converting ``t``."""
         raise NotImplementedError
 
 
@@ -101,6 +113,8 @@ class beta_conv(Conv):
             raise ConvException("beta_conv")
 
 class beta_norm_conv(Conv):
+    """Normalize a term by beta-conversion."""
+
     def get_proof_term(self, t: Term) -> ProofTerm:
         def rec(t: Term) -> ProofTerm:
             if t.is_abs():
@@ -126,6 +140,7 @@ class beta_norm_conv(Conv):
         return rec(t)
 
 def beta_norm(t: Term) -> Term:
+    """Return the beta-normal form of ``t``."""
     return beta_norm_conv().eval(t).prop.arg
 
 class eta_conv(Conv):
@@ -161,24 +176,31 @@ class abs_conv(Conv):
             raise ConvException("abs_conv")
 
 def try_conv(cv: Conv) -> Conv:
+    """Return ``cv`` if it succeeds, otherwise the identity conversion."""
     return else_conv(cv, all_conv())
 
 def comb_conv(cv: Conv) -> Conv:
+    """Apply ``cv`` to both sides of an application."""
     return combination_conv(cv, cv)
 
 def arg_conv(cv: Conv) -> Conv:
+    """Apply ``cv`` to the argument of an application."""
     return combination_conv(all_conv(), cv)
 
 def fun_conv(cv: Conv) -> Conv:
+    """Apply ``cv`` to the function part of an application."""
     return combination_conv(cv, all_conv())
 
 def arg1_conv(cv: Conv) -> Conv:
+    """Apply ``cv`` to the first argument of an application."""
     return fun_conv(arg_conv(cv))
 
 def binop_conv(cv: Conv) -> Conv:
+    """Apply ``cv`` to both operands of a binary application."""
     return combination_conv(arg_conv(cv), cv)
 
 def every_conv(*args):
+    """Compose the given conversions from left to right."""
     if len(args) == 0:
         return all_conv()
     elif len(args) == 1:
@@ -187,6 +209,8 @@ def every_conv(*args):
         return then_conv(args[0], every_conv(*args[1:]))
 
 class repeat_conv(Conv):
+    """Repeat a conversion until it reaches a fixed point."""
+
     def __init__(self, cv: Conv):
         self.cv = cv
         
@@ -229,6 +253,9 @@ class assums_conv(Conv):
             return refl(t)
 
 class sub_conv(Conv):
+    """Apply a conversion once to the function and argument, or to the body
+    of an abstraction."""
+
     def __init__(self, cv: Conv):
         self.cv = cv
 
@@ -399,6 +426,8 @@ class rewr_conv(Conv):
         return pt
 
 class replace_conv(Conv):
+    """Replace the left side of a given equality proof term."""
+
     def __init__(self, pt: ProofTerm):
         self.pt = pt
 
