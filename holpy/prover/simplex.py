@@ -1277,7 +1277,7 @@ def term_to_ineq(tms):
 @register_macro("simplex_macro")
 class SimplexMacro(Macro):
     def __init__(self):
-        self.level = 0
+        self.level = None
         self.sig = Term
         self.limit = None
 
@@ -1315,7 +1315,7 @@ class SimplexMacro(Macro):
 @register_macro("integer_simplex")
 class IntegerSimplexMacro(Macro):
     def __init__(self):
-        self.level = 0
+        self.level = None
         self.sig = Term
         self.limit = None
     

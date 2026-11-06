@@ -55,19 +55,19 @@ from holpy.logic import basic, context
 from holpy.server import items
 from holpy.syntax import parser, printer
 
-# The oracle list from docs/plans/first-tag/20-ws1-proof-levels.md, WS1-C.
+# The oracle list from docs/plans/first-tag/20-ws1-proof-levels.md, WS1-C,
+# minus the three macros Alex reclassified on 2026-11-02: integer_simplex,
+# real_eq_comparison and simplex_macro do expand, so they are no longer
+# trusted and now have level None.
 PLAN_ORACLES = {
     "int_const_ineq",
     "int_eval",
-    "integer_simplex",
     "nat_eval",
     "real_compare",
     "real_const_eq",
     "real_const_ineq",
-    "real_eq_comparison",
     "real_eval",
     "real_norm",
-    "simplex_macro",
     "sympy",
     "z3",
 }

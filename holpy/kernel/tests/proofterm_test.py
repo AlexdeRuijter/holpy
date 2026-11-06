@@ -9,6 +9,10 @@ from holpy.kernel.proof import Proof
 from holpy.kernel import theory
 from holpy.logic import basic
 from holpy.kernel.proofterm import ProofTerm
+from holpy.kernel.report import ProofReport
+from holpy.data import real  # noqa: F401  (registers real_eq_comparison)
+from holpy.logic import context
+from holpy.syntax import parser
 
 basic.load_theory('logic_base')
 
@@ -52,6 +56,26 @@ class ProofTermTest(unittest.TestCase):
         pt3.export(prf=prf)
 
         self.assertEqual(theory.check_proof(prf), Thm(Eq(x,z)))
+
+    def testCheckExpandsLevelNoneMacro(self):
+        """A level-None macro is expanded, not evaluated, at check_level 0.
+
+        real_eq_comparison has no trusted level, so check must call
+        get_proof_term rather than eval even when the check level is zero.
+        """
+        basic.load_theory('real')
+        context.set_context('real', vars={'x': 'real'})
+        lhs = parser.parse_term('x >= 0')
+        rhs = parser.parse_term('x + 0 >= 0')
+        pt = ProofTerm('real_eq_comparison', Eq(lhs, rhs))
+
+        rpt = ProofReport()
+        pt.check(check_level=0, rpt=rpt)
+
+        self.assertTrue(pt.checked)
+        self.assertIn('real_eq_comparison', rpt.macros_expand)
+        self.assertNotIn('real_eq_comparison', rpt.macros_eval)
+        self.assertGreater(rpt.prim_steps, 0)
 
 
 if __name__ == "__main__":
