@@ -14,7 +14,6 @@ class Issue3OccursVarTest(unittest.TestCase):
     def tearDown(self):
         theory.thy = self.prev_thy
 
-    @unittest.expectedFailure  # WS3-3: remove this decorator when the fix lands (issue #3)
     def test_issue3_reproduction_check_proof_raises(self):
         X, c = SVar('x', BoolType), Var('c', BoolType)
         prf = Proof()
@@ -30,7 +29,6 @@ class Issue3OccursVarTest(unittest.TestCase):
         with self.assertRaises(Exception):
             theory.thy.check_proof(prf, no_gaps=True)
 
-    @unittest.expectedFailure  # WS3-3: remove this decorator when the fix lands (issue #3)
     def test_issue3_occurs_var_svar_in_itself(self):
         X = SVar('x', BoolType)
         self.assertTrue(X.occurs_var(X))
@@ -41,6 +39,30 @@ class Issue3OccursVarTest(unittest.TestCase):
         th = Thm.reflexive(x)
         res = Thm.forall_intr(x, th)
         self.assertTrue(res.prop.is_forall())
+
+    def test_issue3_still_accepted_forall_intr_var_with_other_hypothesis(self):
+        x, y = Var('x', BoolType), Var('y', BoolType)
+        th = Thm(Eq(x, x), y)
+        res = Thm.forall_intr(x, th)
+        self.assertEqual(res.hyps, (y,))
+
+    def test_issue3_still_accepted_forall_intr_svar_no_occur(self):
+        X, c = SVar('x', BoolType), Var('c', BoolType)
+        th = Thm.reflexive(c)
+        res = Thm.forall_intr(X, th)
+        self.assertTrue(res.prop.is_forall())
+
+    def test_issue3_still_accepted_abstraction_var(self):
+        x = Var('x', BoolType)
+        th = Thm.reflexive(x)
+        res = Thm.abstraction(x, th)
+        self.assertTrue(res.prop.is_equals())
+
+    def test_issue3_still_accepted_abstraction_var_with_other_hypothesis(self):
+        x, y = Var('x', BoolType), Var('y', BoolType)
+        th = Thm(Eq(x, x), y)
+        res = Thm.abstraction(x, th)
+        self.assertEqual(res.hyps, (y,))
 
 
 class Issue4SubstitutionTest(unittest.TestCase):
