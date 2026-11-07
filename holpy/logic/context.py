@@ -1,5 +1,12 @@
 # Author: Bohua Zhan
 
+"""Schematic-variable, variable, and definition context.
+
+A :class:`Context` records the names and types that parsing and proof methods
+should treat as in scope. The module-level ``ctxt`` is the active context;
+:func:`fresh_context` temporarily replaces it and restores the previous one.
+"""
+
 import contextlib
 from typing import List, Optional, Dict, Union
 
@@ -11,10 +18,13 @@ from holpy.syntax import parser
 
 
 class Context:
-    """Context keep track of the currently used schematic variables,
-    variables, and definitions.
-    
+    """Types of the schematic variables, variables, and definitions in scope.
+
+    String type specifications are parsed with :mod:`holpy.syntax.parser` when
+    the context is constructed; already-parsed :class:`Type` values are kept
+    as is.
     """
+
     def __init__(self, *, svars: Optional[Dict[str, Union[str, Type]]] = None,
                  vars: Optional[Dict[str, Union[str, Type]]] = None,
                  defs: Optional[Dict[str, Union[str, Type]]] = None):
@@ -53,6 +63,7 @@ class Context:
         return str(self)
 
     def get_vars(self) -> List[Var]:
+        """Return the variables in scope as kernel ``Var`` terms."""
         return [Var(nm, T) for nm, T in self.vars.items()]
 
 
@@ -61,6 +72,7 @@ ctxt = Context()
 
 @contextlib.contextmanager
 def fresh_context(*, svars=None, vars=None, defs=None):
+    """Temporarily install a new context and restore the previous one."""
     # Record previous context
     global ctxt
     prev_ctxt = ctxt
@@ -74,14 +86,18 @@ def fresh_context(*, svars=None, vars=None, defs=None):
         ctxt = prev_ctxt
 
 def set_context(thy_name: Optional[str], *, limit=None, username="master", svars=None, vars=None, defs=None):
-    """Set theory and context (usually for testing).
-    
+    """Set the current theory and parsing context.
+
     Parameters
-    ==========
-
+    ----------
     thy_name : str or None
-        Name of the theory. If None, theory is not changed.
-
+        Theory to load. ``None`` leaves the current theory unchanged.
+    limit : optional
+        Theory item at which loading stops.
+    username : str
+        User whose theory files are read.
+    svars, vars, defs : dict, optional
+        Context entries for schematic variables, variables, and definitions.
     """
     # Set theory
     if thy_name is not None:
