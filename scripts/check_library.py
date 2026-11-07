@@ -18,6 +18,7 @@ import argparse
 import copy
 import logging
 import multiprocessing
+import os
 import sys
 import time
 from dataclasses import dataclass
@@ -219,7 +220,8 @@ def _theorem_row(
     start = time.perf_counter()
     try:
         context.set_context(None, vars=item.vars)
-        state = server.parse_proof(copy.deepcopy(item.proof))
+        state = server.parse_proof(copy.deepcopy(item.proof), check=False)
+        # Parse without the built-in check, then check exactly once here.
         # ProofState.check_proof does not expose the kernel's check_level, so
         # call the kernel directly with a fresh report. This is the same check
         # that ProofState.check_proof performs.
@@ -668,8 +670,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--jobs",
         type=_positive_int,
-        default=1,
-        help="number of worker processes (default: %(default)s)",
+        default=max(1, (os.cpu_count() or 2) - 1),
+        help="number of worker processes (default: %(default)s, one less "
+        "than the CPU count)",
     )
     parser.add_argument(
         "--check-level",

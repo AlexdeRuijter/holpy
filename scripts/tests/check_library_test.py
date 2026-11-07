@@ -11,6 +11,11 @@ import tempfile
 import unittest
 from pathlib import Path
 from typing import Any
+from unittest import mock
+
+import scripts.check_library as check_library
+from holpy.logic import context
+from holpy.server import server
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "scripts" / "check_library.py"
@@ -139,8 +144,67 @@ class CheckLibraryTest(unittest.TestCase):
             self.assertIn("allowed", tolerated.stdout + tolerated.stderr)
 
 
-if __name__ == "__main__":
-    unittest.main()
+class ParseProofCheckTest(unittest.TestCase):
+    """parse_proof can skip its check, and still checks by default."""
+
+    def proof_data(self) -> list[dict[str, Any]]:
+        """Return a small stored proof that parses without a theory search."""
+        return [
+            {'id': 0, 'rule': 'assume', 'args': 'A & B', 'prevs': [], 'th': ''},
+            {
+                'id': 1,
+                'rule': 'sorry',
+                'args': '',
+                'prevs': [],
+                'th': 'A & B |- B & A',
+            },
+            {
+                'id': 2,
+                'rule': 'implies_intr',
+                'args': 'A & B',
+                'prevs': [1],
+                'th': '',
+            },
+        ]
+
+    def test_check_false_does_not_call_check_proof(self) -> None:
+        """check=False returns the parsed state without checking it."""
+        context.set_context('logic_base', vars={'A': 'bool', 'B': 'bool'})
+        with mock.patch.object(
+            server.ProofState, "check_proof", autospec=True
+        ) as check:
+            state = server.parse_proof(self.proof_data(), check=False)
+        check.assert_not_called()
+        self.assertEqual(len(state.vars), 2)
+        self.assertEqual(len(state.prf.items), 3)
+
+    def test_default_still_calls_check_proof(self) -> None:
+        """Without check=False, parse_proof checks the parsed proof."""
+        context.set_context('logic_base', vars={'A': 'bool', 'B': 'bool'})
+        with mock.patch.object(
+            server.ProofState, "check_proof", autospec=True
+        ) as check:
+            state = server.parse_proof(self.proof_data())
+        check.assert_called_once()
+        self.assertIs(check.call_args.args[0], state)
+
+
+class JobsDefaultTest(unittest.TestCase):
+    """The checker uses the available cores by default."""
+
+    def test_jobs_defaults_to_cpu_count_minus_one(self) -> None:
+        """--jobs defaults to max(1, cpu_count - 1)."""
+        parser = check_library.build_parser()
+        expected = max(1, (os.cpu_count() or 2) - 1)
+        self.assertEqual(parser.get_default("jobs"), expected)
+
+    def test_jobs_default_tracks_the_cpu_count(self) -> None:
+        """An eight-core machine gets seven workers, not the old default one."""
+        with mock.patch(
+            "scripts.check_library.os.cpu_count", return_value=8
+        ):
+            parser = check_library.build_parser()
+        self.assertEqual(parser.get_default("jobs"), 7)
 
 
 class Z3TimeoutOptionTest(unittest.TestCase):
@@ -158,3 +222,7 @@ class Z3TimeoutOptionTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0)
         self.assertIn("--z3-timeout", result.stdout)
         self.assertIn("default: 60", result.stdout)
+
+
+if __name__ == "__main__":
+    unittest.main()
