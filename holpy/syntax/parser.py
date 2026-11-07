@@ -123,7 +123,10 @@ grammar = r"""
 
     term_pair: CNAME ":" term
 
+    tvar_pair: "'" CNAME ":" type
+
     inst: "{}"
+        | "{" (tvar_pair ("," tvar_pair)*)? ("," term_pair ("," term_pair)*)? "}"
         | "{" term_pair ("," term_pair)* "}"
 
     type_pair: CNAME ":" type
@@ -369,6 +372,9 @@ class HOLTransformer(Transformer):
     def thm(self, *args):
         return Thm(args[-1], tuple(args[:-1]))
 
+    def tvar_pair(self, name, T):
+        return (str(name), T)
+
     def term_pair(self, name, T):
         return (str(name), T)
 
@@ -376,7 +382,18 @@ class HOLTransformer(Transformer):
         return (str(name), T)
 
     def inst(self, *args):
-        return dict(args)
+        term_dict = {}
+        type_dict = {}
+        for arg in args:
+            if isinstance(arg, tuple) and len(arg) == 2:
+                k, v = arg
+                if isinstance(v, Type):
+                    type_dict[str(k)] = v
+                else:
+                    term_dict[str(k)] = v
+        if not args:
+            return ({}, {})
+        return (term_dict, type_dict)
 
     def tyinst(self, *args):
         return dict(args)
@@ -448,10 +465,22 @@ def parse_thm(s: str) -> Thm:
 
 def parse_inst(s):
     """Parse a term instantiation."""
-    inst = inst_parser.parse(s)
-    for k in inst:
-        inst[k] = infertype.type_infer(inst[k])
-    return Inst(inst)
+    res = inst_parser.parse(s)
+    if isinstance(res, tuple):
+        term_dict, type_dict = res
+    else:
+        term_dict = res
+        type_dict = {}
+    inst_obj = Inst(term_dict)
+    if type_dict:
+        from holpy.kernel.type import TyInst
+        # Keys for type pairs are like "'a"; strip leading quote for TyInst keys
+        inst_obj.tyinst = TyInst({k.lstrip("'"): v for k, v in type_dict.items()})
+    for k in list(term_dict):
+        term_dict[k] = infertype.type_infer(term_dict[k])
+    inst_obj.clear()
+    inst_obj.update(term_dict)
+    return inst_obj
 
 def parse_tyinst(s):
     """Parse a type instantiation."""
