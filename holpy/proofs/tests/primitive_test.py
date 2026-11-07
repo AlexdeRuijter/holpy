@@ -22,31 +22,13 @@ from holpy.proofs import (
 from holpy.proofs.levels import ORACLES, _has_th, _is_expandable_macro
 from holpy.server import items, server
 
-# The printed expansion of these theorems does not parse back with today's
-# printer: type variables in ``theorem`` statements and fresh bound variables
-# are printed without enough type information.  WS1-B must not work around
-# this by weakening the printer settings, so the level properties run on the
-# rest and this list is asserted exactly.
-_LOGIC_ROUNDTRIP_FAILURES = {
-    "ex_conj_distrib",
-    "right_or_exists_thm",
-    "left_imp_exists_thm",
-    "left_imp_forall_thm",
-    "left_exists_imp_thm",
-    "right_exists_imp_thm",
-    "drinker",
-    "test",
-    "quant_intro_forall",
-    "quant_intro_exists",
-    "skolem_thm",
-    "skolem_thm_gen",
-    "eq_imp_false",
-    "eq_mean_true",
-}
+# Every logic expansion now prints back.  The set is asserted exactly so a
+# new failure is visible rather than silently skipped.
+_LOGIC_ROUNDTRIP_FAILURES: set[str] = set()
 
-# The successful nat proofs, chosen to cover every macro used in nat that can
-# currently be printed back.  add_0_right is the fixed twentieth sample and is
-# a known round-trip failure; it makes the regression visible in the test.
+# The nat sample, chosen to cover every macro used in nat that can currently
+# be printed back.  add_0_right was the fixed twentieth sample and regression
+# case for schematic-variable annotations; it now round-trips too.
 _NAT_SAMPLE = [
     "one_Suc",
     "bit0_Suc",
@@ -69,7 +51,11 @@ _NAT_SAMPLE = [
     "mod_mult_mod2",
     "add_0_right",
 ]
-_NAT_SAMPLE_FAILURES = {"add_0_right"}
+_NAT_SAMPLE_FAILURES: set[str] = set()
+
+# These two fail before expansion can help: their stored proofs cite a line
+# from itself, so the library check fails at the same point.
+_NAT_FULL_EXPANSION_FAILURES = {"nat_MAX", "div_le"}
 
 
 def _outcome(proof: list[dict], ctx: ProofContext) -> tuple:
@@ -235,7 +221,11 @@ class PrimitiveTest(unittest.TestCase):
         "set HOLPY_LEVELS_FULL=1 for the full nat expansion run",
     )
     def test_nat_full_expansion(self) -> None:
-        """Expand every nat proof and run the properties on those that parse."""
+        """Expand every nat proof and run the properties on those that parse.
+
+        Only the two stored proofs that cite themselves fail; they cannot be
+        expanded because the library check fails first.
+        """
         checked = 0
         failed = []
         for item in self._theorems("nat"):
@@ -257,6 +247,7 @@ class PrimitiveTest(unittest.TestCase):
             )
             checked += 1
         self.assertGreater(checked, 0)
+        self.assertEqual(set(failed), _NAT_FULL_EXPANSION_FAILURES)
         self.assertEqual(checked + len(failed), 218)
 
     def test_z3_line_survives_and_is_reported(self) -> None:
