@@ -1112,26 +1112,145 @@
             "num_gaps": 0,
             "proof": [
                 {
-                    "args": "{p. a < p ∧ p < b} = ∅ ⟷ b ≤ a",
+                    "args": "",
                     "id": "0",
                     "prevs": [],
+                    "rule": "subproof",
+                    "th": "⊢ {p. a < p ∧ p < b} = ∅ ⟶ b ≤ a"
+                },
+                {
+                    "args": "{p. a < p ∧ p < b} = ∅",
+                    "id": "0.0",
+                    "prevs": [],
+                    "rule": "assume",
+                    "th": "{p. a < p ∧ p < b} = ∅ ⊢ {p. a < p ∧ p < b} = ∅"
+                },
+                {
+                    "args": "a < b ⟶ (a + b) / 2 ∈ {p. a < p ∧ p < b}",
+                    "id": "0.1",
+                    "prevs": [],
                     "rule": "z3",
+                    "th": "⊢ a < b ⟶ (a + b) / 2 ∈ {p. a < p ∧ p < b}"
+                },
+                {
+                    "args": "",
+                    "id": "0.2",
+                    "prevs": [
+                        "0.0",
+                        "0.1"
+                    ],
+                    "rule": "rewrite_fact_with_prev",
+                    "th": "{p. a < p ∧ p < b} = ∅ ⊢ a < b ⟶ (a + b) / 2 ∈ ∅"
+                },
+                {
+                    "args": "b ≤ a",
+                    "id": "0.3",
+                    "prevs": [
+                        "0.2"
+                    ],
+                    "rule": "z3",
+                    "th": "{p. a < p ∧ p < b} = ∅ ⊢ b ≤ a"
+                },
+                {
+                    "args": "",
+                    "id": "0.4",
+                    "prevs": [
+                        "0.0",
+                        "0.3"
+                    ],
+                    "rule": "intros",
+                    "th": "⊢ {p. a < p ∧ p < b} = ∅ ⟶ b ≤ a"
+                },
+                {
+                    "args": "",
+                    "id": "1",
+                    "prevs": [],
+                    "rule": "subproof",
+                    "th": "⊢ b ≤ a ⟶ {p. a < p ∧ p < b} = ∅"
+                },
+                {
+                    "args": "b ≤ a",
+                    "id": "1.0",
+                    "prevs": [],
+                    "rule": "assume",
+                    "th": "b ≤ a ⊢ b ≤ a"
+                },
+                {
+                    "args": "",
+                    "id": "1.1",
+                    "prevs": [],
+                    "rule": "subproof",
+                    "th": "b ≤ a ⊢ ∀x. x ∈ {p. a < p ∧ p < b} ⟷ x ∈ ∅"
+                },
+                {
+                    "args": "x, real",
+                    "id": "1.1.0",
+                    "prevs": [],
+                    "rule": "variable",
+                    "th": "⊢ _VAR x"
+                },
+                {
+                    "args": "x ∈ {p. a < p ∧ p < b} ⟷ x ∈ ∅",
+                    "id": "1.1.1",
+                    "prevs": [
+                        "1.0"
+                    ],
+                    "rule": "z3",
+                    "th": "b ≤ a ⊢ x ∈ {p. a < p ∧ p < b} ⟷ x ∈ ∅"
+                },
+                {
+                    "args": "",
+                    "id": "1.1.2",
+                    "prevs": [
+                        "1.1.0",
+                        "1.1.1"
+                    ],
+                    "rule": "intros",
+                    "th": "b ≤ a ⊢ ∀x. x ∈ {p. a < p ∧ p < b} ⟷ x ∈ ∅"
+                },
+                {
+                    "args": "member_ext",
+                    "id": "1.2",
+                    "prevs": [
+                        "1.1"
+                    ],
+                    "rule": "apply_theorem",
+                    "th": "b ≤ a ⊢ {p. a < p ∧ p < b} = ∅"
+                },
+                {
+                    "args": "",
+                    "id": "1.3",
+                    "prevs": [
+                        "1.0",
+                        "1.2"
+                    ],
+                    "rule": "intros",
+                    "th": "⊢ b ≤ a ⟶ {p. a < p ∧ p < b} = ∅"
+                },
+                {
+                    "args": "iffI",
+                    "id": "2",
+                    "prevs": [
+                        "0",
+                        "1"
+                    ],
+                    "rule": "apply_theorem",
                     "th": "⊢ {p. a < p ∧ p < b} = ∅ ⟷ b ≤ a"
                 },
                 {
                     "args": "real_open_interval_def, real_open_interval a b = ∅ ⟷ b ≤ a",
-                    "id": "1",
+                    "id": "3",
                     "prevs": [
-                        "0"
+                        "2"
                     ],
                     "rule": "rewrite_goal",
                     "th": "⊢ real_open_interval a b = ∅ ⟷ b ≤ a"
                 },
                 {
                     "args": "",
-                    "id": "2",
+                    "id": "4",
                     "prevs": [
-                        "1"
+                        "3"
                     ],
                     "rule": "intros",
                     "th": "⊢ real_open_interval a b = ∅ ⟷ b ≤ a"
@@ -1147,6 +1266,56 @@
                 },
                 {
                     "goal_id": "0",
+                    "method_name": "apply_backward_step",
+                    "theorem": "iffI"
+                },
+                {
+                    "goal_id": "0",
+                    "method_name": "introduction"
+                },
+                {
+                    "goal": "a < b ⟶ (a + b) / 2 ∈ {p. a < p ∧ p < b}",
+                    "goal_id": "0.1",
+                    "method_name": "cut"
+                },
+                {
+                    "goal_id": "0.1",
+                    "method_name": "z3"
+                },
+                {
+                    "fact_ids": [
+                        "0.0",
+                        "0.1"
+                    ],
+                    "goal_id": "0.2",
+                    "method_name": "rewrite_fact_with_prev"
+                },
+                {
+                    "fact_ids": [
+                        "0.2"
+                    ],
+                    "goal_id": "0.3",
+                    "method_name": "z3"
+                },
+                {
+                    "goal_id": "1",
+                    "method_name": "introduction"
+                },
+                {
+                    "goal_id": "1.1",
+                    "method_name": "apply_backward_step",
+                    "theorem": "member_ext"
+                },
+                {
+                    "goal_id": "1.1",
+                    "method_name": "introduction",
+                    "names": "x"
+                },
+                {
+                    "fact_ids": [
+                        "1.0"
+                    ],
+                    "goal_id": "1.1.1",
                     "method_name": "z3"
                 }
             ],
