@@ -1,8 +1,11 @@
 import unittest
 from holpy.kernel import theory, extension
 from holpy.kernel.type import BoolType, NatType, STVar, TVar, TFun
-from holpy.kernel.term import SVar, Var, Eq, Implies, Inst, Abs, Bound, Const, Forall
+from holpy.kernel.term import (
+    SVar, Var, Eq, Implies, Inst, Abs, Bound, Comb, Const, Forall, Term, forall,
+)
 from holpy.kernel.proof import Proof
+from holpy.kernel import thm
 from holpy.kernel.thm import Thm, InvalidDerivationException
 
 
@@ -278,6 +281,61 @@ class Issue6CheckTermTest(unittest.TestCase):
         prf = Proof()
         prf.add_item(0, 'theorem', args='bad')
         with self.assertRaises(theory.CheckProofException):
+            theory.thy.check_proof(prf, no_gaps=True)
+
+
+class ExceptionHygieneTest(unittest.TestCase):
+    """WS3-E: checker fixes for the exception types raised on bad input."""
+
+    def setUp(self):
+        self.prev_thy = theory.thy
+        theory.thy = theory.EmptyTheory()
+        self.prev_reflexive_rule = thm.primitive_deriv['reflexive']
+
+    def tearDown(self):
+        theory.thy = self.prev_thy
+        thm.primitive_deriv['reflexive'] = self.prev_reflexive_rule
+
+    def test_ws3e_forall_elim_eta_short_all_raises_invalid_derivation(self):
+        # Issue #6 robustness: ``all P`` (eta-short) has a Var argument, not
+        # an abstraction. It must be rejected, not raise AttributeError.
+        P = Var('P', TFun(BoolType, BoolType))
+        y = Var('y', BoolType)
+        th = Thm(forall(BoolType)(P))
+        with self.assertRaises(InvalidDerivationException):
+            Thm.forall_elim(y, th)
+
+    def test_ws3e_forall_elim_eta_short_all_in_check_proof(self):
+        P = Var('P', TFun(BoolType, BoolType))
+        y = Var('y', BoolType)
+        prf = Proof()
+        prf.add_item(0, 'assume', args=forall(BoolType)(P))
+        prf.add_item(1, 'forall_elim', args=y, prevs=[0])
+        with self.assertRaises(theory.CheckProofException):
+            theory.thy.check_proof(prf, no_gaps=True)
+
+    def test_ws3e_primitive_type_check_becomes_check_proof(self):
+        # The argument of forall_elim passes check_term but is ill-typed, so
+        # the primitive rule's own type check raises TypeCheckException.
+        x = Var('x', BoolType)
+        bad = Comb(x, x)
+        prf = Proof()
+        prf.add_item(0, 'assume', args=Forall(x, Eq(x, x)))
+        prf.add_item(1, 'forall_elim', args=bad, prevs=[0])
+        with self.assertRaises(theory.CheckProofException):
+            theory.thy.check_proof(prf, no_gaps=True)
+
+    def test_ws3e_type_error_from_broken_rule_propagates(self):
+        # Only a wrong number of arguments is a CheckProofException; a
+        # TypeError raised inside a primitive rule must reach the caller.
+        def broken_rule(t):
+            raise TypeError('deliberately broken primitive rule')
+
+        thm.primitive_deriv['reflexive'] = (broken_rule, Term)
+        x = Var('x', BoolType)
+        prf = Proof()
+        prf.add_item(0, 'reflexive', args=x)
+        with self.assertRaises(TypeError):
             theory.thy.check_proof(prf, no_gaps=True)
 
 

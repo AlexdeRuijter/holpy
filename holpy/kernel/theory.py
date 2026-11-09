@@ -15,6 +15,7 @@ from __future__ import annotations
 from copy import copy
 from typing import Any, Callable, Iterator, Tuple
 import contextlib
+import inspect
 
 from holpy.kernel.type import Type, TVar, TFun, BoolType, TypeMatchException
 from holpy.kernel.term import Inst, Term, Var, TypeCheckException
@@ -406,20 +407,28 @@ class Theory:
                             self.check_term(value)
                         for value in seq.args.var_inst.values():
                             self.check_term(value)
-                except TheoryException:
+                except (TheoryException, TypeCheckException):
                     raise CheckProofException("check term")
 
                 # If the method is one of the primitive derivations, obtain and
                 # apply that primitive derivation.
                 rule_fun, _ = primitive_deriv[seq.rule]
+                fun_args = prev_ths if seq.args is None else (seq.args, *prev_ths)
                 try:
-                    res_th = rule_fun(*prev_ths) if seq.args is None else rule_fun(seq.args, *prev_ths)
+                    inspect.signature(rule_fun).bind(*fun_args)
+                except TypeError:
+                    # The primitive rules have fixed signatures, so a call that
+                    # does not bind has the wrong number of arguments. Other
+                    # TypeError values from inside a rule must reach the caller.
+                    raise CheckProofException("invalid input to derivation " + seq.rule)
+                try:
+                    res_th = rule_fun(*fun_args)
                     if rpt is not None:
                         rpt.apply_primitive_deriv()
                 except InvalidDerivationException:
                     raise CheckProofException("invalid derivation")
-                except TypeError:
-                    raise CheckProofException("invalid input to derivation " + seq.rule)
+                except TypeCheckException:
+                    raise CheckProofException("typing error")
 
             elif has_macro(seq.rule):
                 # Otherwise, the proof method corresponds to a macro. If
@@ -488,13 +497,8 @@ class Theory:
         Raises
         ------
         CheckProofException
-            If the proof is invalid.
-        TypeCheckException
-            If a primitive rule's own type check fails. This exception is not
-            converted to ``CheckProofException``.
-        AttributeError
-            If ``forall_elim`` is applied to an eta-short ``all P`` whose
-            argument is not an abstraction.
+            If the proof is invalid, including when a primitive rule raises a
+            type-checking error.
 
         Notes
         -----

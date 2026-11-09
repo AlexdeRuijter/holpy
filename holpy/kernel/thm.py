@@ -524,8 +524,17 @@ class Thm:
         -------
         Thm
             The instantiated body ``t[s/x]``.
+
+        Raises
+        ------
+        InvalidDerivationException
+            If ``th`` is not a universally quantified statement, if the
+            argument of ``all`` is not an abstraction (an eta-short ``all P``),
+            or if ``s`` does not have the bound variable's type.
         """
         if th.prop.is_forall():
+            if not th.prop.arg.is_abs():
+                raise InvalidDerivationException("forall_elim: argument is not an abstraction")
             if th.prop.arg.var_T != s.get_type():
                 raise InvalidDerivationException("forall_elim: type is not equal")
             else:
