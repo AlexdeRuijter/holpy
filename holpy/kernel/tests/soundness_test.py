@@ -1,9 +1,9 @@
 import unittest
 from holpy.kernel import theory, extension
-from holpy.kernel.type import BoolType, TVar, TFun
+from holpy.kernel.type import BoolType, NatType, STVar, TVar, TFun
 from holpy.kernel.term import SVar, Var, Eq, Inst, Abs, Bound, Const, Forall
 from holpy.kernel.proof import Proof
-from holpy.kernel.thm import Thm
+from holpy.kernel.thm import Thm, InvalidDerivationException
 
 
 class Issue3OccursVarTest(unittest.TestCase):
@@ -51,7 +51,6 @@ class Issue4SubstitutionTest(unittest.TestCase):
     def tearDown(self):
         theory.thy = self.prev_thy
 
-    @unittest.expectedFailure  # WS3-4: remove this decorator when the fix lands (issue #4)
     def test_issue4_reproduction_check_proof_raises(self):
         Ta = TVar('a')
         x, a, b = Var('x', Ta), Var('a', Ta), Var('b', Ta)
@@ -69,30 +68,51 @@ class Issue4SubstitutionTest(unittest.TestCase):
         prf.add_item(7, 'symmetric', prevs=[5])
         prf.add_item(8, 'transitive', prevs=[7, 4])
         prf.add_item(9, 'transitive', prevs=[8, 6])
-        with self.assertRaises(Exception):
+        with self.assertRaises(theory.CheckProofException):
             theory.thy.check_proof(prf, no_gaps=True)
 
-    @unittest.expectedFailure  # WS3-4: remove this decorator when the fix lands (issue #4)
     def test_issue4_wrong_type_rejected(self):
-        # If a value has wrong type it should be rejected (expected failure on main)
+        # If a value has wrong type it should be rejected.
         x = Var('x', BoolType)
         bad_inst = Inst()
         bad_inst.var_inst['x'] = Var('y', TVar('a'))
         th = Thm.reflexive(x)
-        with self.assertRaises(Exception):
+        with self.assertRaises(InvalidDerivationException):
+            Thm.substitution(bad_inst, th)
+
+    def test_issue4_open_value_rejected(self):
+        # A value with a bound variable loose under two abstractions is open.
+        Ta = TVar('a')
+        Tabba = TFun(Ta, TFun(Ta, Ta))
+        x = Var('x', Tabba)
+        bad_inst = Inst()
+        bad_inst.var_inst['x'] = Abs('y', Ta, Abs('z', Ta, Bound(2)))
+        th = Thm.reflexive(x)
+        with self.assertRaises(InvalidDerivationException):
             Thm.substitution(bad_inst, th)
 
     def test_issue4_still_accepted_substitution_with_abs(self):
-        # legitimate substitution with abstraction keeps working
+        # Legitimate substitution with a closed abstraction (lambda y. y).
         Ta = TVar('a')
-        x = Var('x', Ta)
-        y = Var('y', Ta)
+        x = Var('x', TFun(Ta, Ta))
+        lam = Abs('z', Ta, Bound(0))
         th = Thm.reflexive(x)
         inst = Inst()
-        inst.var_inst['x'] = Abs('z', Ta, y)
-        # should not raise
+        inst.var_inst['x'] = lam
         res = Thm.substitution(inst, th)
-        self.assertTrue(res.prop.is_reflexive() or True)
+        self.assertEqual(res.prop, Eq(lam, lam))
+
+    def test_issue4_still_accepted_schematic_with_type_inst(self):
+        # A schematic instantiation together with a type instantiation.
+        a = STVar('a')
+        f = SVar('f', TFun(a, a))
+        g = Var('g', TFun(NatType, NatType))
+        th = Thm.reflexive(f)
+        inst = Inst()
+        inst.tyinst['a'] = NatType
+        inst['f'] = g
+        res = Thm.substitution(inst, th)
+        self.assertEqual(res.prop, Eq(g, g))
 
 
 class Issue5CheckedExtendTest(unittest.TestCase):
