@@ -63,12 +63,31 @@ def parse_proof(proof) -> ProofState:
     for nm, T in context.ctxt.vars.items():
         state.vars.append(Var(nm, T))
     state.prf = Proof()
+    # A variable declared in a subproof is scoped to that subproof.  The
+    # parent path of a line id selects the subproof: for example, 2.11.0 is
+    # inside subproof 2.11.  Save the variable context on entry and restore
+    # it when moving to a sibling or enclosing proof.
+    var_scopes = []
     for line in proof:
+        path = ItemID(line['id']).id[:-1]
+        # An intros line closes its subproof, so its statement refers to the
+        # enclosing context rather than variables declared while proving the
+        # body of the subproof.
+        scope_path = path[:-1] if line['rule'] == "intros" and path else path
+        while var_scopes and var_scopes[-1][0] != scope_path[:len(var_scopes[-1][0])]:
+            _, saved_vars = var_scopes.pop()
+            context.ctxt.vars = saved_vars
+        while len(var_scopes) < len(scope_path):
+            var_scopes.append((scope_path[:len(var_scopes) + 1],
+                               dict(context.ctxt.vars)))
         if line['rule'] == "variable":
             nm, str_T = line['args'].split(',', 1)
             context.ctxt.vars[nm] = parser.parse_type(str_T.strip())
         item = parser.parse_proof_rule(line)
         state.prf.insert_item(item)
+    while var_scopes:
+        _, saved_vars = var_scopes.pop()
+        context.ctxt.vars = saved_vars
     state.check_proof()
 
     return state
