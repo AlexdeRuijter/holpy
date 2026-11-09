@@ -6532,7 +6532,7 @@
                     "th": "⊢ finite (∅::'a set) ∧ P ∅ ⟶ (∀x. ∀s1. finite s1 ∧ P s1 ⟶ finite (insert x s1) ∧ P (insert x s1)) ⟶ finite s ⟶ finite s ∧ P s"
                 },
                 {
-                    "args": "finite_empty, {}",
+                    "args": "finite_empty, {'a: 'a}",
                     "id": "3.2",
                     "prevs": [],
                     "rule": "apply_theorem_for",
@@ -6967,7 +6967,7 @@
                     "th": "finite t, s ⊆ t, s1 ⊆ ∅ ⊢ s1 = ∅"
                 },
                 {
-                    "args": "finite_empty, {}",
+                    "args": "finite_empty, {'a: 'a}",
                     "id": "3.4",
                     "prevs": [],
                     "rule": "apply_theorem_for",
@@ -8110,7 +8110,7 @@
             "num_gaps": 0,
             "proof": [
                 {
-                    "args": "finite_empty, {}",
+                    "args": "finite_empty, {'a: 'a}",
                     "id": "0",
                     "prevs": [],
                     "rule": "apply_theorem_for",
@@ -8646,7 +8646,7 @@
                     "th": "⊢ {y. ∃x. x ∈ ∅ ∧ y = f x} = ∅"
                 },
                 {
-                    "args": "finite_empty, {}",
+                    "args": "finite_empty, {'a: 'b}",
                     "id": "2",
                     "prevs": [],
                     "rule": "apply_theorem_for",
@@ -9105,7 +9105,7 @@
                     "th": "s = ∅ ⊢ s = ∅"
                 },
                 {
-                    "args": "finite_empty, {}",
+                    "args": "finite_empty, {'a: 'a}",
                     "id": "2.1",
                     "prevs": [],
                     "rule": "apply_theorem_for",
@@ -11585,7 +11585,7 @@
             "num_gaps": 0,
             "proof": [
                 {
-                    "args": "finite_empty, {}",
+                    "args": "finite_empty, {'a: 'a}",
                     "id": "0",
                     "prevs": [],
                     "rule": "apply_theorem_for",
@@ -16146,7 +16146,7 @@
             "num_gaps": 0,
             "proof": [
                 {
-                    "args": "finite_empty, {}",
+                    "args": "finite_empty, {'a: nat}",
                     "id": "0",
                     "prevs": [],
                     "rule": "apply_theorem_for",
