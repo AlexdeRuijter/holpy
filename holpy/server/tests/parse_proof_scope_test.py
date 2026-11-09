@@ -27,8 +27,26 @@ class ParseProofScopeTest(unittest.TestCase):
         self.assertEqual(state.check_proof(), parser.parse_thm('⊢ Suc x = Suc x'))
         self.assertEqual(context.ctxt.vars['x'], parser.parse_type('nat'))
 
-    def test_closing_intros_uses_enclosing_variable_context(self) -> None:
-        """The intros line that closes a subproof is parsed outside its scope."""
+    def test_closing_intros_sees_subproof_variable(self) -> None:
+        """The intros line closing a subproof may mention variables declared in it."""
+        basic.load_theory('nat')
+        context.set_context('nat', vars={'x': 'nat'})
+        proof = [
+            {'id': '0', 'rule': 'subproof', 'args': '', 'prevs': [], 'th': ''},
+            {'id': '0.0', 'rule': 'variable', 'args': 'y, nat', 'prevs': [], 'th': ''},
+            {'id': '0.1', 'rule': 'reflexive', 'args': 'y', 'prevs': [], 'th': '⊢ y = y'},
+            {'id': '0.2', 'rule': 'intros', 'args': 'y = y', 'prevs': ['0.0', '0.1'],
+             'th': ''},
+        ]
+
+        state = server.parse_proof(proof)
+
+        self.assertIsNotNone(state.prf)
+        self.assertNotIn('y', context.ctxt.vars)
+
+
+    def test_closing_intros_theorem_uses_enclosing_variable(self) -> None:
+        """The theorem of the closing intros line is read in the enclosing scope."""
         basic.load_theory('nat')
         context.set_context('nat', vars={'x': 'nat'})
         proof = [
