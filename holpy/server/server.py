@@ -57,8 +57,23 @@ def parse_init_state(prop: Union[str, List[str], Term]) -> ProofState:
     state.check_proof(compute_only=True)
     return state
 
-def parse_proof(proof) -> ProofState:
-    """Obtain proof from json format."""
+def parse_proof(proof, check: bool = True) -> ProofState:
+    """Obtain proof from json format.
+
+    Parameters
+    ----------
+    proof : list of dict
+        Stored proof lines in JSON form.
+    check : bool, optional
+        Whether to check the parsed proof before returning the state. Callers
+        that check it themselves, with their own report or trust level, pass
+        ``False``.
+
+    Returns
+    -------
+    ProofState
+        State containing the parsed proof and the current context variables.
+    """
     state = ProofState()
     for nm, T in context.ctxt.vars.items():
         state.vars.append(Var(nm, T))
@@ -94,9 +109,11 @@ def parse_proof(proof) -> ProofState:
         else:
             item = parser.parse_proof_rule(line)
         state.prf.insert_item(item)
+
     while var_scopes:
         _, saved_vars = var_scopes.pop()
         context.ctxt.vars = saved_vars
-    state.check_proof()
+    if check:
+        state.check_proof()
 
     return state
