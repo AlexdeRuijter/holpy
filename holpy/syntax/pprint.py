@@ -279,9 +279,13 @@ def get_ast_term(t):
 
     def get_priority_pair(t):
         """Obtain the binding priority of the top-most operation of t."""
-        if (t.is_number() and isinstance(t.dest_number(), int) and t.dest_number() >= 0) or \
+        # This must agree with the Number special case in helper below: an
+        # of_nat 0/1 is still is_number(), but helper prints it as the
+        # application ``of_nat 0``, so it cannot be given atom priority.
+        if t.is_zero() or t.is_one() or \
+           (t.is_comb('of_nat', 1) and t.arg.is_binary() and t.arg.dest_binary() >= 2) or \
            list.is_literal_list(t):
-            return 100, ATOM  # Nat atom case
+            return 100, ATOM  # Printed atom case
         elif t.is_comb():
             op_data = operator.get_info_for_fun(t.head)
             binder_data = operator.get_binder_info_for_fun(t.head)
