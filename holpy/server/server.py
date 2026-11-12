@@ -78,12 +78,41 @@ def parse_proof(proof, check: bool = True) -> ProofState:
     for nm, T in context.ctxt.vars.items():
         state.vars.append(Var(nm, T))
     state.prf = Proof()
+    # A variable declared in a subproof is scoped to that subproof.  The
+    # parent path of a line id selects the subproof: for example, 2.11.0 is
+    # inside subproof 2.11.  Save the variable context on entry and restore
+    # it when moving to a sibling or enclosing proof.
+    var_scopes = []
     for line in proof:
+        path = ItemID(line['id']).id[:-1]
+        scope_path = path
+        while var_scopes and var_scopes[-1][0] != scope_path[:len(var_scopes[-1][0])]:
+            _, saved_vars = var_scopes.pop()
+            context.ctxt.vars = saved_vars
+        while len(var_scopes) < len(scope_path):
+            var_scopes.append((scope_path[:len(var_scopes) + 1],
+                               dict(context.ctxt.vars)))
         if line['rule'] == "variable":
             nm, str_T = line['args'].split(',', 1)
             context.ctxt.vars[nm] = parser.parse_type(str_T.strip())
-        item = parser.parse_proof_rule(line)
+        if line['rule'] == "intros" and var_scopes and line.get('th', '') != "":
+            # An intros line closes its subproof: its arguments may mention
+            # variables declared in the body, but the resulting theorem is
+            # stated in the enclosing context.
+            item = parser.parse_proof_rule(dict(line, th=''))
+            body_vars = context.ctxt.vars
+            context.ctxt.vars = var_scopes[-1][1]
+            try:
+                item.th = parser.parse_thm(line['th'])
+            finally:
+                context.ctxt.vars = body_vars
+        else:
+            item = parser.parse_proof_rule(line)
         state.prf.insert_item(item)
+
+    while var_scopes:
+        _, saved_vars = var_scopes.pop()
+        context.ctxt.vars = saved_vars
     if check:
         state.check_proof()
 

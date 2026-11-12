@@ -1,9 +1,15 @@
 # Author: Bohua Zhan
 
+"""Core logic macros and normalization.
+
+This module defines the standard HOL connectives and the macros that implement
+implication, conjunction, disjunction, resolution, rewriting, and the
+standard introduction/elimination steps used by proof search.
+"""
+
 from typing import List, Tuple
 
 from holpy.kernel.type import TVar, TFun, TyInst, BoolType
-from holpy.kernel import term
 from holpy.kernel.term import Term, SVar, Var, Const, Abs, Inst, Implies, Lambda, \
     Not, And, Or, Eq, Exists, true, false
 from holpy.kernel.thm import Thm, InvalidDerivationException
@@ -62,6 +68,7 @@ def mk_some(x, body):
     return some_t(Lambda(x, body))
 
 def if_t(T):
+    """Return the conditional constant for result type ``T``."""
     return Const("IF", TFun(BoolType, T, T, T))
 
 def is_if(t):
@@ -133,10 +140,12 @@ def strip_exists(t, names):
         return ([], t)
 
 def mk_xor(x: Term, y: Term) -> Term:
+    """Construct the exclusive-or of two boolean terms."""
     assert x.get_type() == BoolType and y.get_type() == BoolType
     return Const("xor", TFun(BoolType, BoolType, BoolType))(x, y)
 
 def is_xor(t: Term):
+    """Return whether ``t`` is an exclusive-or term."""
     return t.is_comb('xor', 2)
 
 """Normalization rules for logic."""
@@ -608,6 +617,7 @@ class trivial_macro(Macro):
         self.limit = None
 
     def can_eval(self, args):
+        """Return whether the trivial macro can close ``args``."""
         new_names = get_forall_names(args)
         vars, As, C = strip_all_implies(args, new_names)
         return C in As
@@ -666,6 +676,7 @@ def apply_theorem(th_name: str, *pts: ProofTerm, concl=None, inst=None) -> Proof
         return ProofTerm("apply_theorem_for", (th_name, inst), pts)
 
 def conj_thms(*pts):
+    """Combine a non-empty list of theorem proofs by conjunction."""
     assert len(pts) > 0, 'conj_thms: input list is empty.'
     if len(pts) == 1:
         return pts[0]
@@ -675,6 +686,8 @@ def conj_thms(*pts):
 
 @register_macro('imp_conj')
 class imp_conj_macro(Macro):
+    """Prove A --> B when every conjunct of B is a conjunct of A (ignoring true)."""
+
     def __init__(self):
         self.level = 1
         self.sig = Term
@@ -734,6 +747,8 @@ def imp_conj_iff(goal: Term) -> ProofTerm:
 
 @register_macro('imp_disj')
 class imp_disj_macro(Macro):
+    """Prove A --> B when every disjunct of A is a disjunct of B."""
+
     def __init__(self):
         self.level = 1
         self.sig = Term
@@ -786,6 +801,7 @@ def imp_disj_iff(goal: Term):
     return ProofTerm.equal_intr(pt1, pt2)
 
 def strip_disj(t):
+    """Flatten nested disjunctions into a list of clauses."""
     res = []
     def helper(t):
         if t.is_disj():
@@ -798,6 +814,7 @@ def strip_disj(t):
     return res
 
 def strip_conj(t):
+    """Flatten nested conjunctions into a list of clauses."""
     res = []
     def helper(t):
         if t.is_conj():
@@ -823,6 +840,8 @@ class conj_norm(Conv):
 
 @register_macro('resolution')
 class resolution_macro(Macro):
+    """Apply propositional resolution to two disjunctions."""
+
     def __init__(self):
         self.level = 1
         self.sig = None
@@ -876,6 +895,7 @@ class resolution_macro(Macro):
         return pt.on_prop(disj_norm())
 
 def resolution(pt1, pt2):
+    """Apply propositional resolution to two disjunction proofs."""
     return ProofTerm('resolution', None, [pt1, pt2])
 
 

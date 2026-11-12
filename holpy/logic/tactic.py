@@ -1,8 +1,12 @@
 # Author: Bohua Zhan
 
-from copy import copy
+"""Goal-directed tactics over proof terms.
 
-from holpy.kernel.type import TyInst
+A tactic consumes a goal theorem and returns a proof term with zero or more
+sorries. Tactics compose sequentially, by alternatives, and by repetition;
+the proof-term layer fills the remaining subgoals.
+"""
+
 from holpy.kernel import term
 from holpy.kernel.term import Term, Implies, Not, Lambda, Inst
 from holpy.kernel.thm import Thm
@@ -29,6 +33,7 @@ class Tactic:
 
     """
     def get_proof_term(self, goal, *, args=None, prevs=None) -> ProofTerm:
+        """Return the proof term for applying this tactic to ``goal``."""
         raise NotImplementedError
 
 
@@ -183,6 +188,8 @@ class rewrite_goal(Tactic):
             return ProofTerm(macro_name, args=(th_name, C), prevs=[new_goal] + prevs)
 
 class rewrite_goal_with_prev(Tactic):
+    """Rewrite the goal using an existing equality fact."""
+
     def get_proof_term(self, goal, *, args=None, prevs=None):
         assert isinstance(prevs, list) and len(prevs) == 1, "rewrite_goal_with_prev"
         pt = prevs[0]
@@ -277,6 +284,8 @@ class inst_exists_goal(Tactic):
 
 
 class intro_imp_tac(Tactic):
+    """Introduce an implication premise as an assumption."""
+
     def get_proof_term(self, goal):
         if not goal.prop.is_implies():
             raise TacticException('intro_imp: goal is not implies.')
@@ -286,6 +295,8 @@ class intro_imp_tac(Tactic):
         return new_goal.implies_intr(A)
 
 class intro_forall_tac(Tactic):
+    """Introduce a universally quantified variable."""
+
     def __init__(self, var_name=None):
         self.var_name = var_name
         
@@ -298,6 +309,8 @@ class intro_forall_tac(Tactic):
         return new_goal.forall_intr(v)
 
 class assumption(Tactic):
+    """Close the goal using one of its assumptions."""
+
     def get_proof_term(self, goal):
         if not goal.prop in goal.hyps:
             raise TacticException('assumption: prop does not appear in hyps')
@@ -305,6 +318,8 @@ class assumption(Tactic):
         return ProofTerm.assume(goal.prop)
 
 class then_tac(Tactic):
+    """Apply two tactics in sequence."""
+
     def __init__(self, tac1, tac2):
         self.tac1 = tac1
         self.tac2 = tac2
@@ -313,6 +328,8 @@ class then_tac(Tactic):
         return ProofTerm.sorry(goal).tacs(self.tac1, self.tac2)
 
 class else_tac(Tactic):
+    """Try one tactic and fall back to another on failure."""
+
     def __init__(self, tac1, tac2):
         self.tac1 = tac1
         self.tac2 = tac2
@@ -324,6 +341,8 @@ class else_tac(Tactic):
             return self.tac2.get_proof_term(goal)
 
 class repeat_tac(Tactic):
+    """Repeat a tactic until it fails."""
+
     def __init__(self, tac):
         self.tac = tac
         
@@ -339,6 +358,8 @@ class repeat_tac(Tactic):
 intros_tac = repeat_tac(else_tac(intro_imp_tac(), intro_forall_tac()))
 
 class rule_tac(Tactic):
+    """Apply a named theorem in the backward direction."""
+
     def __init__(self, th_name, *, inst=None):
         self.th_name = th_name
         if inst is None:
@@ -362,6 +383,8 @@ class rule_tac(Tactic):
 
 
 class elim_tac(Tactic):
+    """Eliminate a named theorem using a matching hypothesis."""
+
     def __init__(self, th_name, *, cond=None, inst=None):
         self.th_name = th_name
         if inst is None:
@@ -403,6 +426,8 @@ class elim_tac(Tactic):
 
 
 class conj_elim_tac(Tactic):
+    """Eliminate a conjunction in the goal's assumptions."""
+
     def get_proof_term(self, goal):
         return ProofTerm.sorry(goal).tacs(
             elim_tac('conjE'), intro_imp_tac(), intro_imp_tac())

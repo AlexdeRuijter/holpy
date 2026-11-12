@@ -1,4 +1,12 @@
 # Author: Bohua Zhan
+
+"""Theory loading and the user theory directory.
+
+This module resolves JSON theory files over the theory search path, keeps the
+per-user theory cache, and exposes the ``load_theory`` entry point together
+with the helpers for a user's own theory directory.
+"""
+
 import os
 import json
 from pathlib import Path
@@ -154,14 +162,14 @@ def load_theory_cache(filename, username="master"):
     # Load all required macros and methods for this file.
     # Make table for this later.
     if filename == 'logic':
-        from holpy.prover import z3wrapper
+        from holpy.prover import z3wrapper  # noqa: F401  (registers macros)
     if filename == 'expr':
-        from holpy.data import expr
+        from holpy.data import expr  # noqa: F401  (registers macros)
     if filename == 'real':
-        from holpy.data import real
-        from holpy.macros import linarith
+        from holpy.data import real  # noqa: F401  (registers macros)
+        from holpy.macros import linarith  # noqa: F401  (registers macros)
     if filename == 'hoare':
-        from holpy.imperative import imp
+        from holpy.imperative import imp  # noqa: F401  (registers methods)
 
     # Load all imported theories
     depend_list = get_import_order(cache['imports'], username)
