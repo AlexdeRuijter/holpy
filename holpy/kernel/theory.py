@@ -561,9 +561,11 @@ class Theory:
     def checked_extend(self, exts: list[extension.Extension]) -> ExtensionReport:
         """Apply extensions, checking every supplied proof.
 
-        For a theorem extension that carries a proof, the proof is checked but
-        its result is not compared with ``ext.th``. The stated theorem
-        ``ext.th`` is registered as given and is currently trusted (issue #5).
+        For a theorem extension that carries a proof, the result of checking
+        the proof must prove the stated theorem ``ext.th``, and ``ext.th`` must
+        have no hypotheses. Otherwise a ``CheckProofException`` is raised and
+        the theorem is not registered. A theorem extension without a proof is
+        registered as an axiom.
         """
         ext_report = ExtensionReport()
 
@@ -574,7 +576,10 @@ class Theory:
                 self.extend_constant(ext)
             elif ext.is_theorem():
                 if ext.prf:
-                    self.check_proof(ext.prf)
+                    res = self.check_proof(ext.prf)
+                    if res is None or ext.th.hyps or not res.can_prove(ext.th):
+                        raise CheckProofException(
+                            "proof does not prove the stated theorem " + ext.name)
                 else:  # No proof - add as axiom
                     ext_report.add_axiom(ext.name, ext.th)
 

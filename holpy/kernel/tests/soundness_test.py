@@ -1,9 +1,9 @@
 import unittest
 from holpy.kernel import theory, extension
-from holpy.kernel.type import BoolType, TVar, TFun
-from holpy.kernel.term import SVar, Var, Eq, Inst, Abs, Bound, Const, Forall
+from holpy.kernel.type import BoolType, NatType, STVar, TVar, TFun
+from holpy.kernel.term import SVar, Var, Eq, Implies, Inst, Abs, Bound, Const, Forall
 from holpy.kernel.proof import Proof
-from holpy.kernel.thm import Thm
+from holpy.kernel.thm import Thm, InvalidDerivationException
 
 
 class Issue3OccursVarTest(unittest.TestCase):
@@ -14,7 +14,6 @@ class Issue3OccursVarTest(unittest.TestCase):
     def tearDown(self):
         theory.thy = self.prev_thy
 
-    @unittest.expectedFailure  # WS3-3: remove this decorator when the fix lands (issue #3)
     def test_issue3_reproduction_check_proof_raises(self):
         X, c = SVar('x', BoolType), Var('c', BoolType)
         prf = Proof()
@@ -30,7 +29,6 @@ class Issue3OccursVarTest(unittest.TestCase):
         with self.assertRaises(Exception):
             theory.thy.check_proof(prf, no_gaps=True)
 
-    @unittest.expectedFailure  # WS3-3: remove this decorator when the fix lands (issue #3)
     def test_issue3_occurs_var_svar_in_itself(self):
         X = SVar('x', BoolType)
         self.assertTrue(X.occurs_var(X))
@@ -42,6 +40,30 @@ class Issue3OccursVarTest(unittest.TestCase):
         res = Thm.forall_intr(x, th)
         self.assertTrue(res.prop.is_forall())
 
+    def test_issue3_still_accepted_forall_intr_var_with_other_hypothesis(self):
+        x, y = Var('x', BoolType), Var('y', BoolType)
+        th = Thm(Eq(x, x), y)
+        res = Thm.forall_intr(x, th)
+        self.assertEqual(res.hyps, (y,))
+
+    def test_issue3_still_accepted_forall_intr_svar_no_occur(self):
+        X, c = SVar('x', BoolType), Var('c', BoolType)
+        th = Thm.reflexive(c)
+        res = Thm.forall_intr(X, th)
+        self.assertTrue(res.prop.is_forall())
+
+    def test_issue3_still_accepted_abstraction_var(self):
+        x = Var('x', BoolType)
+        th = Thm.reflexive(x)
+        res = Thm.abstraction(x, th)
+        self.assertTrue(res.prop.is_equals())
+
+    def test_issue3_still_accepted_abstraction_var_with_other_hypothesis(self):
+        x, y = Var('x', BoolType), Var('y', BoolType)
+        th = Thm(Eq(x, x), y)
+        res = Thm.abstraction(x, th)
+        self.assertEqual(res.hyps, (y,))
+
 
 class Issue4SubstitutionTest(unittest.TestCase):
     def setUp(self):
@@ -51,7 +73,6 @@ class Issue4SubstitutionTest(unittest.TestCase):
     def tearDown(self):
         theory.thy = self.prev_thy
 
-    @unittest.expectedFailure  # WS3-4: remove this decorator when the fix lands (issue #4)
     def test_issue4_reproduction_check_proof_raises(self):
         Ta = TVar('a')
         x, a, b = Var('x', Ta), Var('a', Ta), Var('b', Ta)
@@ -69,30 +90,51 @@ class Issue4SubstitutionTest(unittest.TestCase):
         prf.add_item(7, 'symmetric', prevs=[5])
         prf.add_item(8, 'transitive', prevs=[7, 4])
         prf.add_item(9, 'transitive', prevs=[8, 6])
-        with self.assertRaises(Exception):
+        with self.assertRaises(theory.CheckProofException):
             theory.thy.check_proof(prf, no_gaps=True)
 
-    @unittest.expectedFailure  # WS3-4: remove this decorator when the fix lands (issue #4)
     def test_issue4_wrong_type_rejected(self):
-        # If a value has wrong type it should be rejected (expected failure on main)
+        # If a value has wrong type it should be rejected.
         x = Var('x', BoolType)
         bad_inst = Inst()
         bad_inst.var_inst['x'] = Var('y', TVar('a'))
         th = Thm.reflexive(x)
-        with self.assertRaises(Exception):
+        with self.assertRaises(InvalidDerivationException):
+            Thm.substitution(bad_inst, th)
+
+    def test_issue4_open_value_rejected(self):
+        # A value with a bound variable loose under two abstractions is open.
+        Ta = TVar('a')
+        Tabba = TFun(Ta, TFun(Ta, Ta))
+        x = Var('x', Tabba)
+        bad_inst = Inst()
+        bad_inst.var_inst['x'] = Abs('y', Ta, Abs('z', Ta, Bound(2)))
+        th = Thm.reflexive(x)
+        with self.assertRaises(InvalidDerivationException):
             Thm.substitution(bad_inst, th)
 
     def test_issue4_still_accepted_substitution_with_abs(self):
-        # legitimate substitution with abstraction keeps working
+        # Legitimate substitution with a closed abstraction (lambda y. y).
         Ta = TVar('a')
-        x = Var('x', Ta)
-        y = Var('y', Ta)
+        x = Var('x', TFun(Ta, Ta))
+        lam = Abs('z', Ta, Bound(0))
         th = Thm.reflexive(x)
         inst = Inst()
-        inst.var_inst['x'] = Abs('z', Ta, y)
-        # should not raise
+        inst.var_inst['x'] = lam
         res = Thm.substitution(inst, th)
-        self.assertTrue(res.prop.is_reflexive() or True)
+        self.assertEqual(res.prop, Eq(lam, lam))
+
+    def test_issue4_still_accepted_schematic_with_type_inst(self):
+        # A schematic instantiation together with a type instantiation.
+        a = STVar('a')
+        f = SVar('f', TFun(a, a))
+        g = Var('g', TFun(NatType, NatType))
+        th = Thm.reflexive(f)
+        inst = Inst()
+        inst.tyinst['a'] = NatType
+        inst['f'] = g
+        res = Thm.substitution(inst, th)
+        self.assertEqual(res.prop, Eq(g, g))
 
 
 class Issue5CheckedExtendTest(unittest.TestCase):
@@ -103,16 +145,15 @@ class Issue5CheckedExtendTest(unittest.TestCase):
     def tearDown(self):
         theory.thy = self.prev_thy
 
-    @unittest.expectedFailure  # WS3-5: remove this decorator when the fix lands (issue #5)
     def test_issue5_reproduction_checked_extend_raises_and_not_registered(self):
         Ta = TVar('a')
         x, y = Var('x', Ta), Var('y', Ta)
         prf = Proof()
         prf.add_item(0, 'reflexive', args=x)
         bogus = Thm(Eq(x, y))
-        with self.assertRaises(Exception):
+        with self.assertRaises(theory.CheckProofException):
             theory.thy.checked_extend([extension.Theorem('bogus', bogus, prf)])
-        with self.assertRaises(Exception):
+        with self.assertRaises(theory.TheoryException):
             theory.thy.get_theorem('bogus', svar=False)
 
     def test_issue5_still_accepted_correct_proof(self):
@@ -121,8 +162,31 @@ class Issue5CheckedExtendTest(unittest.TestCase):
         prf = Proof()
         prf.add_item(0, 'reflexive', args=x)
         th = Thm(Eq(x, x))
-        rpt = theory.thy.checked_extend([extension.Theorem('good', th, prf)])
+        theory.thy.checked_extend([extension.Theorem('good', th, prf)])
         self.assertEqual(theory.thy.get_theorem('good', svar=False).prop, th.prop)
+
+    def test_issue5_still_accepted_proof_with_fewer_hypotheses(self):
+        # The proof result has no hypotheses even though it uses an assumption.
+        Ta = TVar('a')
+        A, x = Var('A', BoolType), Var('x', Ta)
+        prf = Proof()
+        prf.add_item(0, 'assume', args=A)
+        prf.add_item(1, 'reflexive', args=x)
+        prf.add_item(2, 'implies_intr', args=A, prevs=[1])
+        th = Thm(Implies(A, Eq(x, x)))
+        theory.thy.checked_extend([extension.Theorem('fewer', th, prf)])
+        self.assertEqual(theory.thy.get_theorem('fewer', svar=False).prop, th.prop)
+
+    def test_issue5_rejects_stated_theorem_with_hypotheses(self):
+        Ta = TVar('a')
+        A, x = Var('A', BoolType), Var('x', Ta)
+        prf = Proof()
+        prf.add_item(0, 'reflexive', args=x)
+        th = Thm(Eq(x, x), A)
+        with self.assertRaises(theory.CheckProofException):
+            theory.thy.checked_extend([extension.Theorem('with_hyp', th, prf)])
+        with self.assertRaises(theory.TheoryException):
+            theory.thy.get_theorem('with_hyp', svar=False)
 
     def test_issue5_still_accepted_no_proof_is_axiom(self):
         Ta = TVar('a')

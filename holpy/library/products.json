@@ -1809,7 +1809,7 @@
                     "th": "⊢ finite (∅::'a set) ⟶ nproduct ({x}) f = (if x ∈ ∅ then nproduct ∅ f else f x * nproduct ∅ f)"
                 },
                 {
-                    "args": "finite_empty, {}",
+                    "args": "finite_empty, {'a: 'a}",
                     "id": "1",
                     "prevs": [],
                     "rule": "apply_theorem_for",

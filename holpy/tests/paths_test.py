@@ -134,6 +134,22 @@ class TheoryPathTest(unittest.TestCase):
     def test_no_path_uses_library_only(self) -> None:
         self.assertEqual(theory_path(), [library_dir()])
 
+    def test_cache_dir_is_created_under_user_data_dir(self) -> None:
+        with mock.patch.dict(os.environ, {"HOLPY_USER_DIR": str(self.tmp / "data")}):
+            cache = _paths.cache_dir()
+            self.assertEqual(cache, self.tmp / "data" / "cache")
+            self.assertTrue(cache.is_dir())
+            # Calling it again must not fail or move the directory.
+            self.assertEqual(_paths.cache_dir(), cache)
+
+    def test_cache_dir_reports_uncreatable_directory(self) -> None:
+        data = self.tmp / "data"
+        data.mkdir()
+        (data / "cache").write_text("", encoding="utf-8")
+        with mock.patch.dict(os.environ, {"HOLPY_USER_DIR": str(data)}):
+            with self.assertRaises(OSError):
+                _paths.cache_dir()
+
 
 if __name__ == "__main__":
     unittest.main()

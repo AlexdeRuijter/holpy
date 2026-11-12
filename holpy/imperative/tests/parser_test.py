@@ -1,6 +1,7 @@
 # Author: Bohua Zhan
 
 import unittest
+from pathlib import Path
 
 from holpy.logic import basic
 from holpy.imperative import imp
@@ -26,7 +27,16 @@ class HoareParserTest(unittest.TestCase):
             self.assertEqual(t, t_res)
 
     def testParseFile(self):
-        process_file("test", "hoare_test_output")
+        output = Path(basic.user_file("hoare_test_output"))
+        original = output.read_text(encoding='utf-8') if output.exists() else None
+        try:
+            process_file("test", "hoare_test_output")
+        finally:
+            # process_file writes into the bundled library; keep the checkout clean.
+            if original is None:
+                output.unlink(missing_ok=True)
+            else:
+                output.write_text(original, encoding='utf-8')
 
 
 if __name__ == "__main__":

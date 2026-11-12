@@ -5,6 +5,7 @@ import copy
 from lark import Lark, Transformer, v_args, exceptions
 
 import holpy.syntax
+from holpy import _paths
 from holpy.kernel import type as hol_type
 from holpy.kernel.type import Type, STVar, TVar, TConst, TFun, BoolType, NatType, TyInst
 from holpy.kernel.term import SVar, Var, Const, Comb, Abs, Bound, Term, Not, And, Or, Implies, Binary, Inst
@@ -61,6 +62,7 @@ grammar = r"""
         | "{" term ".." term "}"   -> nat_interval
         | "(" term ")"                    // Parenthesis
         | "(" term "::" type ")"   -> typed_term    // Term with specified type
+        | "(" "?" CNAME "::" type ")" -> typed_svar // Schematic variable with specified type
 
     ?comb: comb atom | atom
 
@@ -123,7 +125,10 @@ grammar = r"""
 
     term_pair: CNAME ":" term
 
+    tvar_pair: "'" CNAME ":" type
+
     inst: "{}"
+        | "{" (tvar_pair ("," tvar_pair)*)? ("," term_pair ("," term_pair)*)? "}"
         | "{" term_pair ("," term_pair)* "}"
 
     type_pair: CNAME ":" type
@@ -169,6 +174,9 @@ class HOLTransformer(Transformer):
     def sname(self, s):
         s = str(s)
         return SVar(s, None)
+
+    def typed_svar(self, s, T):
+        return SVar(str(s), T)
 
     def vname(self, s):
         s = str(s)
@@ -369,6 +377,9 @@ class HOLTransformer(Transformer):
     def thm(self, *args):
         return Thm(args[-1], tuple(args[:-1]))
 
+    def tvar_pair(self, name, T):
+        return (str(name), T)
+
     def term_pair(self, name, T):
         return (str(name), T)
 
@@ -376,7 +387,18 @@ class HOLTransformer(Transformer):
         return (str(name), T)
 
     def inst(self, *args):
-        return dict(args)
+        term_dict = {}
+        type_dict = {}
+        for arg in args:
+            if isinstance(arg, tuple) and len(arg) == 2:
+                k, v = arg
+                if isinstance(v, Type):
+                    type_dict[str(k)] = v
+                else:
+                    term_dict[str(k)] = v
+        if not args:
+            return ({}, {})
+        return (term_dict, type_dict)
 
     def tyinst(self, *args):
         return dict(args)
@@ -401,8 +423,29 @@ class HOLTransformer(Transformer):
         return list(args)
 
 
+def _lark_cache(start: str) -> bool | str:
+    """Return Lark's ``cache`` option for the parser with *start*.
+
+    Lark checks the grammar text, its own version, and the Python version
+    stored in the file, so a changed grammar cannot reuse stale tables.  If
+    the user cache directory cannot be created, caching is disabled and Lark
+    builds the tables again as before.
+    """
+    try:
+        directory = _paths.cache_dir()
+    except OSError:
+        return False
+    return str(directory / f"lark_syntax_{start}.lark")
+
+
 def get_parser_for(start):
-    return Lark(grammar, start=start, parser="lalr", transformer=HOLTransformer())
+    return Lark(
+        grammar,
+        start=start,
+        parser="lalr",
+        transformer=HOLTransformer(),
+        cache=_lark_cache(start),
+    )
 
 type_parser = get_parser_for("type")
 term_parser = get_parser_for("term")
@@ -448,10 +491,22 @@ def parse_thm(s: str) -> Thm:
 
 def parse_inst(s):
     """Parse a term instantiation."""
-    inst = inst_parser.parse(s)
-    for k in inst:
-        inst[k] = infertype.type_infer(inst[k])
-    return Inst(inst)
+    res = inst_parser.parse(s)
+    if isinstance(res, tuple):
+        term_dict, type_dict = res
+    else:
+        term_dict = res
+        type_dict = {}
+    inst_obj = Inst(term_dict)
+    if type_dict:
+        from holpy.kernel.type import TyInst
+        # Keys for type pairs are like "'a"; strip leading quote for TyInst keys
+        inst_obj.tyinst = TyInst({k.lstrip("'"): v for k, v in type_dict.items()})
+    for k in list(term_dict):
+        term_dict[k] = infertype.type_infer(term_dict[k])
+    inst_obj.clear()
+    inst_obj.update(term_dict)
+    return inst_obj
 
 def parse_tyinst(s):
     """Parse a type instantiation."""
