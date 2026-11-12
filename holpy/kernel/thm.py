@@ -370,7 +370,65 @@ class Thm:
         -------
         Thm
             ``A[s] |- B[s]`` from ``A |- B``.
+
+        Raises
+        ------
+        InvalidDerivationException
+            If a value in ``inst`` is open, does not have the type of the
+            variable it replaces after ``inst.tyinst`` (including the
+            schematic type matching performed by ``Term.subst``), or otherwise
+            cannot be substituted. Values for names that do not occur in the
+            theorem are ignored.
+
+        Notes
+        -----
+        The values are validated here, in the primitive rule. ``Term.subst``
+        itself still places its values unchecked, because it has non-kernel
+        callers that do not need these guarantees (issue #4).
         """
+        # A name may occur at more than one type. That case is not supported;
+        # leave its values to the old behaviour rather than rejecting a
+        # substitution that used to be accepted.
+        def occurrence_types(terms, get_vars):
+            res = dict()
+            for t in terms:
+                for v in get_vars(t):
+                    if v.name not in res:
+                        res[v.name] = []
+                    if v.T not in res[v.name]:
+                        res[v.name].append(v.T)
+            return res
+
+        terms = list(th.hyps) + [th.prop]
+        svar_types = occurrence_types(terms, lambda t: t.get_svars())
+        var_types = occurrence_types(terms, lambda t: t.get_vars())
+
+        for name, value in inst.items():
+            if value.is_open():
+                raise InvalidDerivationException("substitution")
+            if name not in svar_types or len(svar_types[name]) != 1:
+                continue
+            try:
+                value_T = value.get_type()
+                T = svar_types[name][0]
+                T.match_incr(value_T, inst.tyinst)
+            except (term.TypeCheckException, term.TypeMatchException):
+                raise InvalidDerivationException("substitution")
+            if value_T != T.subst(inst.tyinst):
+                raise InvalidDerivationException("substitution")
+
+        for name, value in inst.var_inst.items():
+            if value.is_open():
+                raise InvalidDerivationException("substitution")
+            if name not in var_types or len(var_types[name]) != 1:
+                continue
+            try:
+                value_T = value.get_type()
+            except term.TypeCheckException:
+                raise InvalidDerivationException("substitution")
+            if value_T != var_types[name][0].subst(inst.tyinst):
+                raise InvalidDerivationException("substitution")
+
         try:
             hyps_new = tuple(hyp.subst(inst) for hyp in th.hyps)
             prop_new = th.prop.subst(inst)
