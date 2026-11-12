@@ -182,6 +182,7 @@ class TermTest(unittest.TestCase):
             self.assertEqual(t.beta_norm(), res)
 
     def testOccursVar(self):
+        Xa = SVar("x", Ta)
         test_data = [
             (a, a, True),
             (a, b, False),
@@ -190,6 +191,9 @@ class TermTest(unittest.TestCase):
             (Abs("a", Ta, a), a, True),
             (Abs("a", Ta, b), b, True),
             (Abs("a", Ta, B0), a, False),
+            (f(Xa), Xa, True),
+            (f(Xa), SVar("y", Ta), False),
+            (f(Xa), SVar("x", Tb), False),
         ]
 
         for s, t, res in test_data:

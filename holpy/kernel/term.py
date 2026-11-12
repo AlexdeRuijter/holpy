@@ -855,12 +855,12 @@ class Term:
     def occurs_var(self, t: Term) -> bool:
         """Whether the variable t occurs in self.
 
-        Currently every schematic variable (``SVar``) returns ``False``,
-        including ``t`` itself, so this is not a sound occurrence check for
-        schematic variables (issue #3).
+        Schematic variables are matched by name and type, as ordinary
+        variables are: an ``SVar`` occurs in itself and in terms containing
+        an equal ``SVar``.
         """
         if self.is_svar():
-            return False
+            return self == t
         if self.is_var():
             return self == t
         elif self.is_const():

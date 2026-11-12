@@ -54,6 +54,28 @@ def user_data_dir() -> Path:
     return base / "holpy"
 
 
+def cache_dir() -> Path:
+    """Return the directory for holpy's on-disk caches.
+
+    The directory is ``cache`` under :func:`user_data_dir`, so it follows
+    ``HOLPY_USER_DIR`` and is never inside the package or a checkout.  It is
+    created if necessary.
+
+    Returns
+    -------
+    Path
+        Existing cache directory.
+
+    Raises
+    ------
+    OSError
+        If the directory does not exist and cannot be created.
+    """
+    directory = user_data_dir() / "cache"
+    directory.mkdir(parents=True, exist_ok=True)
+    return directory
+
+
 def user_dir(username: str = "master") -> Path:
     """Return the directory containing a user's theories."""
     if not username:

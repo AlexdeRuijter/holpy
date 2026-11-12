@@ -257,10 +257,27 @@ term_ast = dict()
 
 ATOM, FUN_APPL, UNARY, BINARY, BINDER = range(5)
 
-def get_ast_term(t):
-    """Obtain the abstract syntax tree for a term."""
-    key = [t, settings.unicode]
+def get_ast_term(t, *, annotate_vars: bool = False):
+    """Obtain the abstract syntax tree for a term.
+
+    When *annotate_vars* is true, free and schematic variables are printed
+    with a type annotation whenever type inference cannot recover it from
+    the term itself or the ambient context.  Proof export uses this so that
+    an expanded proof line parses back to the same term.
+    """
+    key = [t, settings.unicode, annotate_vars]
     key = key + t.get_absBindVar()
+    if annotate_vars:
+        # Type inference looks up free variables, schematic variables and
+        # definitions in the ambient context.  Without that part of the key,
+        # a term printed once while a variable is declared can later be
+        # reused without the annotation it needs in an undeclared context.
+        from holpy.logic import context
+        key.append((
+            tuple(sorted(context.ctxt.vars.items())),
+            tuple(sorted(context.ctxt.svars.items())),
+            tuple(sorted(context.ctxt.defs.items())),
+        ))
     key = tuple(key)
     if key in term_ast:
         return term_ast[key]
@@ -279,9 +296,13 @@ def get_ast_term(t):
 
     def get_priority_pair(t):
         """Obtain the binding priority of the top-most operation of t."""
-        if (t.is_number() and isinstance(t.dest_number(), int) and t.dest_number() >= 0) or \
+        # This must agree with the Number special case in helper below: an
+        # of_nat 0/1 is still is_number(), but helper prints it as the
+        # application ``of_nat 0``, so it cannot be given atom priority.
+        if t.is_zero() or t.is_one() or \
+           (t.is_comb('of_nat', 1) and t.arg.is_binary() and t.arg.dest_binary() >= 2) or \
            list.is_literal_list(t):
-            return 100, ATOM  # Nat atom case
+            return 100, ATOM  # Printed atom case
         elif t.is_comb():
             op_data = operator.get_info_for_fun(t.head)
             binder_data = operator.get_binder_info_for_fun(t.head)
@@ -367,10 +388,16 @@ def get_ast_term(t):
             return ITE(helper(P, bd_vars), helper(x, bd_vars), helper(y, bd_vars), t.get_type())
 
         elif t.is_svar():
-            return SVarName(t.name, t.T)
+            res = SVarName(t.name, t.T)
+            if hasattr(t, "print_type"):
+                res = Bracket(ShowType(res, get_ast_type(res.T)))
+            return res
 
         elif t.is_var():
-            return VarName(t.name, t.T)
+            res = VarName(t.name, t.T)
+            if hasattr(t, "print_type"):
+                res = Bracket(ShowType(res, get_ast_type(res.T)))
+            return res
 
         elif t.is_const():
             link_name = theory.thy.get_overload_const_name(t.name, t.T)
@@ -479,7 +506,7 @@ def get_ast_term(t):
             raise TypeError
 
     copy_t = copy(t)  # make copy here, because infer_printed_type may change t.
-    infertype.infer_printed_type(copy_t)
+    infertype.infer_printed_type(copy_t, annotate_vars=annotate_vars)
 
     ast = helper(copy_t, [])
     term_ast[key] = ast

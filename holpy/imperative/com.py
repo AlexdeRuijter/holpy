@@ -2,8 +2,8 @@
 
 """Basic data structure for commands."""
 
-from holpy.kernel.term import Term, Var
-from holpy.logic import logic
+from __future__ import annotations
+
 from holpy.imperative import expr
 
 
@@ -115,6 +115,7 @@ class Com():
                 })
 
         def add_line(line):
+            """Append a command line at the current indentation."""
             lines.append({
                 'ty': 'com',
                 'indent': indent,
@@ -122,6 +123,7 @@ class Com():
             })
 
         def add_inv(line):
+            """Append an invariant line at the current indentation."""
             lines.append({
                 'ty': 'inv',
                 'indent': indent,
@@ -129,10 +131,12 @@ class Com():
             })
 
         def add_str(s):
+            """Append a semicolon to the most recent line."""
             assert len(lines) > 0
             lines[-1]['str'] += ';'
 
         def rec(cmd):
+            """Append the lines for `cmd`, recursing into subcommands."""
             nonlocal indent
 
             if isinstance(cmd, Skip):

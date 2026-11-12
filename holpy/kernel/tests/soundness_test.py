@@ -1,7 +1,7 @@
 import unittest
 from holpy.kernel import theory, extension
 from holpy.kernel.type import BoolType, NatType, STVar, TVar, TFun
-from holpy.kernel.term import SVar, Var, Eq, Inst, Abs, Bound, Const
+from holpy.kernel.term import SVar, Var, Eq, Implies, Inst, Abs, Bound, Const
 from holpy.kernel.proof import Proof
 from holpy.kernel.thm import Thm, InvalidDerivationException
 
@@ -14,7 +14,6 @@ class Issue3OccursVarTest(unittest.TestCase):
     def tearDown(self):
         theory.thy = self.prev_thy
 
-    @unittest.expectedFailure  # WS3-3: remove this decorator when the fix lands (issue #3)
     def test_issue3_reproduction_check_proof_raises(self):
         X, c = SVar('x', BoolType), Var('c', BoolType)
         prf = Proof()
@@ -30,7 +29,6 @@ class Issue3OccursVarTest(unittest.TestCase):
         with self.assertRaises(Exception):
             theory.thy.check_proof(prf, no_gaps=True)
 
-    @unittest.expectedFailure  # WS3-3: remove this decorator when the fix lands (issue #3)
     def test_issue3_occurs_var_svar_in_itself(self):
         X = SVar('x', BoolType)
         self.assertTrue(X.occurs_var(X))
@@ -41,6 +39,30 @@ class Issue3OccursVarTest(unittest.TestCase):
         th = Thm.reflexive(x)
         res = Thm.forall_intr(x, th)
         self.assertTrue(res.prop.is_forall())
+
+    def test_issue3_still_accepted_forall_intr_var_with_other_hypothesis(self):
+        x, y = Var('x', BoolType), Var('y', BoolType)
+        th = Thm(Eq(x, x), y)
+        res = Thm.forall_intr(x, th)
+        self.assertEqual(res.hyps, (y,))
+
+    def test_issue3_still_accepted_forall_intr_svar_no_occur(self):
+        X, c = SVar('x', BoolType), Var('c', BoolType)
+        th = Thm.reflexive(c)
+        res = Thm.forall_intr(X, th)
+        self.assertTrue(res.prop.is_forall())
+
+    def test_issue3_still_accepted_abstraction_var(self):
+        x = Var('x', BoolType)
+        th = Thm.reflexive(x)
+        res = Thm.abstraction(x, th)
+        self.assertTrue(res.prop.is_equals())
+
+    def test_issue3_still_accepted_abstraction_var_with_other_hypothesis(self):
+        x, y = Var('x', BoolType), Var('y', BoolType)
+        th = Thm(Eq(x, x), y)
+        res = Thm.abstraction(x, th)
+        self.assertEqual(res.hyps, (y,))
 
 
 class Issue4SubstitutionTest(unittest.TestCase):
@@ -123,16 +145,15 @@ class Issue5CheckedExtendTest(unittest.TestCase):
     def tearDown(self):
         theory.thy = self.prev_thy
 
-    @unittest.expectedFailure  # WS3-5: remove this decorator when the fix lands (issue #5)
     def test_issue5_reproduction_checked_extend_raises_and_not_registered(self):
         Ta = TVar('a')
         x, y = Var('x', Ta), Var('y', Ta)
         prf = Proof()
         prf.add_item(0, 'reflexive', args=x)
         bogus = Thm(Eq(x, y))
-        with self.assertRaises(Exception):
+        with self.assertRaises(theory.CheckProofException):
             theory.thy.checked_extend([extension.Theorem('bogus', bogus, prf)])
-        with self.assertRaises(Exception):
+        with self.assertRaises(theory.TheoryException):
             theory.thy.get_theorem('bogus', svar=False)
 
     def test_issue5_still_accepted_correct_proof(self):
@@ -141,8 +162,31 @@ class Issue5CheckedExtendTest(unittest.TestCase):
         prf = Proof()
         prf.add_item(0, 'reflexive', args=x)
         th = Thm(Eq(x, x))
-        rpt = theory.thy.checked_extend([extension.Theorem('good', th, prf)])
+        theory.thy.checked_extend([extension.Theorem('good', th, prf)])
         self.assertEqual(theory.thy.get_theorem('good', svar=False).prop, th.prop)
+
+    def test_issue5_still_accepted_proof_with_fewer_hypotheses(self):
+        # The proof result has no hypotheses even though it uses an assumption.
+        Ta = TVar('a')
+        A, x = Var('A', BoolType), Var('x', Ta)
+        prf = Proof()
+        prf.add_item(0, 'assume', args=A)
+        prf.add_item(1, 'reflexive', args=x)
+        prf.add_item(2, 'implies_intr', args=A, prevs=[1])
+        th = Thm(Implies(A, Eq(x, x)))
+        theory.thy.checked_extend([extension.Theorem('fewer', th, prf)])
+        self.assertEqual(theory.thy.get_theorem('fewer', svar=False).prop, th.prop)
+
+    def test_issue5_rejects_stated_theorem_with_hypotheses(self):
+        Ta = TVar('a')
+        A, x = Var('A', BoolType), Var('x', Ta)
+        prf = Proof()
+        prf.add_item(0, 'reflexive', args=x)
+        th = Thm(Eq(x, x), A)
+        with self.assertRaises(theory.CheckProofException):
+            theory.thy.checked_extend([extension.Theorem('with_hyp', th, prf)])
+        with self.assertRaises(theory.TheoryException):
+            theory.thy.get_theorem('with_hyp', svar=False)
 
     def test_issue5_still_accepted_no_proof_is_axiom(self):
         Ta = TVar('a')

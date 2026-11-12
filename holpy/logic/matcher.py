@@ -16,6 +16,8 @@ from holpy.util import typecheck
 
 
 class MatchException(Exception):
+    """Raised when a pattern cannot be matched to a term."""
+
     def __init__(self, trace):
         self.trace = trace
 
@@ -23,6 +25,7 @@ class MatchException(Exception):
         return self.get_trace()
 
     def get_trace(self):
+        """Render the match trace as a diagnostic string."""
         pat, t = self.trace[-1]
         trace = '\n'.join("%s --- %s" % (pat, t) for pat, t in self.trace)
         return "When matching %s with %s\nTrace:\n%s" % (pat, t, trace)
@@ -60,6 +63,7 @@ def is_pattern_list(ts, matched_vars, bd_vars=None):
             return is_pattern(ts[0], all_vars, bd_vars)
 
 def find_term(t, sub_t):
+    """Return whether ``sub_t`` occurs anywhere in ``t``."""
     if t == sub_t:
         return True
     if t.is_comb():

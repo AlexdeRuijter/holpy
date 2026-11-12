@@ -6,7 +6,39 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Cancel superseded runs of the same PR/branch (frees scarce macOS runners and
+# avoids a pile of queued runs that each fail later).  Runs on main are never
+# cancelled: each gets its own group via run_id.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
+  # GitHub offers no API that reports hosted-runner capacity.  The closest signal is the
+  # public status page (githubstatus.com): skip the macOS job while the Actions component
+  # is not operational or an unresolved incident mentions macOS.  Fails open: if the status
+  # page cannot be read, macOS is run as before.  This cannot catch capacity shortages that
+  # GitHub has not announced.
+  runner-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      macos: ${{ steps.check.outputs.macos }}
+    steps:
+      - id: check
+        run: |
+          macos=true
+          comp=$(curl -fsS --max-time 15 https://www.githubstatus.com/api/v2/components.json \
+            | jq -r '.components[] | select(.name=="Actions") | .status' 2>/dev/null) || comp=""
+          inc=$(curl -fsS --max-time 15 https://www.githubstatus.com/api/v2/incidents/unresolved.json \
+            | jq -r '.incidents[] | select((.name + " " + ((.incident_updates[0].body) // "")) | test("macos"; "i")) | .name' 2>/dev/null) || inc=""
+          echo "Actions component status: '${comp}'"
+          echo "Unresolved macOS incidents: '${inc}'"
+          if [ -n "$comp" ] && [ "$comp" != "operational" ]; then macos=false; fi
+          if [ -n "$inc" ]; then macos=false; fi
+          echo "macos=$macos" >> "$GITHUB_OUTPUT"
+          if [ "$macos" = false ]; then echo "::notice::Skipping macOS tests: GitHub reports Actions/macOS problems"; fi
+
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -34,23 +66,39 @@ jobs:
       - run: python -m pytest holpy -q -p no:cacheprovider --continue-on-collection-errors -rfE | tee pytest.txt
       - run: python scripts/compare_test_baseline.py pytest.txt docs/test_baseline.txt
 
-  test-other-os:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest, macos-latest]
-        python-version: ["3.12"]
+  test-windows:
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.12"
       - run: pip install -e ".[dev]"
       # bash everywhere (PowerShell fails on pytest's exit code 1; explicit bash adds pipefail): known failures must not fail this step, the compare step decides.
       - run: python -m pytest holpy -q -p no:cacheprovider --continue-on-collection-errors -rfE | tee pytest.txt || true
         shell: bash
       # On non-Linux OS the baseline may differ; do not fail the build for differences.
+      - run: python scripts/compare_test_baseline.py pytest.txt docs/test_baseline.txt
+        continue-on-error: true
+
+  # Same steps as test-windows; kept separate so it can be skipped by runner-check
+  # (job-level `if` cannot read matrix values).
+  # continue-on-error: macOS is informational only; a runner shortage or a macOS-only
+  # failure must not turn the workflow red.
+  test-macos:
+    needs: runner-check
+    if: needs.runner-check.outputs.macos == 'true'
+    runs-on: macos-latest
+    timeout-minutes: 60
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev]"
+      - run: python -m pytest holpy -q -p no:cacheprovider --continue-on-collection-errors -rfE | tee pytest.txt || true
+        shell: bash
       - run: python scripts/compare_test_baseline.py pytest.txt docs/test_baseline.txt
         continue-on-error: true
 
