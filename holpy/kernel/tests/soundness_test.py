@@ -1,7 +1,7 @@
 import unittest
 from holpy.kernel import theory, extension
 from holpy.kernel.type import BoolType, NatType, STVar, TVar, TFun
-from holpy.kernel.term import SVar, Var, Eq, Implies, Inst, Abs, Bound, Const
+from holpy.kernel.term import SVar, Var, Eq, Implies, Inst, Abs, Bound, Const, Forall
 from holpy.kernel.proof import Proof
 from holpy.kernel.thm import Thm, InvalidDerivationException
 
@@ -204,7 +204,6 @@ class Issue6CheckTermTest(unittest.TestCase):
     def tearDown(self):
         theory.thy = self.prev_thy
 
-    @unittest.expectedFailure  # WS3-6: remove this decorator when the fix lands (issue #6)
     def test_issue6_reproduction_check_proof_raises(self):
         Ta = TVar('a')
         n, m = Var('n', Ta), Var('m', Ta)
@@ -215,13 +214,35 @@ class Issue6CheckTermTest(unittest.TestCase):
         prf.add_item(2, 'equal_intr', prevs=[0, 1])
         prf.add_item(3, 'implies_intr', args=fi(m, n), prevs=[2])
         prf.add_item(4, 'implies_intr', args=fi(n, m), prevs=[3])
-        with self.assertRaises(Exception):
+        with self.assertRaises(theory.CheckProofException):
             theory.thy.check_proof(prf, no_gaps=True)
 
     def test_issue6_reflexive_undeclared_constant_rejected(self):
         bad = Const('bad_const', BoolType)
-        with self.assertRaises(Exception):
+        with self.assertRaises(theory.TheoryException):
             theory.thy.check_term(bad)
+
+    def test_issue6_reflexive_undeclared_constant_proof_rejected(self):
+        bad = Const('bad_const', BoolType)
+        prf = Proof()
+        prf.add_item(0, 'reflexive', args=bad)
+        with self.assertRaises(theory.CheckProofException):
+            theory.thy.check_proof(prf, no_gaps=True)
+
+    def test_issue6_forall_elim_bad_equals_type_rejected(self):
+        Ta, Tb = TVar('a'), TVar('b')
+        T = TFun(Ta, Tb, BoolType)
+        x = Var('x', T)
+        bad_equals = Const('equals', T)
+        prf = Proof()
+        prf.add_item(0, 'assume', args=Forall(x, Eq(x, x)))
+        prf.add_item(1, 'forall_elim', args=bad_equals, prevs=[0])
+        with self.assertRaises(theory.CheckProofException):
+            theory.thy.check_proof(prf, no_gaps=True)
+
+    def test_issue6_check_term_svar_and_bound(self):
+        self.assertIsNone(theory.thy.check_term(SVar('A', BoolType)))
+        self.assertIsNone(theory.thy.check_term(Bound(0)))
 
     def test_issue6_still_accepted_polymorphic_constant(self):
         # equals at nat should work
@@ -229,6 +250,35 @@ class Issue6CheckTermTest(unittest.TestCase):
         from holpy.kernel.term import equals
         eq_nat = equals(NatType)
         theory.thy.check_term(eq_nat)
+
+    def test_issue6_still_accepted_polymorphic_constant_in_proof(self):
+        from holpy.kernel.type import NatType
+        n = Var('n', NatType)
+        prf = Proof()
+        prf.add_item(0, 'reflexive', args=n)
+        th = theory.thy.check_proof(prf, no_gaps=True)
+        self.assertEqual(th.prop, Eq(n, n))
+
+    def test_issue6_still_accepted_final_theorem_line(self):
+        # A proof whose last line cites a well-typed theory theorem is
+        # accepted; the final-theorem guard validates it successfully.
+        x = Var('x', BoolType)
+        theory.thy.add_theorem('refl', Thm(Eq(x, x)))
+        prf = Proof()
+        prf.add_item(0, 'theorem', args='refl')
+        th = theory.thy.check_proof(prf, no_gaps=True)
+        self.assertEqual(th, theory.thy.get_theorem('refl'))
+
+    def test_issue6_final_ill_typed_proposition_rejected(self):
+        # Theorem lines are trusted by the per-rule checks; the final
+        # theorem guard rejects a final proposition that uses an undeclared
+        # constant.
+        bad = Thm(Const('bad_const', BoolType))
+        theory.thy.add_theorem('bad', bad)
+        prf = Proof()
+        prf.add_item(0, 'theorem', args='bad')
+        with self.assertRaises(theory.CheckProofException):
+            theory.thy.check_proof(prf, no_gaps=True)
 
 
 if __name__ == '__main__':
