@@ -212,11 +212,13 @@ def type_infer(t, *, forbid_internal=True):
     t.subst_type_inplace(tyinst)
     return t
 
-def infer_printed_type(t):
+def infer_printed_type(t, *, annotate_vars: bool = False):
     """Infer the types that should be printed.
     
     The algorithm is as follows:
-    1. Replace all constant types with None.
+    1. Replace all constant types with None.  When *annotate_vars* is true,
+       variable and schematic-variable types are cleared as well, so that
+       they can be annotated if inference does not recover them.
     2. Apply type-inference on the resulting type.
     3. For the first internal type variable that appears, find a constant
        whose type contains that variable, set that constant to print_type.
@@ -228,6 +230,10 @@ def infer_printed_type(t):
     def clear_const_type(t):
         if t.is_const() and not hasattr(t, "print_type"):
             t.backupT = t.T
+            t.T = None
+        elif annotate_vars and (t.is_var() or t.is_svar()) and \
+                not hasattr(t, "print_type"):
+            t.backup_var_T = t.T
             t.T = None
         elif t.is_comb():
             clear_const_type(t.fun)
@@ -241,6 +247,8 @@ def infer_printed_type(t):
     def recover_const_type(t):
         if t.is_const():
             t.T = t.backupT
+        elif annotate_vars and (t.is_var() or t.is_svar()):
+            t.T = t.backup_var_T
         elif t.is_comb():
             recover_const_type(t.fun)
             recover_const_type(t.arg)
@@ -268,6 +276,11 @@ def infer_printed_type(t):
                     to_replace = t
                     to_replaceT = replT
             elif t.is_const() and has_internalT(t.T):
+                if to_replace is None or t.T.size() < to_replaceT.size():
+                    to_replace = t
+                    to_replaceT = t.T
+            elif annotate_vars and (t.is_var() or t.is_svar()) and \
+                    has_internalT(t.T):
                 if to_replace is None or t.T.size() < to_replaceT.size():
                     to_replace = t
                     to_replaceT = t.T
