@@ -34,15 +34,12 @@ ORACLES = frozenset({
     "const_inequality",  # level 0 like the others; missing from the plan's list
     "int_const_ineq",
     "int_eval",
-    "integer_simplex",
     "nat_eval",
     "real_compare",
     "real_const_eq",
     "real_const_ineq",
-    "real_eq_comparison",
     "real_eval",
     "real_norm",
-    "simplex_macro",
     "sympy",
     "z3",
 })

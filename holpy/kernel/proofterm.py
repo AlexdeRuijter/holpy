@@ -268,7 +268,7 @@ class ProofTerm:
                 rpt.apply_primitive_deriv()
             else:
                 macro = theory.get_macro(pt.rule)
-                if macro.level <= check_level:
+                if macro.level is not None and macro.level <= check_level:
                     rpt.eval_macro(pt.rule)
                 else:
                     expand_pt = macro.get_proof_term(pt.args, pt.prevs)

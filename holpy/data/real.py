@@ -1080,7 +1080,7 @@ class real_const_compares(Conv):
 class RealCompEq(Macro):
     """Given two real comparisons, prove their equality."""
     def __init__(self):
-        self.level = 0
+        self.level = None
         self.sig = Term
         self.limit = None
 
