@@ -5,6 +5,7 @@ import copy
 from lark import Lark, Transformer, v_args, exceptions
 
 import holpy.syntax
+from holpy import _paths
 from holpy.kernel import type as hol_type
 from holpy.kernel.type import Type, STVar, TVar, TConst, TFun, BoolType, NatType, TyInst
 from holpy.kernel.term import SVar, Var, Const, Comb, Abs, Bound, Term, Not, And, Or, Implies, Binary, Inst
@@ -422,8 +423,29 @@ class HOLTransformer(Transformer):
         return list(args)
 
 
+def _lark_cache(start: str) -> bool | str:
+    """Return Lark's ``cache`` option for the parser with *start*.
+
+    Lark checks the grammar text, its own version, and the Python version
+    stored in the file, so a changed grammar cannot reuse stale tables.  If
+    the user cache directory cannot be created, caching is disabled and Lark
+    builds the tables again as before.
+    """
+    try:
+        directory = _paths.cache_dir()
+    except OSError:
+        return False
+    return str(directory / f"lark_syntax_{start}.lark")
+
+
 def get_parser_for(start):
-    return Lark(grammar, start=start, parser="lalr", transformer=HOLTransformer())
+    return Lark(
+        grammar,
+        start=start,
+        parser="lalr",
+        transformer=HOLTransformer(),
+        cache=_lark_cache(start),
+    )
 
 type_parser = get_parser_for("type")
 term_parser = get_parser_for("term")
