@@ -4,8 +4,18 @@ Higher-order logic (HOL) theorem prover and proof assistant in Python.
 
 This distribution contains the core library: kernel, logic, data types, parser,
 proof state, automation, and the bundled theory library. The web IDE and the
-veriT/SMT proof-reconstruction module are preserved on the `archive/webapp` and
-`archive/smt` branches and are not part of the published package.
+veriT/SMT proof-reconstruction module are not part of this distribution; they
+remain in the git history of the repository and of upstream HolPy.
+
+## Status and limits
+
+holpy 0.1.0 is an alpha release and its public API may change before 1.0. Not
+every bundled theorem has a proof that replays: on `main` at `880edb89` (measured 2026-11-13), 2,047
+of 3,763 library theorems replay in the kernel, 81 check but contain `sorry`,
+1,587 have no stored proof at all, and 48 fail to replay. Some proof steps are
+decided by trusted oracles that expand to no kernel inferences (Z3, sympy and
+numerical evaluation of real constants); see the `CHANGELOG.md` "Known issues"
+section for the list and for the remaining known failures.
 
 ## Installation
 
@@ -111,13 +121,20 @@ compact = condense(item["proof"], Level.MACRO, ctx=ctx)
 print(level_of(compact, ctx=ctx).name)                # MACRO
 print(expand(compact, Level.ANNOTATED, ctx=ctx)[-1]["th"])
 # ⊢ A ∧ B ⟷ B ∧ A
+primitive = expand(compact, Level.PRIMITIVE, ctx=ctx)
+print(level_of(primitive, ctx=ctx).name)              # PRIMITIVE
 ```
 
 `expand_theory(data, level)` and `condense_theory(data, level)` apply the same
 operations to every theorem in a theory dictionary; `condense_theory` leaves a
 theorem at `ANNOTATED` when condensing would change checking and records its
-name on the result's `guard` attribute. `Level.PRIMITIVE` is planned but not
-implemented on this branch: passing it raises `NotImplementedError`.
+name on the result's `guard` attribute. At `Level.PRIMITIVE`, `expand` replaces
+every non-oracle macro line by a `subproof` line that holds the expansion and
+keeps the original rule, arguments and `prevs` in `expanded_from`; `condense`
+copies the proof unchanged, and `level_of` reports `PRIMITIVE` when no
+expandable macro line remains and every line has a statement. Expanding to
+`PRIMITIVE` needs every stored line to print back, and a proof that cites a line
+from itself cannot be expanded.
 
 ## Checking the library
 
@@ -129,8 +146,13 @@ python scripts/check_library.py logic --out /tmp/logic_check.tsv
 ```
 
 Not every bundled theorem currently checks: some are known to fail. A recorded
-run is in `docs/library_check.tsv`; the known issues will also be listed in
-`CHANGELOG.md` once it exists.
+run is in `docs/library_check.tsv`; the numbers measured on `main` at `880edb89` and the remaining
+failures are in the `CHANGELOG.md` "Known issues" section. Replaying all 3,763
+theorem rows on `main` at `880edb89` (2026-11-13, Python 3.14.4,
+`scripts/check_library.py --jobs 1`) gave `ok` 2047, `gaps` 81, `noproof` 1587
+and `fail` 48. `ok` means the stored proof replays in this kernel; 1,587 of the
+theorems have no stored proof at all and are not verified, and 48 fail to
+replay.
 
 ## Experimental
 
