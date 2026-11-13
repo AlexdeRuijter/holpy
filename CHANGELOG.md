@@ -14,8 +14,8 @@ First alpha release. The public API may change before 1.0.
   dependencies `lark>=1.1`, `sympy>=1.9` and `z3-solver>=4.12`, and a wheel that
   ships `holpy/library/*.json` and excludes the test packages.
 - GitHub Actions CI (`.github/workflows/ci.yml`) with lint, pytest on Python
-  3.10–3.13, separate Windows and macOS jobs, a wheel build/install smoke test,
-  and a library job at both ends of the supported Z3 range (PR #24).
+  3.10–3.13, a Windows/macOS matrix job and a wheel build/install smoke test (PR #24);
+  the library job at both ends of the supported Z3 range is PR #39.
   `scripts/compare_test_baseline.py` and `docs/test_baseline.txt` fail CI when a
   test that is not a recorded baseline failure fails or errors.
 - Theory search path: `holpy.theory_path()`, `holpy.add_theory_path()` and
@@ -25,7 +25,7 @@ First alpha release. The public API may change before 1.0.
   library checkout. The first file with a theory name wins, shadowing is
   logged once, and adding a path clears the loader caches.
 - `holpy.proofs` with `Level`, `ProofContext`, `expand`, `condense`,
-  `level_of`, `oracles`, `expand_theory` and `condense_theory` (PR #28).
+  `level_of`, `oracles`, `expand_theory` and `condense_theory` (PR #47; `PRIMITIVE` in PR #50).
   `MACRO` drops `th` where checking does not need it; `ANNOTATED` fills in
   missing `th`; `PRIMITIVE` replaces every non-oracle macro line by a
   `subproof` line holding its expansion, keeping the original rule, arguments
@@ -70,8 +70,8 @@ First alpha release. The public API may change before 1.0.
   primitive-rule arguments against the theory, and a final-theorem guard
   validates the final statement's constants, so the Issue #6 reproduction in
   `holpy/kernel/tests/soundness_test.py` raises `CheckProofException`. Statements
-  taken from `theorem` lines and from macro evaluation are still trusted and
-  are not re-checked.
+  taken from `theorem` lines and from macro evaluation are trusted per line; the
+  final theorem is checked once at the end.
 - Checker exception hygiene (PR #74): a bad primitive-rule call raises
   `CheckProofException` instead of `AttributeError`, and an ill-typed
   `forall_elim` argument is reported as `InvalidDerivationException`; a
@@ -100,9 +100,10 @@ First alpha release. The public API may change before 1.0.
 
 ### Changed
 
-- The distribution is now the single `holpy.*` package. The web IDE, SMT
-  reconstruction, SAT and `holsmt` code and their Flask dependencies are no
-  longer part of the tree and are not importable.
+- The distribution is now the single `holpy.*` package. The old top-level web IDE
+  (`app`), `smt`, `sat` and `holsmt` packages and their Flask dependencies are
+  no longer part of the tree and are not importable. Z3 proof reconstruction
+  (`holpy/prover/proofrec.py`) and the SAT solver (`holpy/prover/sat.py`) remain.
 - `holpy.integral` is explicitly experimental in 0.1.0 (see `README.md`).
 - `simplex_macro`, `integer_simplex` and `real_eq_comparison` now expand and
   have level `None` instead of being trusted level-0 oracles (PR #74).
@@ -118,13 +119,13 @@ First alpha release. The public API may change before 1.0.
 ### Known issues
 
 - Library replay (`scripts/check_library.py --jobs 1`, all 3,763 theorem rows)
-  on `main` at `880edb89` gives `ok` 2047, `gaps` 81, `noproof` 1587 and `fail`
+  on `main` at `880edb89` (measured 2026-11-13, Python 3.14.4) gives `ok` 2047, `gaps` 81, `noproof` 1587 and `fail`
   48. `ok` means the stored proof replays in this kernel, not that the library
   is verified: 1,587 of the 3,763 theorems have no stored proof at all and are
   therefore not verified, 48 fail to replay, and `gaps` rows check but contain
   `sorry`. The checked-in `docs/library_check.tsv` (ok 1988, fail 107)
   predates several fixes.
-- The test suite on `main` at `880edb89` with Python 3.14.4 gives 1 failed,
+- The test suite on `main` at `880edb89` (measured 2026-11-13, Python 3.14.4) gives 1 failed,
   790 passed, 1 skipped and 59 xfailed. The failure is
   `proofrec_test.py::ProofrecTest::testRecSolveSet` (`NotImplementedError`),
   the only entry in `docs/test_baseline.txt`; `compare_test_baseline.py` exits 0.

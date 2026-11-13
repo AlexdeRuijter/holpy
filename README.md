@@ -10,7 +10,7 @@ remain in the git history of the repository and of upstream HolPy.
 ## Status and limits
 
 holpy 0.1.0 is an alpha release and its public API may change before 1.0. Not
-every bundled theorem has a proof that replays: on `main` at `880edb89`, 2,047
+every bundled theorem has a proof that replays: on `main` at `880edb89` (measured 2026-11-13), 2,047
 of 3,763 library theorems replay in the kernel, 81 check but contain `sorry`,
 1,587 have no stored proof at all, and 48 fail to replay. Some proof steps are
 decided by trusted oracles that expand to no kernel inferences (Z3, sympy and
@@ -146,7 +146,7 @@ python scripts/check_library.py logic --out /tmp/logic_check.tsv
 ```
 
 Not every bundled theorem currently checks: some are known to fail. A recorded
-run is in `docs/library_check.tsv`; the current numbers and the remaining
+run is in `docs/library_check.tsv`; the numbers measured on `main` at `880edb89` and the remaining
 failures are in the `CHANGELOG.md` "Known issues" section. Replaying all 3,763
 theorem rows on `main` at `880edb89` (2026-11-13, Python 3.14.4,
 `scripts/check_library.py --jobs 1`) gave `ok` 2047, `gaps` 81, `noproof` 1587
