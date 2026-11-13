@@ -23,6 +23,7 @@ from holpy.data.integral import netT
 from holpy.integral.expr import Location
 from holpy.integral.convert import expr_to_holpy, evalat, real_derivative, real_integral
 from holpy.integral.parser import parse_expr
+from holpy.integral import inequality  # noqa: F401  (registers the inequality solvers used by auto_solve)
 from holpy.syntax.settings import settings
 settings.unicode = True
 
