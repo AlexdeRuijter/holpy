@@ -52,22 +52,23 @@ class Thm:
         self.prop: Term = prop
 
         # Form the tuple of hypotheses, preserving the first occurrence order
-        # while removing duplicates.
+        # while removing duplicates. The set mirrors self.hyps so membership is
+        # O(1); entries are only ever added, so it never needs rebuilding.
         self.hyps: Tuple[Term, ...] = tuple()
+        hyps_set: set[Term] = set()
         for hyp in hyps:
             if isinstance(hyp, Term):
-                if not self.hyps:
-                    self.hyps = (hyp,)
-                elif hyp not in self.hyps:
+                if hyp not in hyps_set:
                     self.hyps = self.hyps + (hyp,)
+                    hyps_set.add(hyp)
             elif isinstance(hyp, tuple):
                 if not self.hyps:
                     self.hyps = hyp
-                elif hyp == self.hyps:
-                    pass
                 else:
-                    hyp_set = set(self.hyps)
-                    self.hyps = self.hyps + tuple(t for t in hyp if t not in hyp_set)
+                    # Duplicates within one batch are preserved; only entries
+                    # already present before the batch are skipped.
+                    self.hyps = self.hyps + tuple(t for t in hyp if t not in hyps_set)
+                hyps_set.update(hyp)
             else:
                 raise TypeError('Thm: each hyp argument is either Term or tuple')
 
@@ -131,7 +132,13 @@ class Thm:
         This is true when the propositions agree and this theorem's
         hypotheses are a subset of ``target``'s hypotheses.
         """
-        return self.prop == target.prop and set(self.hyps).issubset(set(target.hyps))
+        if self.prop != target.prop:
+            return False
+        # Hypotheses usually agree exactly; only fall back to the set test
+        # (which ignores order) when the tuples differ.
+        if self.hyps == target.hyps:
+            return True
+        return set(self.hyps).issubset(target.hyps)
 
     @staticmethod
     def assume(A: Term) -> Thm:

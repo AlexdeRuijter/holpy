@@ -49,6 +49,29 @@ class ThmTest(unittest.TestCase):
         for th, target, res in test_data:
             self.assertEqual(th.can_prove(target), res)
 
+    def testCanProveOrderInsensitiveHyps(self):
+        # The hypotheses are compared as sets, so their order does not matter,
+        # and distinct but equal terms must match.
+        A2 = Var("A", BoolType)
+        B2 = Var("B", BoolType)
+        th1 = Thm(A, (A, B))
+        th2 = Thm(A, (B2, A2))
+        self.assertEqual(th1.hyps, (A, B))
+        self.assertEqual(th2.hyps, (B2, A2))
+        self.assertEqual(th1, th2)
+        self.assertTrue(th1.can_prove(th2))
+        self.assertTrue(th2.can_prove(th1))
+        self.assertTrue(Thm(A, (A, B)).can_prove(Thm(A, (B, A, A2))))
+        self.assertFalse(Thm(A, (A, B)).can_prove(Thm(A, A2)))
+        self.assertFalse(Thm(B).can_prove(th1))
+
+    def testHypDeduplication(self):
+        # Duplicates inside one batch are kept; later duplicates are dropped.
+        self.assertEqual(Thm(A, (A, A), (A, A)).hyps, (A, A))
+        self.assertEqual(Thm(A, (A, A), B, (B, A), A).hyps, (A, A, B))
+        self.assertEqual(Thm(A, A, A, (A, B), B).hyps, (A, B))
+        self.assertEqual(Thm(A, (A, B), (B, A)).hyps, (A, B))
+
     def testAssume(self):
         self.assertEqual(Thm.assume(A), Thm(A, A))
 

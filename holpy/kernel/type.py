@@ -130,7 +130,8 @@ class Type:
 
     def is_fun(self) -> bool:
         """Whether self is of the form a => b."""
-        return self.is_tconst() and self.name == "fun"
+        # Inlined is_tconst(): this is called for every type comparison.
+        return self.ty == Type.TCONST and self.name == "fun"
     
     def domain_type(self) -> Type:
         """Given a type of form a => b, return a."""
@@ -208,12 +209,13 @@ class Type:
         return self._hash_val
     
     def __eq__(self, other: object) -> bool:
+        # Most comparisons are of a type with itself; check that before the
+        # isinstance assertion and the structural comparison.
+        if self is other:
+            return True
         if other is None:
             return False
         assert isinstance(other, Type), "cannot compare Type with %s" % str(type(other))
-
-        if id(self) == id(other):
-            return True
 
         if self.ty != other.ty:
             return False
@@ -415,6 +417,16 @@ class TConst(Type):
 
 def TFun(*args: Type) -> Type:
     """Return the function type ``arg1 => arg2 => ... => argn``."""
+    # The two- and three-argument forms are the common ones. Build them
+    # directly; the general path below is kept for everything else.
+    if len(args) == 2:
+        a, b = args
+        if isinstance(a, Type) and isinstance(b, Type):
+            return TConst("fun", a, b)
+    elif len(args) == 3:
+        a, b, c = args
+        if isinstance(a, Type) and isinstance(b, Type) and isinstance(c, Type):
+            return TConst("fun", a, TConst("fun", b, c))
     typecheck.checkinstance('TFun', args, [Type])
     res = args[-1]
     for arg in reversed(args[:-1]):

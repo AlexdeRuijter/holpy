@@ -48,6 +48,50 @@ class TypeTest(unittest.TestCase):
             with global_setting(unicode=False):
                 self.assertEqual(str(T), str_T)
 
+    def testTypeEq(self):
+        test_data = [
+            (Ta, Ta, True),
+            (TVar("a"), Ta, True),
+            (Ta, Tb, False),
+            (STVar("a"), Ta, False),
+            (TConst("list", Ta), TConst("list", Ta), True),
+            (TConst("list", Ta), TConst("list", Tb), False),
+            (TConst("fun", Ta, Tb), TFun(Ta, Tb), True),
+        ]
+
+        for T1, T2, res in test_data:
+            self.assertEqual(T1 == T2, res)
+            self.assertEqual(T2 == T1, res)
+
+    def testTypeEqNonType(self):
+        # None is unequal; any other non-Type still trips the assertion.
+        self.assertFalse(BoolType.__eq__(None))
+        self.assertRaises(AssertionError, BoolType.__eq__, "bool")
+
+    def testIsFun(self):
+        self.assertTrue(TFun(Ta, Tb).is_fun())
+        self.assertTrue(TConst("fun", Ta, Tb).is_fun())
+        self.assertFalse(BoolType.is_fun())
+        self.assertFalse(TConst("list", Ta).is_fun())
+        self.assertFalse(Ta.is_fun())
+        self.assertFalse(STVar("a").is_fun())
+
+    def testTFun(self):
+        # The fast paths must build exactly what the general loop builds.
+        self.assertEqual(TFun(Ta, Tb), TConst("fun", Ta, Tb))
+        self.assertEqual(TFun(Ta, Tb, Tc),
+                         TConst("fun", Ta, TConst("fun", Tb, Tc)))
+        self.assertEqual(TFun(Ta, Tb, Tc), TFun(Ta, TFun(Tb, Tc)))
+        self.assertEqual(
+            TFun(Ta, Tb, Tc, BoolType),
+            TConst("fun", Ta, TConst("fun", Tb, TConst("fun", Tc, BoolType))))
+        self.assertEqual(TFun(BoolType, BoolType), TConst("fun", BoolType, BoolType))
+
+    def testTFunFail(self):
+        # A non-Type argument is still rejected by the runtime check.
+        self.assertRaises(TypeError, TFun, Ta, "b")
+        self.assertRaises(TypeError, TFun, Ta, Tb, "c")
+
     def testStripType(self):
         test_data = [
             (Ta, ([], Ta)),
