@@ -4,8 +4,8 @@ Higher-order logic (HOL) theorem prover and proof assistant in Python.
 
 This distribution contains the core library: kernel, logic, data types, parser,
 proof state, automation, and the bundled theory library. The web IDE and the
-veriT/SMT proof-reconstruction module are preserved on the `archive/webapp` and
-`archive/smt` branches and are not part of the published package.
+veriT/SMT proof-reconstruction module are not part of this distribution; they
+remain in the git history of the repository and of upstream HolPy.
 
 ## Status and limits
 
